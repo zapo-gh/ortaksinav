@@ -980,6 +980,7 @@ const AnaSayfaContent = React.memo(() => {
           const islemSuresi = bitisZamani - baslangicZamani;
           
           if (!sonuc || !sonuc.salonlar || sonuc.salonlar.length === 0) {
+            console.error('❌ Algoritma sonucu:', sonuc);
             throw new Error('Algoritma geçerli sonuç döndürmedi');
           }
           

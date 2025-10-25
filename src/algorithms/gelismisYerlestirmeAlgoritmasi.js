@@ -52,7 +52,7 @@ export const createAkilliSalonHavuzu = (ogrenciler, salonlar, seed) => {
   const kisitAnalizi = analyzeKisitlar(ogrenciler, sinifSeviyeleri);
   
   // YENİ: Akıllı dağıtım algoritması
-  return akilliDagitim(sinifSeviyeleri, aktifSalonlar, salonHavuzlari, kisitAnalizi);
+  return akilliDagitim(sinifSeviyeleri, aktifSalonlar, salonHavuzlari, kisitAnalizi, seed);
 };
 
 /**
@@ -89,7 +89,7 @@ const analyzeKisitlar = (ogrenciler, sinifSeviyeleri) => {
 /**
  * EŞİT DAĞITIM algoritması - Her salona eşit sayıda öğrenci dağıtım
  */
-const akilliDagitim = (sinifSeviyeleri, aktifSalonlar, salonHavuzlari, kisitAnalizi) => {
+const akilliDagitim = (sinifSeviyeleri, aktifSalonlar, salonHavuzlari, kisitAnalizi, seed = Date.now()) => {
   const toplamOgrenci = kisitAnalizi.toplamOgrenci;
   const salonSayisi = aktifSalonlar.length;
 
@@ -1225,7 +1225,11 @@ export const gelismisYerlestirmeEski = (ogrenciler, salonlar, ayarlar) => {
   
   // Aktif salonları filtrele
   const aktifSalonlar = salonlar.filter(salon => salon.aktif);
+  console.log('🔍 DEBUG: Salonlar:', salonlar.length, 'Aktif salonlar:', aktifSalonlar.length);
+  console.log('🔍 DEBUG: Salonlar detayı:', salonlar.map(s => ({ id: s.id, ad: s.salonAdi || s.ad, aktif: s.aktif })));
+  
   if (aktifSalonlar.length === 0) {
+    console.error('❌ Aktif salon bulunamadı. Salonlar:', salonlar);
     throw new Error('Aktif salon bulunamadı');
   }
   
@@ -1282,13 +1286,13 @@ export const gelismisYerlestirmeEski = (ogrenciler, salonlar, ayarlar) => {
   });
   
   // Tüm öğrencileri karıştır (round-robin için)
-  const karisikOgrenciler = seedShuffle(tumOgrenciler, seed);
+  const akilliHavuzKarisikOgrenciler = seedShuffle(tumOgrenciler, seed);
   
-  logger.info(`📊 Toplam ${karisikOgrenciler.length} öğrenci akıllı havuz round-robin ile dağıtılacak`);
+  logger.info(`📊 Toplam ${akilliHavuzKarisikOgrenciler.length} öğrenci akıllı havuz round-robin ile dağıtılacak`);
   
   // Round-robin dağıtım
   let salonIndex = 0;
-  karisikOgrenciler.forEach((ogrenci, index) => {
+  akilliHavuzKarisikOgrenciler.forEach((ogrenci, index) => {
     // Salon kapasitesini kontrol et
     if (salonHavuzlari[salonIndex].length < salonHavuzlari[salonIndex].hedefSayi) {
       salonHavuzlari[salonIndex].push(ogrenci);
