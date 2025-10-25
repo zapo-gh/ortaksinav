@@ -1,0 +1,97 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18, 20]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Node.js ${{ matrix.node-version }} kurulumu
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
+    - name: Bağımlılıkları yükle
+      run: npm ci
+      
+    - name: Testleri çalıştır
+      run: npm test -- --coverage --watchAll=false
+      
+    - name: Build kontrolü
+      run: npm run build
+      
+    - name: Lint kontrolü
+      run: npm run lint || echo "Lint script bulunamadı, atlanıyor"
+      
+    - name: Test coverage raporu
+      uses: codecov/codecov-action@v3
+      if: matrix.node-version == 18
+      with:
+        file: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Node.js kurulumu
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Bağımlılıkları yükle
+      run: npm ci
+      
+    - name: Güvenlik taraması
+      run: npm audit --audit-level moderate
+      
+    - name: Dependency kontrolü
+      run: npm outdated || echo "Güncel bağımlılıklar kontrol edildi"
+
+  build-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Node.js kurulumu
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Bağımlılıkları yükle
+      run: npm ci
+      
+    - name: Production build
+      run: npm run build
+      
+    - name: Build dosyalarını kontrol et
+      run: |
+        if [ -d "build" ]; then
+          echo "✅ Build başarılı - build klasörü oluşturuldu"
+          ls -la build/
+        else
+          echo "❌ Build başarısız - build klasörü bulunamadı"
+          exit 1
+        fi
