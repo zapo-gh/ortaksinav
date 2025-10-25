@@ -561,6 +561,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
     
     // Diğer değişiklikler için anında kaydetmeyi devre dışı bırak
     console.log('⏳ Anında kaydetme geçici olarak devre dışı bırakıldı');
+    return;
     
     // Kopyalama sırasında anında kaydetmeyi geciktir - SADECE (Kopya) ile bitenler için
     if (guncelForm.salonAdi && guncelForm.salonAdi.includes('(Kopya)') && guncelForm.salonAdi.endsWith('(Kopya)')) {

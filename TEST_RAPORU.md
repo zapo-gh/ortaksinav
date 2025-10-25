@@ -20,7 +20,7 @@
 - ✅ Development modda (npm start): Tüm logger mesajları görünmeli
 - ✅ Production modda (npm run build): Sadece error mesajları görünmeli
 
-**Test Durumu:** ✅ Tamamlandı
+**Test Durumu:** ⏳ Bekliyor
 
 ---
 
@@ -39,7 +39,7 @@
 - ✅ Konsolda kritik hata olmamalı
 - ⚠️ Logger mesajları görünmeli (development mod)
 
-**Test Durumu:** ✅ Tamamlandı
+**Test Durumu:** ⏳ Bekliyor
 
 ---
 
@@ -62,7 +62,7 @@
   - `Sütun başlıkları tespit ediliyor...`
   - `Sınıf X dağıtılıyor...`
 
-**Test Durumu:** ✅ Tamamlandı
+**Test Durumu:** ⏳ Bekliyor
 
 ---
 
@@ -87,7 +87,7 @@
   - `📊 GELİŞMİŞ İSTATİSTİK RAPORU`
 - ✅ Yerleştirme sonuçları görünmeli
 
-**Test Durumu:** ✅ Tamamlandı
+**Test Durumu:** ⏳ Bekliyor
 
 ---
 
@@ -110,7 +110,7 @@
   - `🎭 SalonPlani handleStudentMove`
   - `📞 onOgrenciSec fonksiyonu çağrılıyor`
 
-**Test Durumu:** ✅ Tamamlandı
+**Test Durumu:** ⏳ Bekliyor
 
 ---
 
@@ -129,7 +129,7 @@
 - ✅ Yerleştirme sonuçları korunmalı
 - ⚠️ Konsolda localStorage hatası olmamalı
 
-**Test Durumu:** ✅ Tamamlandı
+**Test Durumu:** ⏳ Bekliyor
 
 ---
 
@@ -147,7 +147,7 @@
 - ✅ Konsolda error log görünmeli (logger.error)
 - ✅ Uygulama çökmemeli
 
-**Test Durumu:** ✅ Tamamlandı
+**Test Durumu:** ⏳ Bekliyor
 
 ---
 

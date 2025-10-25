@@ -172,7 +172,6 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
   };
 
   const handleSinifSecimi = (dersId, siniflar) => {
-    console.log('🔍 Sınıf seçimi:', { dersId, siniflar, tip: typeof siniflar, uzunluk: siniflar?.length });
     setSeciliSiniflar(prev => ({
       ...prev,
       [dersId]: siniflar
@@ -181,7 +180,6 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
 
   const handleSinifEkleButon = (dersId) => {
     const secilenSiniflar = seciliSiniflar[dersId] || [];
-    console.log('🔍 Ekle butonu:', { dersId, secilenSiniflar, uzunluk: secilenSiniflar.length });
     if (secilenSiniflar.length === 0) {
       showError('Lütfen önce en az bir sınıf seçin!');
       return;

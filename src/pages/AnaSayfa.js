@@ -980,7 +980,6 @@ const AnaSayfaContent = React.memo(() => {
           const islemSuresi = bitisZamani - baslangicZamani;
           
           if (!sonuc || !sonuc.salonlar || sonuc.salonlar.length === 0) {
-            console.error('❌ Algoritma sonucu:', sonuc);
             throw new Error('Algoritma geçerli sonuç döndürmedi');
           }
           
@@ -1002,7 +1001,6 @@ const AnaSayfaContent = React.memo(() => {
 
   // Yerleştirme sonucunu eski sistemle uyumlu hale getirir
   const formatYerlestirmeSonucu = (sonuc) => {
-    
     // İlk salonun öğrencilerini al (varsayılan olarak)
     const ilkSalon = sonuc.salonlar[0];
     if (!ilkSalon) {
@@ -1200,6 +1198,7 @@ const AnaSayfaContent = React.memo(() => {
                   seciliSalonId={seciliSalonId}
                   onSeciliSalonDegistir={setSeciliSalonId}
                   onStudentTransfer={handleStudentTransfer}
+                  yerlestirmeSonucu={yerlestirmeSonucu}
                 />
                 
                 {/* Yerleşmeyen Öğrenciler Bölümü */}
@@ -1214,16 +1213,17 @@ const AnaSayfaContent = React.memo(() => {
                         Aşağıdaki öğrenciler kısıtlar nedeniyle otomatik yerleştirilemedi. 
                         Manuel olarak yerleştirebilirsiniz.
                       </Typography>
-                      <UnplacedStudentsDropZone onStudentMove={handleStudentMove}>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                          {yerlestirmeSonucu.yerlesilemeyenOgrenciler.map((ogrenci, index) => (
-                            <DraggableUnplacedStudent 
-                              key={ogrenci.id || index}
-                              ogrenci={ogrenci}
-                            />
-                          ))}
-                        </Box>
-                      </UnplacedStudentsDropZone>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        {yerlestirmeSonucu.yerlesilemeyenOgrenciler.map((ogrenci, index) => (
+                          <Chip
+                            key={index}
+                            label={`${ogrenci.ad} (${ogrenci.sinif})`}
+                            variant="outlined"
+                            color="warning"
+                            size="small"
+                          />
+                        ))}
+                      </Box>
                     </CardContent>
                   </Card>
                 )}

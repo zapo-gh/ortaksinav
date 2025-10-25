@@ -87,7 +87,7 @@ const DroppableSeat = memo(({ masa, onStudentMove, children }) => {
   );
 });
 
-const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler = [], onOgrenciSec, tumSalonlar, onSalonDegistir, ayarlar = {}, salonlar = [], seciliSalonId, onSeciliSalonDegistir, onStudentTransfer }) => {
+const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler = [], onOgrenciSec, tumSalonlar, onSalonDegistir, ayarlar = {}, salonlar = [], seciliSalonId, onSeciliSalonDegistir, onStudentTransfer, yerlestirmeSonucu }) => {
   const { showConfirm } = useNotifications();
 
   const [modalAcik, setModalAcik] = useState(false);
@@ -872,11 +872,77 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
     <Box sx={{ width: '100%', mb: 2 }}>
       <Paper elevation={1} sx={{ p: 2, maxWidth: 1400, mx: 'auto' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <ChairIcon sx={{ mr: 1, color: 'primary.main' }} />
               <Typography variant="h5" component="h2">
               Sınıf Planı
             </Typography>
+            
+            {/* Öğrenci Sayıları */}
+            {(() => {
+              // Yerleştirme sonucu varsa, tüm salonlardaki öğrencileri say
+              if (yerlestirmeSonucu && yerlestirmeSonucu.tumSalonlar) {
+                const toplamYerlesen = yerlestirmeSonucu.tumSalonlar.reduce((toplam, salon) => 
+                  toplam + (salon.ogrenciler ? salon.ogrenciler.length : 0), 0
+                );
+                const toplamYerlesilemeyen = yerlestirmeSonucu.yerlesilemeyenOgrenciler ? yerlestirmeSonucu.yerlesilemeyenOgrenciler.length : 0;
+                const toplamOgrenci = toplamYerlesen + toplamYerlesilemeyen;
+                
+                return (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2 }}>
+                    <Chip 
+                      label={`Toplam: ${toplamOgrenci}`}
+                      color="primary"
+                      variant="outlined"
+                      size="small"
+                    />
+                    <Chip 
+                      label={`Yerleşen: ${toplamYerlesen}`}
+                      color="success"
+                      variant="outlined"
+                      size="small"
+                    />
+                    <Chip 
+                      label={`Yerleşmeyen: ${toplamYerlesilemeyen}`}
+                      color="warning"
+                      variant="outlined"
+                      size="small"
+                    />
+                  </Box>
+                );
+              }
+              
+              // Yerleştirme sonucu yoksa, mevcut öğrenci listesini kullan
+              if (ogrenciler && ogrenciler.length > 0) {
+                const yerlesenSayisi = ogrenciler.filter(o => o.salonId).length;
+                const yerlesilemeyenSayisi = ogrenciler.filter(o => !o.salonId).length;
+                
+                return (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2 }}>
+                    <Chip 
+                      label={`Toplam: ${ogrenciler.length}`}
+                      color="primary"
+                      variant="outlined"
+                      size="small"
+                    />
+                    <Chip 
+                      label={`Yerleşen: ${yerlesenSayisi}`}
+                      color="success"
+                      variant="outlined"
+                      size="small"
+                    />
+                    <Chip 
+                      label={`Yerleşmeyen: ${yerlesilemeyenSayisi}`}
+                      color="warning"
+                      variant="outlined"
+                      size="small"
+                    />
+                  </Box>
+                );
+              }
+              
+              return null;
+            })()}
           </Box>
 
           <Box sx={{ display: 'flex', gap: 1 }}>

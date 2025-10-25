@@ -3,7 +3,7 @@
  * Genel utility fonksiyonları
  */
 
-import logger from '../../utils/logger';
+import logger from '../../utils/logger.js';
 
 /**
  * Sınıf seviyesini çıkarır (9-A -> 9)

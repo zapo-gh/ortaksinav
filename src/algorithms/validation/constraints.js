@@ -3,8 +3,8 @@
  * Cinsiyet ve sınıf seviyesi kısıtlarını kontrol eder
  */
 
-import logger from '../../utils/logger';
-import { getSinifSeviyesi } from '../utils/helpers';
+import logger from '../../utils/logger.js';
+import { getSinifSeviyesi } from '../utils/helpers.js';
 
 /**
  * Cinsiyet kontrolü - kız-erkek yan yana oturamaz

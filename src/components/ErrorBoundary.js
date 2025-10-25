@@ -24,9 +24,9 @@ class ErrorBoundary extends React.Component {
     }
   }
 
-  handleRefresh() {
+  handleRefresh = () => {
     window.location.reload();
-  }
+  };
 
   render() {
     if (this.state.hasError) {
@@ -89,10 +89,6 @@ class ErrorBoundary extends React.Component {
 }
 
 export default ErrorBoundary;
-
-
-
-
 
 
 

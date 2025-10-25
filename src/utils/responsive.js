@@ -59,7 +59,3 @@ export default responsiveUtils;
 
 
 
-
-
-
-
