@@ -45,6 +45,8 @@ module.exports = {
     'jest/expect-expect': 'off',
     'react-hooks/immutability': 'off',
     'no-unreachable': 'off',
+    'no-case-declarations': 'off',
+    'no-prototype-builtins': 'off',
   },
   settings: {
     react: {
