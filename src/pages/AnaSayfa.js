@@ -1213,17 +1213,16 @@ const AnaSayfaContent = React.memo(() => {
                         Aşağıdaki öğrenciler kısıtlar nedeniyle otomatik yerleştirilemedi. 
                         Manuel olarak yerleştirebilirsiniz.
                       </Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                        {yerlestirmeSonucu.yerlesilemeyenOgrenciler.map((ogrenci, index) => (
-                          <Chip
-                            key={index}
-                            label={`${ogrenci.ad} (${ogrenci.sinif})`}
-                            variant="outlined"
-                            color="warning"
-                            size="small"
-                          />
-                        ))}
-                      </Box>
+                      <UnplacedStudentsDropZone onStudentMove={handleStudentMove}>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                          {yerlestirmeSonucu.yerlesilemeyenOgrenciler.map((ogrenci, index) => (
+                            <DraggableUnplacedStudent 
+                              key={ogrenci.id || index}
+                              ogrenci={ogrenci}
+                            />
+                          ))}
+                        </Box>
+                      </UnplacedStudentsDropZone>
                     </CardContent>
                   </Card>
                 )}
