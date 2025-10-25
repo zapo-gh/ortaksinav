@@ -1,0 +1,2426 @@
+/**
+ * Gelişmiş Sınav Yerleştirme Algoritması
+ * 9 temel kural ile öğrencilerin salonlara yerleştirilmesi
+ * 
+ * AŞAMALI OPTİMİZASYON:
+ * - Aşama 1: Akıllı salon havuzu optimizasyonu
+ * - Aşama 2: Gelişmiş yerleştirme motoru
+ * - Aşama 3: Tam entegrasyon
+ */
+
+import logger from '../utils/logger';
+import { getNeighbors } from './utils/helpers';
+
+// Re-export getNeighbors for other files that import from this module
+export { getNeighbors };
+
+// ==================== AŞAMA 1: AKILLI SALON HAVUZU OPTİMİZASYONU ====================
+
+/**
+ * Akıllı salon havuzu oluşturma - mevcut dağıtımı geliştirir
+ */
+export const createAkilliSalonHavuzu = (ogrenciler, salonlar, seed) => {
+  logger.info('🧠 Akıllı salon havuzu oluşturuluyor...');
+  
+  // Mevcut gruplama mantığını koru
+  const sinifSeviyeleri = {};
+  ogrenciler.forEach(ogrenci => {
+    const seviye = getSinifSeviyesi(ogrenci.sinif);
+    logger.debug(`🔍 Öğrenci ${ogrenci.ad} ${ogrenci.soyad} - Sınıf: "${ogrenci.sinif}" -> Seviye: "${seviye}"`);
+    if (seviye && seviye !== null) {
+      if (!sinifSeviyeleri[seviye]) sinifSeviyeleri[seviye] = [];
+      sinifSeviyeleri[seviye].push(ogrenci);
+    } else {
+      logger.warn(`⚠️ Öğrenci ${ogrenci.ad} ${ogrenci.soyad} - Sınıf: "${ogrenci.sinif}" -> Seviye: "${seviye}" (geçersiz seviye)`);
+    }
+  });
+  
+  logger.info(`🔍 DEBUG: sinifSeviyeleri oluşturuldu:`, Object.keys(sinifSeviyeleri).map(seviye => ({
+    seviye,
+    ogrenciSayisi: sinifSeviyeleri[seviye].length
+  })));
+
+  // Her seviyeyi karıştır
+  Object.keys(sinifSeviyeleri).forEach(seviye => {
+    sinifSeviyeleri[seviye] = seedShuffle(sinifSeviyeleri[seviye], seed + parseInt(seviye));
+  });
+
+  const aktifSalonlar = salonlar.filter(salon => salon.aktif);
+  const salonHavuzlari = aktifSalonlar.map(() => []);
+
+  // YENİ: Kısıt optimizasyonu için ön analiz
+  const kisitAnalizi = analyzeKisitlar(ogrenciler, sinifSeviyeleri);
+  
+  // YENİ: Akıllı dağıtım algoritması
+  return akilliDagitim(sinifSeviyeleri, aktifSalonlar, salonHavuzlari, kisitAnalizi);
+};
+
+/**
+ * Kısıt analizi yapar
+ */
+const analyzeKisitlar = (ogrenciler, sinifSeviyeleri) => {
+  const analiz = {
+    seviyeBazliZorluk: {},
+    cinsiyetDagilimi: { Erkek: 0, Kız: 0 },
+    toplamOgrenci: ogrenciler.length
+  };
+
+  Object.keys(sinifSeviyeleri).forEach(seviye => {
+    const seviyeOgrencileri = sinifSeviyeleri[seviye];
+    const cinsiyetSayilari = { Erkek: 0, Kız: 0 };
+    
+    seviyeOgrencileri.forEach(ogrenci => {
+      if (ogrenci.cinsiyet) {
+        cinsiyetSayilari[ogrenci.cinsiyet]++;
+        analiz.cinsiyetDagilimi[ogrenci.cinsiyet]++;
+      }
+    });
+
+    // Zorluk skoru: tek cinsiyetli sınıflar daha zor
+    const zorluk = Math.abs(cinsiyetSayilari.Erkek - cinsiyetSayilari.Kız) / seviyeOgrencileri.length;
+    analiz.seviyeBazliZorluk[seviye] = zorluk;
+    
+    logger.debug(`📊 Sınıf ${seviye} analizi: ${seviyeOgrencileri.length} öğrenci, zorluk: ${zorluk.toFixed(2)}`);
+  });
+
+  return analiz;
+};
+
+/**
+ * EŞİT DAĞITIM algoritması - Her salona eşit sayıda öğrenci dağıtım
+ */
+const akilliDagitim = (sinifSeviyeleri, aktifSalonlar, salonHavuzlari, kisitAnalizi) => {
+  const toplamOgrenci = kisitAnalizi.toplamOgrenci;
+  const salonSayisi = aktifSalonlar.length;
+
+  // Her salona eşit sayıda öğrenci hedefi
+  const hedefOgrenciSayisi = Math.floor(toplamOgrenci / salonSayisi);
+  const kalanOgrenci = toplamOgrenci % salonSayisi;
+
+  logger.info(`🎯 EŞİT DAĞITIM: ${toplamOgrenci} öğrenci, ${salonSayisi} salon`);
+  logger.info(`🎯 Her salona hedef: ${hedefOgrenciSayisi} öğrenci, ${kalanOgrenci} öğrenci fazla`);
+
+  // Salon hedef sayılarını hesapla (eşit dağıtım)
+  aktifSalonlar.forEach((salon, index) => {
+    const hedefSayi = hedefOgrenciSayisi + (index < kalanOgrenci ? 1 : 0);
+    salonHavuzlari[index].hedefSayi = hedefSayi;
+    logger.debug(`  📍 Salon ${salon.salonAdi || salon.ad}: hedef ${hedefSayi} öğrenci`);
+  });
+
+  // EŞİT DAĞITIM: Her sınıf seviyesinden salonlara eşit sayıda dağıt
+  Object.keys(sinifSeviyeleri).forEach(seviye => {
+    const seviyeOgrencileri = [...sinifSeviyeleri[seviye]];
+    const seviyeToplamOgrenci = seviyeOgrencileri.length;
+    
+    logger.info(`\n🎯 Sınıf ${seviye} dağıtılıyor: ${seviyeToplamOgrenci} öğrenci`);
+    logger.info(`🔍 DEBUG: sinifSeviyeleri[${seviye}] =`, sinifSeviyeleri[seviye].length, 'öğrenci');
+    
+    // Her salona bu seviyeden eşit sayıda öğrenci ver
+    const seviyeBasiOgrenci = Math.floor(seviyeToplamOgrenci / salonSayisi);
+    const seviyeKalanOgrenci = seviyeToplamOgrenci % salonSayisi;
+    
+    logger.debug(`  📊 Sınıf ${seviye} dağıtımı: Her salona ${seviyeBasiOgrenci} öğrenci, ${seviyeKalanOgrenci} öğrenci fazla`);
+    
+    aktifSalonlar.forEach((salon, index) => {
+      const seviyeOgrenciSayisi = seviyeBasiOgrenci + (index < seviyeKalanOgrenci ? 1 : 0);
+      
+      logger.debug(`  📍 Salon ${salon.salonAdi || salon.ad}: ${seviyeOgrenciSayisi} öğrenci alacak`);
+      
+      // Bu salona öğrencileri yerleştir
+      for (let i = 0; i < seviyeOgrenciSayisi && seviyeOgrencileri.length > 0; i++) {
+            const ogrenci = seviyeOgrencileri.shift();
+            salonHavuzlari[index].push(ogrenci);
+            logger.debug(`  ✅ Salon ${salon.salonAdi || salon.ad}: ${ogrenci.ad} ${ogrenci.soyad} eklendi`);
+      }
+    });
+
+    // Kalan öğrencileri dengeli dağıt (eğer varsa)
+    while (seviyeOgrencileri.length > 0) {
+      let yerlestirildi = false;
+      
+      for (let i = 0; i < aktifSalonlar.length; i++) {
+        if (seviyeOgrencileri.length > 0 && 
+            salonHavuzlari[i].length < salonHavuzlari[i].hedefSayi) {
+          salonHavuzlari[i].push(seviyeOgrencileri.shift());
+          yerlestirildi = true;
+          break; // Bir öğrenci yerleştirildi, döngüyü yeniden başlat
+        }
+      }
+      
+      // Hiçbir salona yerleştirilemediyse, hedef sayıyı aşmaya izin ver
+      if (!yerlestirildi && seviyeOgrencileri.length > 0) {
+        const enAzDoluIndex = salonHavuzlari
+          .map((havuz, idx) => ({ havuz, idx, length: havuz.length }))
+          .sort((a, b) => a.length - b.length)[0].idx;
+        
+        salonHavuzlari[enAzDoluIndex].push(seviyeOgrencileri.shift());
+        logger.warn(`  ⚠️ Kalan öğrenci en az dolu salona yerleştirildi: Salon ${aktifSalonlar[enAzDoluIndex].salonAdi || aktifSalonlar[enAzDoluIndex].ad}`);
+      }
+    }
+  });
+
+  // Son durumu logla
+  logger.info(`\n📊 EŞİT DAĞITIM SONUÇLARI:`);
+  salonHavuzlari.forEach((havuz, index) => {
+    const salon = aktifSalonlar[index];
+    logger.info(`  📍 Salon ${salon.salonAdi || salon.ad}: ${havuz.length} öğrenci (hedef: ${havuz.hedefSayi})`);
+  });
+
+  return salonHavuzlari;
+};
+
+// ==================== YARDIMCI FONKSİYONLAR ====================
+
+/**
+ * Sınıf seviyesini çıkarır (9-A -> 9)
+ */
+export const getSinifSeviyesi = (sinif) => {
+  if (!sinif) return null;
+  
+  logger.debug(`🔍 getSinifSeviyesi debug: "${sinif}" -> `, {
+    sinif: sinif,
+    type: typeof sinif,
+    length: sinif.length,
+    charCode0: sinif.charCodeAt(0),
+    charCode1: sinif.length > 1 ? sinif.charCodeAt(1) : 'N/A'
+  });
+  
+  // 10-A, 11-B, 9-C gibi formatlar için sınıf seviyesini çıkar
+  // Önce iki haneli sayıları kontrol et (10, 11, 12)
+  let match = sinif.match(/^(1[0-2])/);
+  if (match) {
+    logger.debug(`✅ İki haneli match: "${match[1]}"`);
+    return match[1];
+  }
+  
+  // Sonra tek haneli sayıları kontrol et (9)
+  match = sinif.match(/^(\d)/);
+  const result = match ? match[1] : null;
+  logger.debug(`📊 Final result: "${result}"`);
+  return result;
+};
+
+/**
+ * Seed bazlı rastgele sayı üretici
+ */
+class SeededRandom {
+  constructor(seed) {
+    this.seed = seed;
+  }
+
+  next() {
+    this.seed = (this.seed * 9301 + 49297) % 233280;
+    return this.seed / 233280;
+  }
+}
+
+/**
+ * Fisher-Yates shuffle algoritması (seed bazlı)
+ */
+export const seedShuffle = (array, seed) => {
+  const shuffled = [...array];
+  const rng = new SeededRandom(seed);
+  
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(rng.next() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  
+  return shuffled;
+};
+
+
+/**
+ * Cinsiyet kontrolü - kız-erkek yan yana oturamaz
+ * İYİLEŞTİRİLMİŞ: Daha iyi cinsiyet bilgisi kontrolü
+ */
+export const isGenderValid = (ogrenci, komsular, plan, currentGroup = null, currentRow = null) => {
+  // İYİLEŞTİRİLMİŞ: Cinsiyet bilgisi eksikse uyarı ver ama geç
+  if (!ogrenci.cinsiyet) {
+    logger.warn(`⚠️ Cinsiyet bilgisi eksik: ${ogrenci.ad} - Kısıt kontrolü atlanıyor`);
+    return true; // Cinsiyet bilgisi yoksa geç
+  }
+  
+  // Cinsiyet değeri geçerli mi kontrol et
+  if (!['E', 'K', 'Erkek', 'Kız'].includes(ogrenci.cinsiyet)) {
+    logger.warn(`⚠️ Geçersiz cinsiyet değeri: ${ogrenci.ad} (${ogrenci.cinsiyet}) - Kısıt kontrolü atlanıyor`);
+    return true;
+  }
+  
+  // SADECE YAN YANA KOMŞULAR İÇİN KISIT KONTROLÜ (getNeighbors artık sadece sol-sağ döndürüyor)
+  for (const [satir, sutun] of komsular) {
+    const neighborCell = plan[satir] && plan[satir][sutun];
+    const komsuOgrenci = neighborCell?.ogrenci;
+    // YENİ: Cinsiyet kısıtı sadece aynı grup içinde yan yana olanlar için geçerli
+    if (currentGroup != null && neighborCell?.grup != null && neighborCell.grup !== currentGroup) {
+      continue;
+    }
+    if (komsuOgrenci && komsuOgrenci.cinsiyet) {
+      const ogrenciCinsiyet = normalizeGender(ogrenci.cinsiyet);
+      const komsuCinsiyet = normalizeGender(komsuOgrenci.cinsiyet);
+      // KURAL: Aynı satır ve aynı grupta FARKLI cinsiyet yan yana olmasın
+      if (ogrenciCinsiyet !== komsuCinsiyet) {
+        logger.debug(`❌ Cinsiyet kısıt ihlali: ${ogrenci.ad} (${ogrenciCinsiyet}) yanında ${komsuOgrenci.ad} (${komsuCinsiyet}) - FARKLI CİNSİYET YASAK`);
+        return false;
+      }
+    }
+  }
+  return true;
+};
+
+/**
+ * Cinsiyet değerini normalize eder
+ */
+const normalizeGender = (cinsiyet) => {
+  if (!cinsiyet) return null;
+  
+  const normalized = cinsiyet.toString().trim().toUpperCase();
+  
+  // Erkek pattern'leri
+  if (['E', 'ERKEK', 'MALE', 'M', 'BAY'].includes(normalized)) {
+    return 'E';
+  }
+  
+  // Kadın pattern'leri  
+  if (['K', 'KIZ', 'KADIN', 'FEMALE', 'F', 'BAYAN'].includes(normalized)) {
+    return 'K';
+  }
+  
+  return normalized; // Bilinmeyen değerleri olduğu gibi döndür
+};
+
+/**
+ * Sınıf seviyesi kontrolü - aynı seviye yan yana oturamaz
+ * Direkt yan yana komşuları kontrol eder (özellikle ikili koltuklarda)
+ */
+export const isClassLevelValid = (ogrenci, komsular, plan, currentGroup = null, currentRow = null) => {
+  const ogrenciSeviye = getSinifSeviyesi(ogrenci.sinif);
+  if (!ogrenciSeviye) return true;
+  
+  // SADECE YAN YANA KOMŞULAR İÇİN KISIT KONTROLÜ (getNeighbors artık sadece sol-sağ döndürüyor)
+  for (const [satir, sutun] of komsular) {
+    const neighborCell = plan[satir] && plan[satir][sutun];
+    const komsuOgrenci = neighborCell?.ogrenci;
+    if (currentGroup != null && neighborCell?.grup != null && neighborCell.grup !== currentGroup) {
+      continue; // sadece aynı grup
+    }
+    if (komsuOgrenci) {
+      const komsuSeviye = getSinifSeviyesi(komsuOgrenci.sinif);
+      if (komsuSeviye === ogrenciSeviye) {
+        logger.debug(`❌ Sınıf seviyesi kısıt ihlali: ${ogrenci.ad} (${ogrenciSeviye}) yanında ${komsuOgrenci.ad} (${komsuSeviye})`);
+        return false;
+      }
+    }
+  }
+  return true;
+};
+
+/**
+ * Öğrencinin hangi derslere girdiğini belirler
+ */
+export const getOgrenciDersleri = (ogrenci, ayarlar) => {
+  if (!ayarlar.dersler || !ogrenci.sinif) return [];
+  
+  return ayarlar.dersler
+    .filter(ders => ders.siniflar && ders.siniflar.includes(ogrenci.sinif))
+    .map(ders => ders.ad);
+};
+
+/**
+ * Dengeli dağılım hesaplama
+ */
+export const calculateBalancedDistribution = (ogrenciler, kapasite) => {
+  const sinifSeviyeleri = {};
+  
+  // Sınıf seviyelerine göre grupla
+  ogrenciler.forEach(ogrenci => {
+    const seviye = getSinifSeviyesi(ogrenci.sinif);
+    if (seviye) {
+      if (!sinifSeviyeleri[seviye]) {
+        sinifSeviyeleri[seviye] = [];
+      }
+      sinifSeviyeleri[seviye].push(ogrenci);
+    }
+  });
+  
+  const seviyeler = Object.keys(sinifSeviyeleri);
+  const dağılım = {};
+  
+  // Her seviyeden eşit sayıda öğrenci al
+  const seviyeBasi = Math.floor(kapasite / seviyeler.length);
+  const kalan = kapasite % seviyeler.length;
+  
+  seviyeler.forEach((seviye, index) => {
+    const alinacak = seviyeBasi + (index < kalan ? 1 : 0);
+    dağılım[seviye] = Math.min(alinacak, sinifSeviyeleri[seviye].length);
+  });
+  
+  return dağılım;
+};
+
+/**
+ * Masa numaralarını hesaplar - Grup bazlı sıralama
+ * 1.grup: Sıra1-Sol(1), Sıra1-Sağ(2), Sıra2-Sol(3), Sıra2-Sağ(4)...
+ * 2.grup: Sıra1-Sol(5), Sıra1-Sağ(6), Sıra2-Sol(7), Sıra2-Sağ(8)...
+ */
+export const calculateDeskNumbersForMasalar = (masalar) => {
+  // Grup bazlı sıralama
+  const gruplar = {};
+  masalar.forEach(masa => {
+    const grup = masa.grup || 1;
+    if (!gruplar[grup]) gruplar[grup] = [];
+    gruplar[grup].push(masa);
+  });
+  
+  let masaNumarasi = 1;
+  const guncellenmisMasalar = [];
+  const sortedGruplar = Object.keys(gruplar).sort((a, b) => parseInt(a) - parseInt(b));
+  
+  for (const grupId of sortedGruplar) {
+    const grupMasalar = gruplar[grupId];
+    
+    // Grup içinde satır-sütun sıralaması
+    const sortedGrupMasalar = grupMasalar.sort((a, b) => {
+      if (a.satir !== b.satir) return a.satir - b.satir;
+      return a.sutun - b.sutun;
+    });
+    
+    // Bu grup için masa numaralarını ata
+    sortedGrupMasalar.forEach(masa => {
+      guncellenmisMasalar.push({
+        ...masa,
+        masaNumarasi: masaNumarasi++
+      });
+    });
+  }
+  
+  return guncellenmisMasalar;
+};
+
+/**
+ * Salon için koltuk matrisi oluşturur - GRUP BAZLI SIRALAMA İÇİN
+ */
+export const createSalonKoltukMatrisi = (salon) => {
+  const { siraTipi, gruplar } = salon;
+  const masalar = [];
+  
+  let masaIndex = 0;
+  
+  // En fazla sıra sayısını bul
+  const maxSiraSayisi = Math.max(...gruplar.map(g => g.siraSayisi));
+  
+  // YENİ DÜZEN: Grup1-Grup2-Grup3-Grup4 yan yana, her grupta sol-sağ koltuklar
+  // Grup1: sutun=0,1 | Grup2: sutun=2,3 | Grup3: sutun=4,5 | Grup4: sutun=6,7
+  
+  for (let satir = 0; satir < maxSiraSayisi; satir++) {
+    gruplar.forEach((grup, grupIndex) => {
+      if (satir < grup.siraSayisi) {
+        if (siraTipi === 'tekli') {
+          masalar.push({
+            id: masaIndex++,
+            satir: satir,
+            sutun: grupIndex, // Her grup farklı sütun
+            grup: grup.id,
+            koltukTipi: 'tekli',
+            grupSira: grupIndex
+          });
+        } else { // ikili
+          // Sol koltuk
+          masalar.push({
+            id: masaIndex++,
+            satir: satir,
+            sutun: grupIndex * 2, // Grup1: 0, Grup2: 2, Grup3: 4, Grup4: 6
+            grup: grup.id,
+            koltukTipi: 'ikili-sol',
+            grupSira: grupIndex
+          });
+          
+          // Sağ koltuk
+          masalar.push({
+            id: masaIndex++,
+            satir: satir,
+            sutun: grupIndex * 2 + 1, // Grup1: 1, Grup2: 3, Grup3: 5, Grup4: 7
+            grup: grup.id,
+            koltukTipi: 'ikili-sag',
+            grupSira: grupIndex
+          });
+        }
+      }
+    });
+  }
+  
+  // Satır ve sütun sayılarını hesapla
+  const maxSatir = maxSiraSayisi;
+  const maxSutun = siraTipi === 'tekli' ? gruplar.length : gruplar.length * 2;
+  
+  // Masa numaralarını hesapla - Grup bazlı sıralama
+  const masalarWithNumbers = calculateDeskNumbersForMasalar(masalar);
+  
+  return {
+    masalar: masalarWithNumbers,
+    satirSayisi: maxSatir,
+    sutunSayisi: maxSutun
+  };
+};
+
+/**
+ * Koltuk sırasını belirler - grup bazlı sıralama
+ * createSalonKoltukMatrisi zaten doğru sırayı veriyor (önce sol, sonra sağ)
+ */
+/**
+ * DÜZELTİLMİŞ: Koltuk sırasını belirler - İSTENEN SIRALAMA
+ * 1. ÖNCE SOL KOLTUKLAR: Grup1-Sıra1-Sol, Grup2-Sıra1-Sol, Grup3-Sıra1-Sol, Grup4-Sıra1-Sol
+ * 2. SONRA Grup1-Sıra2-Sol, Grup2-Sıra2-Sol, Grup3-Sıra2-Sol, Grup4-Sıra2-Sol
+ * 3. TÜM SOL KOLTUKLARDAN SONRA SAĞ KOLTUKLAR: Grup1-Sıra1-Sağ, Grup2-Sıra1-Sağ, ...
+ */
+export const getKoltukSira = (salon, seed) => {
+  const { masalar } = createSalonKoltukMatrisi(salon);
+  
+  // İSTENEN SIRALAMA:
+  // FAZE 1: Sol koltuklar - Grup bazlı, satır bazlı
+  //   1. grup, satır 0, sol → 2. grup, satır 0, sol → 3. grup, satır 0, sol...
+  //   1. grup, satır 1, sol → 2. grup, satır 1, sol → 3. grup, satır 1, sol...
+  // FAZE 2: Sağ koltuklar - Grup bazlı, satır bazlı
+  //   1. grup, satır 0, sağ → 2. grup, satır 0, sağ → 3. grup, satır 0, sağ...
+  //   1. grup, satır 1, sağ → 2. grup, satır 1, sağ → 3. grup, satır 1, sağ...
+  
+  // En fazla satır sayısını bul
+  const maxSatirSayisi = Math.max(...masalar.map(m => m.satir)) + 1;
+  const gruplar = [...new Set(masalar.map(m => m.grupSira))].sort((a, b) => a - b);
+  
+  const siraliKoltuklar = [];
+  
+  // FAZE 1: Sol koltuklar (veya tekli koltuklar)
+  for (let satir = 0; satir < maxSatirSayisi; satir++) {
+    for (const grupSira of gruplar) {
+      const koltuk = masalar.find(m => 
+        m.satir === satir && 
+        m.grupSira === grupSira && 
+        (m.koltukTipi === 'ikili-sol' || m.koltukTipi === 'tekli')
+      );
+      if (koltuk) {
+        siraliKoltuklar.push(koltuk);
+      }
+    }
+  }
+  
+  // FAZE 2: Sağ koltuklar
+  for (let satir = 0; satir < maxSatirSayisi; satir++) {
+    for (const grupSira of gruplar) {
+      const koltuk = masalar.find(m => 
+        m.satir === satir && 
+        m.grupSira === grupSira && 
+        m.koltukTipi === 'ikili-sag'
+      );
+      if (koltuk) {
+        siraliKoltuklar.push(koltuk);
+      }
+    }
+  }
+  
+  logger.debug('🎯 YENİ Yerleştirme düzeni oluşturuldu!');
+  logger.debug('🎯 Toplam koltuk:', siraliKoltuklar.length);
+  logger.debug('🎯 İlk 8 koltuk:', siraliKoltuklar.slice(0, 8).map(koltuk => ({
+    satir: koltuk.satir + 1,
+    grup: koltuk.grup,
+    grupSira: koltuk.grupSira,
+    tip: koltuk.koltukTipi
+  })));
+  
+  return siraliKoltuklar;
+};
+
+// ==================== AŞAMA 2: GELİŞMİŞ YERLEŞTİRME MOTORU ====================
+
+/**
+ * Gelişmiş yerleştirme motoru - çok katmanlı kısıt sistemi
+ */
+class GelismisYerlestirmeMotoru {
+  constructor(salon, ogrenciler, ayarlar, seed, weightManager = null) {
+    this.salon = salon;
+    this.ogrenciler = [...ogrenciler];
+    this.ayarlar = ayarlar;
+    this.seed = seed;
+    this.koltukMatrisi = createSalonKoltukMatrisi(salon);
+    this.plan = this.initPlan();
+    this.plan2D = this.init2DPlan();
+    this.oncelikliKoltuklar = [];
+    this.zorKoltuklar = new Set();
+    this.weightManager = weightManager; // YENİ: WeightManager referansı
+  }
+
+  initPlan() {
+    return this.koltukMatrisi.masalar.map(masa => ({
+      id: masa.id,
+      ogrenci: null,
+      satir: masa.satir,
+      sutun: masa.sutun,
+      grup: masa.grup,
+      koltukTipi: masa.koltukTipi,
+      masaNumarasi: masa.masaNumarasi // masaNumarasi ekle
+    }));
+  }
+
+  init2DPlan() {
+    return Array(this.koltukMatrisi.satirSayisi)
+      .fill(null)
+      .map(() => Array(this.koltukMatrisi.sutunSayisi).fill(null));
+  }
+
+  /**
+   * Akıllı koltuk önceliklendirme
+   */
+  calculateKoltukOncelikleri() {
+    const koltukSirasi = getKoltukSira(this.salon, this.seed);
+    
+    // Koltuk sırasını masa numaralarıyla eşleştir
+    const masalarMap = {};
+    this.koltukMatrisi.masalar.forEach(masa => {
+      masalarMap[masa.id] = masa;
+    });
+    
+    // İSTENEN DÜZENİ KORU: Sıralamayı değiştirme, getKoltukSira'nın düzenini kullan
+    this.oncelikliKoltuklar = koltukSirasi.map((koltuk, index) => {
+      // Masadan masa numarasını al
+      const masaWithNumber = masalarMap[koltuk.id] || koltuk;
+      
+      const komsular = getNeighbors(koltuk.satir, koltuk.sutun, 
+        this.koltukMatrisi.satirSayisi, this.koltukMatrisi.sutunSayisi);
+      
+      return {
+        ...koltuk,
+        masaNumarasi: masaWithNumber.masaNumarasi, // masaNumarasi ekle
+        komsular,
+        siraNo: index // Sıra numarasını koru
+      };
+    });
+    // SIRALAMAYI DEĞİŞTİRME - getKoltukSira'nın düzenini kullan
+
+    logger.debug(`🎯 Koltuk öncelikleri hesaplandı: ${this.oncelikliKoltuklar.length} koltuk`);
+  }
+
+  calculateZorlukSkoru(koltuk, komsular) {
+    let skor = 0;
+    
+    // Komşu sayısı - daha fazla komşu = daha zor
+    skor += komsular.length * 2;
+    
+    // Köşe koltukları daha kolay (daha az komşu)
+    if (koltuk.satir === 0 || koltuk.satir === this.koltukMatrisi.satirSayisi - 1) {
+      skor -= 1;
+    }
+    if (koltuk.sutun === 0 || koltuk.sutun === this.koltukMatrisi.sutunSayisi - 1) {
+      skor -= 1;
+    }
+    
+    // İkili koltuklarda sağ koltuk daha zor (sol komşu zorunlu)
+    if (koltuk.koltukTipi === 'ikili-sag') {
+      skor += 1;
+    }
+    
+    return Math.max(skor, 0);
+  }
+
+  /**
+   * Çok katmanlı kısıt kontrolü
+   */
+  checkKisitlar(ogrenci, koltuk, komsular, katmanSeviyesi = 0) {
+    const tempOgrenci = { ...ogrenci, satir: koltuk.satir };
+    
+    // Katman 0: Zorunlu kısıtlar (mevcut mantık)
+    if (katmanSeviyesi === 0) {
+      const cinsiyetOK = isGenderValid(tempOgrenci, komsular, this.plan2D, koltuk.grup);
+      const sinifOK = isClassLevelValid(tempOgrenci, komsular, this.plan2D, koltuk.grup);
+      return cinsiyetOK && sinifOK;
+    }
+    
+    // Katman 1: Gevşetilmiş kısıtlar (sadece direkt yan komşular)
+    if (katmanSeviyesi === 1) {
+      const direktKomsular = komsular.filter(([satir, sutun]) => 
+        satir === koltuk.satir // Sadece aynı satırdaki komşular
+      );
+      
+      let cinsiyetOK = true;
+      let sinifOK = true;
+      
+      for (const [satir, sutun] of direktKomsular) {
+        const komsuOgrenci = this.plan2D[satir] && this.plan2D[satir][sutun]?.ogrenci;
+        if (komsuOgrenci) {
+          if (komsuOgrenci.cinsiyet === ogrenci.cinsiyet) {
+            cinsiyetOK = false;
+          }
+          if (getSinifSeviyesi(komsuOgrenci.sinif) === getSinifSeviyesi(ogrenci.sinif)) {
+            sinifOK = false;
+          }
+        }
+      }
+      
+      return cinsiyetOK && sinifOK;
+    }
+    
+    // Katman 2: Minimum kısıt (sadece yan yana komşu)
+    if (katmanSeviyesi === 2) {
+      const yanKomsular = komsular.filter(([satir, sutun]) => 
+        satir === koltuk.satir && Math.abs(sutun - koltuk.sutun) === 1
+      );
+      
+      for (const [satir, sutun] of yanKomsular) {
+        const komsuOgrenci = this.plan2D[satir] && this.plan2D[satir][sutun]?.ogrenci;
+        if (komsuOgrenci) {
+          if (komsuOgrenci.cinsiyet === ogrenci.cinsiyet && ogrenci.cinsiyet) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+    
+    return true;
+  }
+
+  /**
+   * Uygun öğrenci bulma (optimize) - İYİLEŞTİRİLMİŞ: AI Destekli Skorlama
+   */
+  findUygunOgrenci(koltuk, komsular, katmanSeviyesi) {
+    // YENİ: AI destekli gelişmiş skorlama (weightManager varsa)
+    const skorluOgrenciler = this.ogrenciler.map(ogrenci => {
+      let skor;
+      
+      if (this.weightManager) {
+        // AI destekli gelişmiş skorlama
+        skor = this.weightManager.calculateAIEnhancedScore(ogrenci, koltuk, komsular, this.plan2D);
+      } else {
+        // Mevcut tahminsel skorlama
+        skor = this.calculatePredictiveScore(ogrenci, koltuk, komsular);
+      }
+      
+      return { ogrenci, skor };
+    }).sort((a, b) => b.skor - a.skor);
+
+    // En iyi 3 adayı logla (debug için)
+    if (skorluOgrenciler.length > 0) {
+      logger.debug(`🎯 En iyi 3 aday (Sıra${koltuk.satir + 1}-Grup${koltuk.grup}):`);
+      skorluOgrenciler.slice(0, 3).forEach((c, i) => {
+        logger.debug(`   ${i + 1}. ${c.ogrenci.ad} - Skor: ${c.skor.toFixed(3)}`);
+      });
+    }
+
+    for (const { ogrenci } of skorluOgrenciler) {
+      if (this.checkKisitlar(ogrenci, koltuk, komsular, katmanSeviyesi)) {
+        return ogrenci;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * YENİ: Tahminsel skor hesaplama
+   */
+  calculatePredictiveScore(ogrenci, koltuk, komsular) {
+    // Temel uygunluk skoru
+    const baseScore = this.calculateUygunlukSkoru(ogrenci, koltuk, komsular);
+    
+    // Tahminsel faktör ekle (DynamicWeightManager'dan)
+    const predictiveBonus = this.weightManager ? 
+      this.weightManager.predictiveFactor(ogrenci) : 0;
+    
+    // Komşu analizi bonusu
+    const neighborBonus = this.calculateNeighborBonus(ogrenci, komsular, koltuk);
+    
+    // Final skor
+    const finalScore = baseScore + predictiveBonus + neighborBonus;
+    
+    return Math.max(0, Math.min(1, finalScore)); // 0-1 aralığında sınırla
+  }
+
+  /**
+   * YENİ: Komşu analizi bonusu
+   */
+  calculateNeighborBonus(ogrenci, komsular, koltuk) {
+    let bonus = 0;
+    
+    // Boş komşu sayısı
+    const emptyNeighbors = komsular.filter(([satir, sutun]) => {
+      if (satir !== koltuk.satir) return false;
+      const cell = this.plan2D[satir]?.[sutun];
+      if (!cell || cell.grup !== koltuk.grup) return false;
+      return !cell?.ogrenci;
+    }).length;
+    bonus += emptyNeighbors * 0.05; // Her boş komşu için +0.05
+    
+    // Cinsiyet çeşitliliği bonusu
+    const genderDiversity = this.calculateGenderDiversity(ogrenci, komsular, koltuk);
+    bonus += genderDiversity * 0.1;
+    
+    // Sınıf çeşitliliği bonusu
+    const classDiversity = this.calculateClassDiversity(ogrenci, komsular, koltuk);
+    bonus += classDiversity * 0.05;
+    
+    return bonus;
+  }
+
+  /**
+   * YENİ: Cinsiyet çeşitliliği hesapla
+   */
+  calculateGenderDiversity(ogrenci, komsular, koltuk) {
+    if (!ogrenci.cinsiyet) return 0;
+    
+    const neighborGenders = komsular
+      .map(([satir, sutun]) => {
+        if (satir !== koltuk.satir) return null;
+        const cell = this.plan2D[satir]?.[sutun];
+        if (cell?.grup !== koltuk.grup) return null;
+        return cell?.ogrenci?.cinsiyet || null;
+      })
+      .filter(Boolean);
+    
+    if (neighborGenders.length === 0) return 0.5; // Boş komşular için orta bonus
+    
+    const differentGenders = neighborGenders.filter(gender => 
+      gender !== ogrenci.cinsiyet
+    ).length;
+    
+    return differentGenders / neighborGenders.length; // 0-1 arası çeşitlilik
+  }
+
+  /**
+   * YENİ: Sınıf çeşitliliği hesapla
+   */
+  calculateClassDiversity(ogrenci, komsular, koltuk) {
+    if (!ogrenci.sinif) return 0;
+    
+    const neighborClasses = komsular
+      .map(([satir, sutun]) => {
+        if (satir !== koltuk.satir) return null;
+        const cell = this.plan2D[satir]?.[sutun];
+        if (cell?.grup !== koltuk.grup) return null;
+        return cell?.ogrenci?.sinif || null;
+      })
+      .filter(Boolean);
+    
+    if (neighborClasses.length === 0) return 0.3; // Boş komşular için düşük bonus
+    
+    const differentClasses = neighborClasses.filter(sinif => 
+      sinif !== ogrenci.sinif
+    ).length;
+    
+    return differentClasses / neighborClasses.length; // 0-1 arası çeşitlilik
+  }
+
+  calculateUygunlukSkoru(ogrenci, koltuk, komsular) {
+    let skor = 0;
+    
+    // Mevcut komşularla uyum
+    for (const [satir, sutun] of komsular) {
+      const cell = this.plan2D[satir] && this.plan2D[satir][sutun];
+      if (satir !== koltuk.satir || cell?.grup !== koltuk.grup) continue;
+      const komsuOgrenci = cell?.ogrenci;
+      if (komsuOgrenci) {
+        // Farklı cinsiyet + puan
+        if (komsuOgrenci.cinsiyet !== ogrenci.cinsiyet) {
+          skor += 2;
+        }
+        // Farklı sınıf + puan
+        if (getSinifSeviyesi(komsuOgrenci.sinif) !== getSinifSeviyesi(ogrenci.sinif)) {
+          skor += 1;
+        }
+      } else {
+        // Boş komşu + puan (daha esnek)
+        skor += 1;
+      }
+    }
+    
+    return skor;
+  }
+
+  /**
+   * Yerleştirme işlemini çalıştır (ana entry point)
+   */
+  run() {
+    // Orijinal öğrenci listesini sakla
+    const orijinalOgrenciler = [...this.ogrenciler];
+    
+    // Yerleştirme yap
+    const yerlesenOgrenciler = this.executeYerlestirme();
+    
+    // Yerleştirilmeyen öğrencileri bul
+    const yerlesenIdler = new Set(yerlesenOgrenciler.map(o => o.id));
+    const yerlesilemeyenOgrenciler = orijinalOgrenciler.filter(o => !yerlesenIdler.has(o.id));
+    
+    const basariOrani = orijinalOgrenciler.length > 0 
+      ? (yerlesenOgrenciler.length / orijinalOgrenciler.length) * 100 
+      : 100;
+    
+    return {
+      ogrenciler: this.plan.map(p => p.ogrenci).filter(Boolean),
+      yerlesilemeyenOgrenciler,
+      plan: this.plan,
+      basariOrani
+    };
+  }
+
+  /**
+   * Yerleştirme işlemi
+   */
+  executeYerlestirme() {
+    this.calculateKoltukOncelikleri();
+    
+    // Öğrenci havuzunu kopyala (yerleştirme sırasında değişecek)
+    const ogrenciHavuzu = [...this.ogrenciler];
+    const yerlesen = [];
+    const kullanilanOgrenciler = new Set();
+    
+    // 3 katmanlı deneme sistemi
+    for (let katman = 0; katman < 3; katman++) {
+      logger.info(`🔄 Yerleştirme katmanı ${katman + 1}/3`);
+      
+      for (const koltuk of this.oncelikliKoltuklar) {
+        if (koltuk.ogrenci) continue; // Zaten dolu
+        
+        // Mevcut öğrenci havuzundan bul
+        const uygunOgrenci = this.findUygunOgrenciFromPool(koltuk, koltuk.komsular, katman, ogrenciHavuzu);
+        
+        if (uygunOgrenci && !kullanilanOgrenciler.has(uygunOgrenci.id)) {
+          this.placeOgrenci(koltuk, uygunOgrenci);
+          yerlesen.push(uygunOgrenci);
+          kullanilanOgrenciler.add(uygunOgrenci.id);
+          
+          // Öğrenciyi havuzdan kaldır
+          const index = ogrenciHavuzu.findIndex(o => o.id === uygunOgrenci.id);
+          if (index > -1) {
+            ogrenciHavuzu.splice(index, 1);
+          }
+        }
+      }
+      
+      // Tüm öğrenciler yerleştirildiyse dur
+      if (yerlesen.length === this.ogrenciler.length || ogrenciHavuzu.length === 0) {
+        break;
+      }
+    }
+    
+    return yerlesen;
+  }
+
+  /**
+   * Öğrenci havuzundan uygun öğrenci bul
+   */
+  findUygunOgrenciFromPool(koltuk, komsular, katmanSeviyesi, ogrenciHavuzu) {
+    // AI destekli gelişmiş skorlama veya tahminsel skorlama
+    const skorluOgrenciler = ogrenciHavuzu.map(ogrenci => {
+      let skor;
+      
+      if (this.weightManager) {
+        skor = this.weightManager.calculateAIEnhancedScore(ogrenci, koltuk, komsular, this.plan2D);
+      } else {
+        skor = this.calculatePredictiveScore(ogrenci, koltuk, komsular);
+      }
+      
+      return { ogrenci, skor };
+    }).sort((a, b) => b.skor - a.skor);
+
+    for (const { ogrenci } of skorluOgrenciler) {
+      if (this.checkKisitlar(ogrenci, koltuk, komsular, katmanSeviyesi)) {
+        return ogrenci;
+      }
+    }
+    return null;
+  }
+
+  placeOgrenci(koltuk, ogrenci) {
+    const planItem = this.plan.find(p => p.id === koltuk.id);
+    planItem.ogrenci = {
+      ...ogrenci,
+      masaNumarasi: koltuk.masaNumarasi || this.calculateDeskNumber(koltuk),
+      satir: koltuk.satir,
+      sutun: koltuk.sutun,
+      grup: koltuk.grup,
+      koltukTipi: koltuk.koltukTipi
+    };
+    
+    this.plan2D[koltuk.satir][koltuk.sutun] = { ogrenci: planItem.ogrenci, grup: koltuk.grup };
+  }
+
+  /**
+   * Masa numarasını hesaplar - Grup bazlı sıralama
+   * 1.grup: Sıra1-Sol(1), Sıra1-Sağ(2), Sıra2-Sol(3), Sıra2-Sağ(4)...
+   * 2.grup: Sıra1-Sol(5), Sıra1-Sağ(6), Sıra2-Sol(7), Sıra2-Sağ(8)...
+   */
+  calculateDeskNumber(koltuk) {
+    // Tüm koltukları al ve sırala
+    const allKoltuklar = this.koltukMatrisi.masalar;
+    
+    // Grup bazlı sıralama
+    const gruplar = {};
+    allKoltuklar.forEach(k => {
+      const grup = k.grup || 1;
+      if (!gruplar[grup]) gruplar[grup] = [];
+      gruplar[grup].push(k);
+    });
+    
+    let masaNumarasi = 1;
+    const sortedGruplar = Object.keys(gruplar).sort((a, b) => parseInt(a) - parseInt(b));
+    
+    for (const grupId of sortedGruplar) {
+      const grupMasalar = gruplar[grupId];
+      
+      // Grup içinde satır-sütun sıralaması
+      const sortedGrupMasalar = grupMasalar.sort((a, b) => {
+        if (a.satir !== b.satir) return a.satir - b.satir;
+        return a.sutun - b.sutun;
+      });
+      
+      for (const masa of sortedGrupMasalar) {
+        if (masa.id === koltuk.id) {
+          return masaNumarasi;
+        }
+        masaNumarasi++;
+      }
+    }
+    
+    return koltuk.id + 1; // Fallback
+  }
+}
+
+
+// ==================== ANA ALGORİTMA ====================
+
+/**
+ * Gelişmiş yerleştirme algoritması - OPTİMİZE EDİLMİŞ VERSİYON
+ */
+/**
+ * Input validasyonu - Güvenlik ve hata yönetimi için
+ */
+const validateInputs = (ogrenciler, salonlar, ayarlar) => {
+  // Öğrenci validasyonu
+  if (!Array.isArray(ogrenciler)) {
+    throw new TypeError('Öğrenci listesi bir dizi olmalıdır');
+  }
+  
+  if (ogrenciler.length === 0) {
+    throw new Error('Öğrenci listesi boş olamaz');
+  }
+
+  // Her öğrencinin gerekli alanlarını kontrol et
+  ogrenciler.forEach((ogrenci, index) => {
+    if (!ogrenci || typeof ogrenci !== 'object') {
+      throw new Error(`Öğrenci ${index + 1}: Geçersiz öğrenci nesnesi`);
+    }
+    
+    if (!ogrenci.id) {
+      throw new Error(`Öğrenci ${index + 1}: ID bulunamadı`);
+    }
+    
+    if (!ogrenci.ad) {
+      logger.warn(`Öğrenci ${index + 1}: Ad alanı boş veya eksik`);
+    }
+    
+    if (!ogrenci.soyad) {
+      logger.warn(`Öğrenci ${index + 1}: Soyad alanı boş veya eksik`);
+    }
+    
+    // Cinsiyet validasyonu (null/undefined kontrolü)
+    if (!ogrenci.cinsiyet) {
+      logger.warn(`Öğrenci ${ogrenci.ad} ${ogrenci.soyad}: Cinsiyet bilgisi eksik, varsayılan olarak "Belirtilmemiş" kullanılacak`);
+      ogrenci.cinsiyet = 'Belirtilmemiş';
+    }
+    
+    // Sınıf validasyonu
+    if (!ogrenci.sinif) {
+      logger.warn(`Öğrenci ${ogrenci.ad} ${ogrenci.soyad}: Sınıf bilgisi eksik`);
+    }
+  });
+
+  // Salon validasyonu
+  if (!Array.isArray(salonlar)) {
+    throw new TypeError('Salon listesi bir dizi olmalıdır');
+  }
+  
+  if (salonlar.length === 0) {
+    throw new Error('Salon listesi boş olamaz');
+  }
+
+  // Her salon için gerekli alanları kontrol et
+  salonlar.forEach((salon, index) => {
+    if (!salon || typeof salon !== 'object') {
+      throw new Error(`Salon ${index + 1}: Geçersiz salon nesnesi`);
+    }
+    
+    if (!salon.id) {
+      throw new Error(`Salon ${index + 1}: ID bulunamadı`);
+    }
+    
+    if (!salon.salonAdi) {
+      throw new Error(`Salon ${index + 1}: Salon adı bulunamadı`);
+    }
+    
+    if (typeof salon.aktif !== 'boolean') {
+      logger.warn(`Salon ${salon.salonAdi}: 'aktif' alanı boolean değil, varsayılan olarak true kullanılacak`);
+      salon.aktif = true;
+    }
+  });
+
+  // Ayarlar validasyonu
+  if (ayarlar && typeof ayarlar !== 'object') {
+    logger.warn('Ayarlar nesnesi geçersiz, varsayılan ayarlar kullanılacak');
+  }
+};
+
+export const gelismisYerlestirme = (ogrenciler, salonlar, ayarlar) => {
+  logger.info('🚀 Gelişmiş yerleştirme algoritması başladı (Akıllı Havuz + Eski Sistem)');
+  
+  try {
+    // Input validasyonu
+    validateInputs(ogrenciler, salonlar, ayarlar);
+    
+    // Aktif salonları filtrele
+    const aktifSalonlar = salonlar.filter(salon => salon.aktif);
+    if (aktifSalonlar.length === 0) {
+      throw new Error('Aktif salon bulunamadı');
+    }
+  
+  // AŞAMA 1: Akıllı salon havuzu optimizasyonu kullan
+  const seed = Date.now();
+  const salonHavuzlari = createAkilliSalonHavuzu(ogrenciler, aktifSalonlar, seed);
+  
+  // YENİ: Dinamik ağırlık yöneticisi (ana algoritma seviyesinde)
+  const weightManager = new DynamicWeightManager();
+  
+  logger.info('🧠 Akıllı salon havuzu oluşturuldu:', salonHavuzlari.map((havuz, i) => ({
+    salon: aktifSalonlar[i].salonAdi,
+    ogrenciSayisi: havuz.length,
+    hedefSayi: havuz.hedefSayi
+  })));
+  
+  // AŞAMA 2: Her salon için ESKİ YERLEŞTİRME SİSTEMİ kullan
+  const sonuclar = [];
+  let toplamDeneme = 0;
+  let toplamMukemmel = 0;
+  
+  aktifSalonlar.forEach((salon, index) => {
+    const salonOgrencileri = salonHavuzlari[index];
+    
+    if (salonOgrencileri.length === 0) {
+      logger.warn(`⚠️ Salon ${salon.salonAdi} için öğrenci yok`);
+      sonuclar.push({
+        salonId: salon.id,
+        salonAdi: salon.salonAdi,
+        ogrenciler: [],
+        koltukMatrisi: createSalonKoltukMatrisi(salon),
+        yerlesilemeyenOgrenciler: [],
+        plan: [],
+        deneme: 0,
+        basariOrani: 0
+      });
+      return;
+    }
+    
+    logger.info(`🏢 Salon ${salon.salonAdi} yerleştirme başladı: ${salonOgrencileri.length} öğrenci`);
+    
+    // YENİ YERLEŞTİRME SİSTEMİ kullan (çoklu deneme ile)
+    const sonuc = salonYerlestirmeYeni(salon, salonOgrencileri, ayarlar, seed + index, weightManager);
+    
+    
+    // DEBUG: Sonuç plan verisini kontrol et
+    console.log('🔍 gelismisYerlestirme - Salon sonucu alındı:', {
+      salonAdi: salon.salonAdi,
+      sonucPlanVar: !!sonuc.plan,
+      sonucPlanUzunlugu: sonuc.plan?.length || 0,
+      sonucPlanTipi: typeof sonuc.plan,
+      sonucPlanIcerik: sonuc.plan?.slice(0, 2)
+    });
+    
+    sonuclar.push(sonuc);
+    toplamDeneme += sonuc.deneme || 1;
+    if (sonuc.basariOrani === 100) toplamMukemmel++;
+    
+    logger.info(`✅ Salon ${salon.salonAdi} tamamlandı: ${sonuc.ogrenciler.length}/${salonOgrencileri.length} öğrenci yerleştirildi (%${(sonuc.basariOrani || 0).toFixed(1)})`);
+  });
+  
+  // Yerleştirilemeyen öğrencileri topla
+  const tumYerlesilemeyen = sonuclar.reduce((toplam, sonuc) => {
+    return toplam.concat(sonuc.yerlesilemeyenOgrenciler || []);
+  }, []);
+  
+  // İstatistikleri hesapla
+  const istatistikler = calculateStatistics(sonuclar, tumYerlesilemeyen);
+  
+  logger.info('📊 GELİŞMİŞ İSTATİSTİK RAPORU:');
+  logger.info(`📈 Toplam yerleşen: ${istatistikler.toplamYerlesen}/${ogrenciler.length} (%${(istatistikler.basariOrani || 0).toFixed(1)})`);
+  logger.info(`🎯 Mükemmel salon sayısı: ${toplamMukemmel}/${aktifSalonlar.length}`);
+  logger.info(`🔄 Ortalama deneme sayısı: ${(toplamDeneme / aktifSalonlar.length).toFixed(1)}`);
+  logger.info(`📊 Salon başına öğrenci:`, istatistikler.salonBasinaOgrenci);
+  logger.info(`👥 Sınıf dağılımları:`, istatistikler.sinifDagilimlari);
+  logger.info(`⚖️ Cinsiyet dağılımları:`, istatistikler.cinsiyetDagilimlari);
+  
+  // YENİ: Gelişmiş metrikler
+  logger.info(`\n🚀 OPTİMİZASYON METRİKLERİ:`);
+  logger.info(`   Toplam optimizasyon skoru: ${istatistikler.optimizationImpact?.toplamSkor || 0}`);
+  logger.info(`   Ortalama optimizasyon skoru: ${(istatistikler.optimizationImpact?.ortalamaSkor || 0).toFixed(2)}`);
+  logger.info(`   Optimizasyon yapılan salon: ${istatistikler.optimizationImpact?.optimizasyonYapilanSalon || 0}/${aktifSalonlar.length}`);
+  
+  logger.info(`\n📋 KISIT BAŞARI ORANLARI:`);
+  logger.info(`   Cinsiyet kısıtı: %${(istatistikler.constraintSuccessRates?.gender?.successRate || 0).toFixed(1)} (${istatistikler.constraintSuccessRates?.gender?.success || 0}/${istatistikler.constraintSuccessRates?.gender?.total || 0})`);
+  logger.info(`   Sınıf seviyesi kısıtı: %${(istatistikler.constraintSuccessRates?.classLevel?.successRate || 0).toFixed(1)} (${istatistikler.constraintSuccessRates?.classLevel?.success || 0}/${istatistikler.constraintSuccessRates?.classLevel?.total || 0})`);
+  
+  logger.info(`\n💡 ÖNERİLER:`);
+  istatistikler.suggestions?.forEach(suggestion => {
+    logger.info(`   ${suggestion}`);
+  });
+  
+  // YENİ: Dinamik ağırlık öğrenme önerileri
+  if (weightManager) {
+    const learningSuggestions = weightManager.generateLearningSuggestions();
+    if (learningSuggestions.length > 0) {
+      logger.info(`\n🧠 ÖĞRENME ÖNERİLERİ:`);
+      learningSuggestions.forEach(suggestion => {
+        logger.info(`   ${suggestion}`);
+      });
+    }
+  }
+  
+    // DEBUG: Sonuçları kontrol et
+    console.log('🔍 gelismisYerlestirme - Sonuçlar döndürülüyor:', {
+      salonSayisi: sonuclar.length,
+      ilkSalonPlanVar: !!sonuclar[0]?.plan,
+      ilkSalonPlanUzunlugu: sonuclar[0]?.plan?.length || 0,
+      tumSonuclar: sonuclar.map(s => ({
+        salonAdi: s.salonAdi,
+        planVar: !!s.plan,
+        planUzunlugu: s.plan?.length || 0
+      }))
+    });
+
+    return {
+      salonlar: sonuclar,
+      yerlesilemeyenOgrenciler: tumYerlesilemeyen,
+      istatistikler,
+      algoritma: 'AKILLI HAVUZ + ESKİ YERLEŞTİRME SİSTEMİ'
+    };
+    
+  } catch (error) {
+    // Hata durumunda detaylı log ve güvenli geri dönüş
+    logger.error('❌ Yerleştirme algoritması hatası:', error);
+    
+    // Hata mesajını kullanıcı dostu hale getir
+    const errorMessage = error instanceof TypeError 
+      ? 'Tip hatası: Geçersiz veri formatı'
+      : error instanceof Error 
+        ? error.message 
+        : 'Bilinmeyen bir hata oluştu';
+    
+    logger.error(`📋 Hata detayları: ${errorMessage}`);
+    
+    // Hata durumunda boş sonuç döndür
+    return {
+      salonlar: [],
+      yerlesilemeyenOgrenciler: ogrenciler || [],
+      istatistikler: {
+        toplamYerlesen: 0,
+        toplamYerlesilemeyen: ogrenciler?.length || 0,
+        basariOrani: 0,
+        error: errorMessage
+      },
+      algoritma: 'AKILLI HAVUZ + ESKİ YERLEŞTİRME SİSTEMİ (HATA)'
+    };
+  }
+};
+
+// ==================== YEDEK: ESKİ ALGORİTMA ====================
+
+/**
+ * ESKİ Yerleştirme algoritması - Yedek versiyon
+ * Kullanım: gelismisYerlestirmeEski(ogrenciler, salonlar, ayarlar)
+ */
+export const gelismisYerlestirmeEski = (ogrenciler, salonlar, ayarlar) => {
+  logger.info('🔄 ESKİ Yerleştirme algoritması başladı (yedek versiyon)');
+  
+  if (!ogrenciler || ogrenciler.length === 0) {
+    throw new Error('Öğrenci listesi boş olamaz');
+  }
+  
+  if (!salonlar || salonlar.length === 0) {
+    throw new Error('Salon listesi boş olamaz');
+  }
+  
+  // Aktif salonları filtrele
+  const aktifSalonlar = salonlar.filter(salon => salon.aktif);
+  if (aktifSalonlar.length === 0) {
+    throw new Error('Aktif salon bulunamadı');
+  }
+  
+  // 1. Tüm öğrencileri karıştır
+  const seed = Date.now();
+  const karisikOgrenciler = seedShuffle([...ogrenciler], seed);
+  
+  // 2. Sınıf seviyelerine göre grupla
+  const sinifSeviyeleri = {};
+  karisikOgrenciler.forEach(ogrenci => {
+    const seviye = getSinifSeviyesi(ogrenci.sinif);
+    if (!sinifSeviyeleri[seviye]) sinifSeviyeleri[seviye] = [];
+    sinifSeviyeleri[seviye].push(ogrenci);
+  });
+  
+  // Her seviyeyi karıştır
+  Object.keys(sinifSeviyeleri).forEach(seviye => {
+    sinifSeviyeleri[seviye] = seedShuffle(sinifSeviyeleri[seviye], seed + parseInt(seviye));
+  });
+  
+  // 3. Salon havuzlarına dağıt (her seviyeden eşit oranda, salon kapasitesine göre)
+  const salonHavuzlari = aktifSalonlar.map(() => []);
+  
+  // Her salon için hedef öğrenci sayısını hesapla
+  const toplamKapasite = aktifSalonlar.reduce((toplam, salon) => toplam + salon.kapasite, 0);
+  const toplamOgrenci = ogrenciler.length;
+  
+  // Kapasite kontrolü - eğer toplam öğrenci sayısı toplam kapasiteyi aşıyorsa uyarı ver
+  if (toplamOgrenci > toplamKapasite) {
+    logger.warn(`⚠️ UYARI: Toplam öğrenci sayısı (${toplamOgrenci}) toplam salon kapasitesini (${toplamKapasite}) aşıyor!`);
+    logger.warn(`⚠️ Bazı öğrenciler yerleştirilemeyebilir.`);
+  }
+  
+  aktifSalonlar.forEach((salon, index) => {
+    // Düzeltilmiş oran hesaplaması - salon kapasitesinin toplam kapasiteye oranı
+    const oran = salon.kapasite / toplamKapasite;
+    const hedefSayi = Math.floor(toplamOgrenci * oran);
+    
+    // Minimum 1 öğrenci garantisi (eğer salon kapasitesi varsa)
+    const finalHedefSayi = salon.kapasite > 0 ? Math.max(1, hedefSayi) : 0;
+    
+    salonHavuzlari[index].hedefSayi = finalHedefSayi;
+    
+    logger.debug(`📊 Salon ${salon.salonAdi || salon.ad}: Kapasite=${salon.kapasite}, Oran=${oran.toFixed(3)}, Hedef=${finalHedefSayi}`);
+  });
+  
+  // Her sınıf seviyesinden salonlara dağıt
+  Object.keys(sinifSeviyeleri).forEach(seviye => {
+    const seviyeOgrencileri = [...sinifSeviyeleri[seviye]];
+    const seviyeToplamOgrenci = seviyeOgrencileri.length;
+    const seviyeToplamHedef = salonHavuzlari.reduce((toplam, havuz) => toplam + havuz.hedefSayi, 0);
+    
+    aktifSalonlar.forEach((salon, index) => {
+      const seviyeOran = salonHavuzlari[index].hedefSayi / seviyeToplamHedef;
+      const seviyeSayi = Math.floor(seviyeToplamOgrenci * seviyeOran);
+      
+      for (let i = 0; i < seviyeSayi && seviyeOgrencileri.length > 0; i++) {
+        salonHavuzlari[index].push(seviyeOgrencileri.shift());
+      }
+    });
+    
+    // Kalanları dağıt
+    while (seviyeOgrencileri.length > 0) {
+      salonHavuzlari.forEach(havuz => {
+        if (seviyeOgrencileri.length > 0 && havuz.length < havuz.hedefSayi) {
+          havuz.push(seviyeOgrencileri.shift());
+        }
+      });
+    }
+  });
+  
+  // 4. Her salon için yerleştirme yap (çoklu deneme sistemi ile)
+  const sonuclar = [];
+  let toplamDeneme = 0;
+  let toplamMukemmel = 0;
+  
+  aktifSalonlar.forEach((salon, index) => {
+    logger.info(`\n🎯 Salon ${index + 1}/${aktifSalonlar.length} işleniyor: ${salon.salonAdi}`);
+    const sonuc = salonYerlestirmeEski(salon, salonHavuzlari[index], ayarlar, seed);
+    sonuclar.push(sonuc);
+    
+    toplamDeneme += sonuc.deneme || 1;
+    if (sonuc.basariOrani === 100) {
+      toplamMukemmel++;
+    }
+  });
+  
+  // İstatistikleri hesapla
+  const yerlesilemeyen = [];
+  sonuclar.forEach(sonuc => {
+    yerlesilemeyen.push(...sonuc.yerlesilemeyenOgrenciler);
+  });
+  
+  const istatistikler = calculateStatistics(sonuclar, yerlesilemeyen);
+  
+  // Çoklu deneme istatistikleri
+  const ortalamaDeneme = (toplamDeneme / aktifSalonlar.length).toFixed(1);
+  const mukemmelOrani = ((toplamMukemmel / aktifSalonlar.length) * 100).toFixed(1);
+  
+  logger.info('\n📊 ESKİ ALGORİTMA İSTATİSTİKLERİ:');
+  logger.info(`🏢 Toplam salon: ${aktifSalonlar.length}`);
+  logger.info(`🔄 Ortalama deneme: ${ortalamaDeneme}`);
+  logger.info(`✅ Mükemmel sonuç: ${toplamMukemmel}/${aktifSalonlar.length} (%${mukemmelOrani})`);
+  logger.info(`📈 Toplam yerleşen: ${istatistikler.yerlesenOgrenci}/${istatistikler.toplamOgrenci} (%${((istatistikler.yerlesenOgrenci / istatistikler.toplamOgrenci) * 100).toFixed(1)})`);
+  
+  logger.info('✅ ESKİ Yerleştirme algoritması tamamlandı');
+  return { salonlar: sonuclar, istatistikler };
+};
+
+// ==================== KARŞILAŞTIRMA FONKSİYONU ====================
+
+/**
+ * Yeni ve eski algoritma karşılaştırması
+ * Kullanım: compareAlgorithms(ogrenciler, salonlar, ayarlar)
+ */
+export const compareAlgorithms = (ogrenciler, salonlar, ayarlar) => {
+  logger.info('🔬 ALGORİTMA KARŞILAŞTIRMASI BAŞLIYOR...\n');
+  
+  const startTime = Date.now();
+  
+  // Yeni algoritma testi
+  logger.info('🚀 YENİ ALGORİTMA TEST EDİLİYOR...');
+  const yeniBaslangic = Date.now();
+  const yeniSonuc = gelismisYerlestirme(ogrenciler, salonlar, ayarlar);
+  const yeniSüre = Date.now() - yeniBaslangic;
+  
+  logger.info('\n' + '='.repeat(60));
+  
+  // Eski algoritma testi
+  logger.info('🔄 ESKİ ALGORİTMA TEST EDİLİYOR...');
+  const eskiBaslangic = Date.now();
+  const eskiSonuc = gelismisYerlestirmeEski(ogrenciler, salonlar, ayarlar);
+  const eskiSüre = Date.now() - eskiBaslangic;
+  
+  logger.info('\n' + '='.repeat(60));
+  logger.info('📊 KARŞILAŞTIRMA SONUÇLARI:');
+  logger.info('='.repeat(60));
+  
+  // Performans karşılaştırması
+  logger.info(`⏱️  SÜRE KARŞILAŞTIRMASI:`);
+  logger.info(`   Yeni Algoritma: ${yeniSüre}ms`);
+  logger.info(`   Eski Algoritma: ${eskiSüre}ms`);
+  logger.info(`   Hız Artışı: ${((eskiSüre / yeniSüre - 1) * 100).toFixed(1)}%`);
+  
+  // Başarı oranı karşılaştırması
+  logger.info(`\n📈 BAŞARI ORANI KARŞILAŞTIRMASI:`);
+  logger.info(`   Yeni Algoritma: ${yeniSonuc.istatistikler.yerlesenOgrenci}/${yeniSonuc.istatistikler.toplamOgrenci} (%${((yeniSonuc.istatistikler.yerlesenOgrenci / yeniSonuc.istatistikler.toplamOgrenci) * 100).toFixed(1)})`);
+  logger.info(`   Eski Algoritma: ${eskiSonuc.istatistikler.yerlesenOgrenci}/${eskiSonuc.istatistikler.toplamOgrenci} (%${((eskiSonuc.istatistikler.yerlesenOgrenci / eskiSonuc.istatistikler.toplamOgrenci) * 100).toFixed(1)})`);
+  
+  const yeniBasari = (yeniSonuc.istatistikler.yerlesenOgrenci / yeniSonuc.istatistikler.toplamOgrenci) * 100;
+  const eskiBasari = (eskiSonuc.istatistikler.yerlesenOgrenci / eskiSonuc.istatistikler.toplamOgrenci) * 100;
+  logger.info(`   Başarı Artışı: ${(yeniBasari - eskiBasari).toFixed(1)} puan`);
+  
+  // Mükemmel salon sayısı karşılaştırması
+  const yeniMukemmel = yeniSonuc.salonlar.filter(s => s.basariOrani === 100).length;
+  const eskiMukemmel = eskiSonuc.salonlar.filter(s => s.basariOrani === 100).length;
+  
+  logger.info(`\n🏆 MÜKEMMEL SALON KARŞILAŞTIRMASI:`);
+  logger.info(`   Yeni Algoritma: ${yeniMukemmel}/${yeniSonuc.salonlar.length} salon`);
+  logger.info(`   Eski Algoritma: ${eskiMukemmel}/${eskiSonuc.salonlar.length} salon`);
+  logger.info(`   Mükemmel Artışı: +${yeniMukemmel - eskiMukemmel} salon`);
+  
+  logger.info('\n' + '='.repeat(60));
+  logger.info('✅ ALGORİTMA KARŞILAŞTIRMASI TAMAMLANDI');
+  logger.info(`⏱️  Toplam süre: ${Date.now() - startTime}ms`);
+  
+  return {
+    yeni: yeniSonuc,
+    eski: eskiSonuc,
+    karsilastirma: {
+      yeniSüre,
+      eskiSüre,
+      hizArtisi: ((eskiSüre / yeniSüre - 1) * 100).toFixed(1),
+      yeniBasari: yeniBasari.toFixed(1),
+      eskiBasari: eskiBasari.toFixed(1),
+      basariArtisi: (yeniBasari - eskiBasari).toFixed(1),
+      yeniMukemmel,
+      eskiMukemmel,
+      mukemmelArtisi: yeniMukemmel - eskiMukemmel
+    }
+  };
+};
+
+/**
+ * Masa numarasını hesaplar - Grup bazlı sıralama (ESKİ algoritma için)
+ * 1.grup: Sıra1-Sol(1), Sıra1-Sağ(2), Sıra2-Sol(3), Sıra2-Sağ(4)...
+ * 2.grup: Sıra1-Sol(5), Sıra1-Sağ(6), Sıra2-Sol(7), Sıra2-Sağ(8)...
+ */
+const calculateDeskNumberForKoltuk = (koltuk, masalar) => {
+  // Grup bazlı sıralama
+  const gruplar = {};
+  masalar.forEach(masa => {
+    const grup = masa.grup || 1;
+    if (!gruplar[grup]) gruplar[grup] = [];
+    gruplar[grup].push(masa);
+  });
+  
+  let masaNumarasi = 1;
+  const sortedGruplar = Object.keys(gruplar).sort((a, b) => parseInt(a) - parseInt(b));
+  
+  for (const grupId of sortedGruplar) {
+    const grupMasalar = gruplar[grupId];
+    
+    // Grup içinde satır-sütun sıralaması
+    const sortedGrupMasalar = grupMasalar.sort((a, b) => {
+      if (a.satir !== b.satir) return a.satir - b.satir;
+      return a.sutun - b.sutun;
+    });
+    
+    for (const masa of sortedGrupMasalar) {
+      if (masa.id === koltuk.id) {
+        return masaNumarasi;
+      }
+      masaNumarasi++;
+    }
+  }
+  
+  return koltuk.id + 1; // Fallback
+};
+
+/**
+ * YENİ salon yerleştirme fonksiyonu - Gelişmiş motor kullanır
+ */
+const salonYerlestirmeYeni = (salon, ogrenciler, ayarlar, seed, weightManager) => {
+  const koltukMatrisi = createSalonKoltukMatrisi(salon);
+  const { masalar } = koltukMatrisi;
+  
+  // Masa numaralarını hesapla - Grup bazlı sıralama
+  const masalarWithNumbers = calculateDeskNumbersForMasalar(masalar);
+  
+  logger.info('🏢 Salon yerleştirme başladı (YENİ MOTOR):', {
+    salonId: salon.id,
+    ogrenciSayisi: ogrenciler.length,
+    ogrenciler: ogrenciler.slice(0, 5).map(o => o.ad)
+  });
+  
+  // YENİ: Gelişmiş yerleştirme motoru kullan
+  const motor = new GelismisYerlestirmeMotoru(salon, ogrenciler, ayarlar, seed, weightManager);
+  
+  // Koltuk matrisini güncelle (masa numaralarıyla)
+  motor.koltukMatrisi = { ...koltukMatrisi, masalar: masalarWithNumbers };
+  
+  // Plan'ı da güncelle (masa numaralarıyla)
+  motor.plan = masalarWithNumbers.map(masa => ({
+    id: masa.id,
+    ogrenci: null,
+    satir: masa.satir,
+    sutun: masa.sutun,
+    grup: masa.grup,
+    koltukTipi: masa.koltukTipi,
+    masaNumarasi: masa.masaNumarasi
+  }));
+  
+  // Motoru çalıştır
+  const sonuc = motor.run();
+  
+  return {
+    salonId: salon.id,
+    salonAdi: salon.salonAdi,
+    ogrenciler: sonuc.ogrenciler,
+    koltukMatrisi: motor.koltukMatrisi,
+    yerlesilemeyenOgrenciler: sonuc.yerlesilemeyenOgrenciler,
+    plan: sonuc.plan,
+    deneme: 1,
+    basariOrani: sonuc.basariOrani
+  };
+};
+
+/**
+ * ESKİ salon yerleştirme fonksiyonu - Yedek versiyon
+ */
+const salonYerlestirmeEski = (salon, ogrenciler, ayarlar, seed, weightManager) => {
+  const koltukMatrisi = createSalonKoltukMatrisi(salon);
+  const { masalar } = koltukMatrisi;
+  
+  // Masa numaralarını hesapla - Grup bazlı sıralama
+  const masalarWithNumbers = calculateDeskNumbersForMasalar(masalar);
+  
+  logger.info('🏢 Salon yerleştirme başladı:', {
+    salonId: salon.id,
+    ogrenciSayisi: ogrenciler.length,
+    ogrenciler: ogrenciler.slice(0, 5).map(o => o.ad)
+  });
+  
+  // ÇOKLU DENEME SİSTEMİ
+  const MAX_DENEME = 5;
+  let enIyiSonuc = null;
+  let enIyiYerlesen = 0;
+  
+  // YENİ: Adaptif kısıt yöneticisi
+  const constraintManager = new AdaptiveConstraintManager();
+  
+  for (let deneme = 1; deneme <= MAX_DENEME; deneme++) {
+    // Her denemede farklı seed kullan
+    const denemeSeed = seed + deneme * 1000;
+    
+    // YENİ: Öğrencileri öncelik sırasına göre sırala (weightManager varsa)
+    let salonHavuzu;
+    if (weightManager) {
+      const prioritizedStudents = weightManager.prioritizeStudents([...ogrenciler]);
+      salonHavuzu = seedShuffle(prioritizedStudents, denemeSeed);
+    } else {
+      salonHavuzu = seedShuffle([...ogrenciler], denemeSeed);
+    }
+    
+    // Plan oluştur
+    const plan = masalarWithNumbers.map(masa => ({
+      id: masa.id,
+      ogrenci: null,
+      satir: masa.satir,
+      sutun: masa.sutun,
+      grup: masa.grup,
+      koltukTipi: masa.koltukTipi,
+      grupSira: masa.grupSira,
+      masaNumarasi: masa.masaNumarasi
+    }));
+    
+    // DEBUG: Plan oluşturma kontrolü
+    console.log('🔍 salonYerlestirmeEski - Plan oluşturuldu:', {
+      salonAdi: salon.salonAdi,
+      masalarSayisi: masalarWithNumbers.length,
+      planUzunlugu: plan.length,
+      planIlkOrnek: plan[0]
+    });
+    
+    // 2D plan (komşu kontrolü için)
+    const plan2D = Array(koltukMatrisi.satirSayisi)
+      .fill(null)
+      .map(() => Array(koltukMatrisi.sutunSayisi).fill(null));
+    
+    // DÜZELTİLMİŞ: Koltuk sırasına göre yerleştirme
+    const koltukSirasi = getKoltukSira(salon, denemeSeed);
+    
+    logger.debug('📋 Koltuk yerleştirme sırası:');
+    koltukSirasi.slice(0, 8).forEach((koltuk, index) => {
+      logger.debug(`   ${index + 1}. Sıra${koltuk.satir + 1}-Grup${koltuk.grup}-${koltuk.koltukTipi} (sütun:${koltuk.sutun})`);
+    });
+    if (koltukSirasi.length > 8) {
+      logger.debug(`   ... ve ${koltukSirasi.length - 8} koltuk daha`);
+    }
+    
+    const yerlesen = [];
+    const yerlesilemeyen = [...salonHavuzu];
+    
+    let yerlesenSayisi = 0;
+    
+    // ORİJİNAL: Başarı oranı hesaplaması (yerlesen tanımlandıktan sonra)
+    const currentSuccessRate = yerlesen.length / ogrenciler.length;
+    const constraintLevel = constraintManager.getConstraintLevel(deneme, currentSuccessRate);
+    const levelInfo = constraintManager.constraintLevels[constraintLevel];
+    
+    logger.info(`🔄 Deneme ${deneme}/${MAX_DENEME} başladı - Kısıt Seviyesi: ${constraintLevel} (${levelInfo.description})`);
+    
+    // YENİ: Detaylı AI skorlama bilgisi
+    if (weightManager) {
+      logger.info(`🤖 AI Destekli Yerleştirme - Ağırlıklar:`, weightManager.weights);
+    }
+    
+    // DEBUG: Yerleştirme başlangıcı
+    console.log('🔍 salonYerlestirmeEski - Yerleştirme başlıyor:', {
+      salonAdi: salon.salonAdi,
+      ogrenciSayisi: salonHavuzu.length,
+      koltukSayisi: koltukSirasi.length,
+      ogrenciler: salonHavuzu.slice(0, 3).map(o => o.ad)
+    });
+    
+    for (const koltuk of koltukSirasi) {
+      if (yerlesilemeyen.length === 0) break; // Tüm öğrenciler yerleştirildi
+      
+      // Komşuları al
+      const komsular = getNeighbors(koltuk.satir, koltuk.sutun, koltukMatrisi.satirSayisi, koltukMatrisi.sutunSayisi);
+      
+      // Uygun öğrenci bul
+      let uygunOgrenciIndex = -1;
+      
+      for (let i = 0; i < yerlesilemeyen.length; i++) {
+        const ogrenci = yerlesilemeyen[i];
+        
+        // Kısıt kontrolü için geçici ogrenci objesi oluştur
+        const tempOgrenci = { ...ogrenci, satir: koltuk.satir };
+        
+        // ORİJİNAL: Adaptif kısıt kontrolü (yerlesen zaten tanımlı)
+        const currentSuccessRate = yerlesen.length / ogrenciler.length;
+        const constraintLevel = constraintManager.getConstraintLevel(deneme, currentSuccessRate);
+        
+        const constraintsOK = constraintManager.checkConstraints(tempOgrenci, komsular, plan2D, constraintLevel, koltuk.grup);
+        
+        // DEBUG: Kısıt kontrolü
+        if (yerlesenSayisi < 3) {
+          console.log(`🔍 Kısıt kontrolü: ${ogrenci.ad} (${ogrenci.cinsiyet}) - ${constraintsOK ? '✅ Geçti' : '❌ Başarısız'}`);
+        }
+        
+        if (constraintsOK) {
+          uygunOgrenciIndex = i;
+          break;
+        }
+      }
+      
+      if (uygunOgrenciIndex !== -1) {
+        // Öğrenciyi yerleştir
+        const ogrenci = yerlesilemeyen[uygunOgrenciIndex];
+        const planItem = plan.find(p => p.id === koltuk.id);
+        
+        planItem.ogrenci = {
+          ...ogrenci,
+          masaNumarasi: koltuk.masaNumarasi || calculateDeskNumberForKoltuk(koltuk, masalarWithNumbers),
+          satir: koltuk.satir,
+          sutun: koltuk.sutun,
+          grup: koltuk.grup,
+          koltukTipi: koltuk.koltukTipi,
+          grupSira: koltuk.grupSira
+        };
+        
+        // 2D plan güncelle (grup bilgisi ile)
+        plan2D[koltuk.satir][koltuk.sutun] = { ogrenci: planItem.ogrenci, grup: koltuk.grup };
+        
+        yerlesen.push(planItem.ogrenci);
+        yerlesilemeyen.splice(uygunOgrenciIndex, 1);
+        yerlesenSayisi++;
+        
+        if (yerlesenSayisi <= 5) {
+          logger.debug(`   ✅ ${ogrenci.ad} -> Sıra${koltuk.satir + 1}-Grup${koltuk.grup}-${koltuk.koltukTipi}`);
+        }
+      }
+    }
+    
+    // Yerleştirilemeyen öğrenciler zaten yerlesilemeyen dizisinde
+    
+    
+    // DEBUG: Plan verisini kontrol et
+    console.log('🔍 salonYerlestirmeEski - Plan verisi oluşturuldu:', {
+      salonId: salon.id,
+      salonAdi: salon.salonAdi,
+      planUzunlugu: plan.length,
+      planVar: !!plan,
+      planTipi: typeof plan,
+      planIcerik: plan.slice(0, 3),
+      yerlesenOgrenciSayisi: yerlesen.length,
+      planOgrenciSayisi: plan.filter(p => p.ogrenci).length,
+      planOgrenciOrnekleri: plan.filter(p => p.ogrenci).slice(0, 3).map(p => ({
+        id: p.ogrenci.id,
+        ad: p.ogrenci.ad,
+        satir: p.satir,
+        sutun: p.sutun
+      }))
+    });
+
+    const sonuc = {
+      salonId: salon.id,
+      salonAdi: salon.salonAdi,
+      ogrenciler: yerlesen,
+      koltukMatrisi,
+      yerlesilemeyenOgrenciler: yerlesilemeyen,
+      plan,
+      deneme: deneme,
+      basariOrani: (yerlesen.length / ogrenciler.length) * 100
+    };
+    
+    logger.info(`📊 Deneme ${deneme} sonucu: ${yerlesen.length}/${ogrenciler.length} öğrenci yerleştirildi (%${sonuc.basariOrani.toFixed(1)})`);
+    
+    // YENİ: AI öğrenme güncellemesi
+    if (weightManager) {
+      weightManager.updateWeights(yerlesen.length / ogrenciler.length, sonuc.basariOrani / 100);
+      logger.debug(`🧠 AI ağırlıkları güncellendi - Başarı: %${sonuc.basariOrani.toFixed(1)}`);
+    }
+    
+    // YENİ: Öğrenme sistemine kaydet (weightManager varsa)
+    if (weightManager) {
+      weightManager.recordPlacementAttempt({
+        deneme: deneme,
+        successRate: sonuc.basariOrani / 100,
+        constraintLevel: constraintLevel,
+        optimizationScore: sonuc.optimizasyonSkoru || 0,
+        placedStudents: yerlesen.length,
+        totalStudents: ogrenciler.length
+      });
+    }
+    
+    // En iyi sonucu güncelle
+    if (yerlesen.length > enIyiYerlesen) {
+      enIyiYerlesen = yerlesen.length;
+      enIyiSonuc = sonuc;
+      logger.info(`🏆 Yeni en iyi sonuç: ${yerlesen.length} öğrenci yerleştirildi`);
+    }
+    
+    // Mükemmel sonuç bulunduysa dur
+    if (yerlesen.length === ogrenciler.length) {
+      logger.info(`✅ Mükemmel sonuç bulundu! Deneme ${deneme}'de tüm öğrenciler yerleştirildi`);
+      return sonuc;
+    }
+  }
+  
+  logger.info(`🏁 Tüm denemeler tamamlandı. En iyi sonuç: ${enIyiYerlesen} öğrenci yerleştirildi`);
+  return enIyiSonuc;
+};
+
+
+/**
+ * Dinamik ağırlık yöneticisi - öğrenci önceliklendirme sistemi
+ */
+class DynamicWeightManager {
+  constructor() {
+    this.weights = {
+      medicalNeeds: 0.40,      // Tıbbi ihtiyaçlar (en yüksek öncelik)
+      groupPreservation: 0.25,  // Grup koruma (aynı okul/sınıf)
+      genderBalance: 0.20,      // Cinsiyet dengesi
+      classLevelMix: 0.10,      // Sınıf seviyesi çeşitliliği
+      academicSimilarity: 0.05  // Akademik benzerlik
+    };
+    this.learningRate = 0.1;
+    this.history = [];
+    this.learningHistory = []; // YENİ: Öğrenme geçmişi
+  }
+
+  /**
+   * Öğrenci öncelik skorunu hesaplar
+   */
+  calculateStudentPriority(student) {
+    let priority = 0;
+    
+    // Tıbbi ihtiyaçlar (en yüksek öncelik)
+    if (student.tibbiIhtiyac || student.engelDurumu || student.ozelIhtiyac) {
+      priority += 50 * this.weights.medicalNeeds;
+      logger.debug(`🏥 Tıbbi öncelik: ${student.ad} (+${50 * this.weights.medicalNeeds})`);
+    }
+    
+    // Grup koruma isteği (aynı okuldan öğrenciler)
+    if (student.grupKoruma || student.aynıOkul || student.okulId) {
+      priority += 30 * this.weights.groupPreservation;
+      logger.debug(`👥 Grup koruma: ${student.ad} (+${30 * this.weights.groupPreservation})`);
+    }
+    
+    // Cinsiyet dengesi (daha fazla öncelik)
+    if (student.cinsiyet) {
+      priority += 20 * this.weights.genderBalance;
+    }
+    
+    // Sınıf seviyesi çeşitliliği
+    const seviye = getSinifSeviyesi(student.sinif);
+    if (seviye) {
+      priority += 15 * this.weights.classLevelMix;
+    }
+    
+    // Akademik benzerlik (düşük öncelik)
+    if (student.akademikSeviye || student.notOrtalamasi) {
+      priority += 10 * this.weights.academicSimilarity;
+    }
+    
+    // Temel öncelik (her öğrenci için)
+    priority += 5;
+    
+    return Math.max(priority, 1); // Minimum 1 puan
+  }
+
+  /**
+   * Öğrencileri öncelik sırasına göre sıralar
+   */
+  prioritizeStudents(ogrenciler) {
+    logger.info(`🎯 ${ogrenciler.length} öğrenci önceliklendiriliyor...`);
+    
+    const prioritizedStudents = ogrenciler.map(ogrenci => ({
+      ...ogrenci,
+      priority: this.calculateStudentPriority(ogrenci)
+    })).sort((a, b) => b.priority - a.priority);
+    
+    logger.info(`📊 Öncelik sıralaması:`);
+    prioritizedStudents.slice(0, 5).forEach((ogrenci, index) => {
+      logger.info(`   ${index + 1}. ${ogrenci.ad} - Öncelik: ${ogrenci.priority.toFixed(2)}`);
+    });
+    
+    return prioritizedStudents;
+  }
+
+  /**
+   * Ağırlıkları günceller (öğrenme) - İYİLEŞTİRİLMİŞ: Gradient-like öğrenme
+   */
+  updateWeights(actualSuccess, predictedSuccess) {
+    logger.info(`🧠 Ağırlıklar güncelleniyor (Gradient-like öğrenme)...`);
+    
+    for (const constraint in actualSuccess) {
+      if (this.weights[constraint] !== undefined) {
+        // İYİLEŞTİRİLMİŞ: Gradient-like öğrenme
+        const error = actualSuccess[constraint] - predictedSuccess[constraint];
+        const learningRate = 0.05;
+        
+        // Rastgele varyasyon ekle (daha akıllı öğrenme)
+        const variation = Math.random() * 0.2 + 0.9; // 0.9-1.1 arası
+        const newWeight = this.weights[constraint] + learningRate * error * variation;
+        
+        // Ağırlıkları sınırla (0.1 - 1.0 arası - daha geniş aralık)
+        this.weights[constraint] = Math.max(0.1, Math.min(1.0, newWeight));
+        
+        logger.debug(`   ${constraint}: ${this.weights[constraint].toFixed(3)} (hata: ${error.toFixed(3)}, varyasyon: ${variation.toFixed(3)})`);
+      }
+    }
+    
+    // Ağırlıkları normalize et (toplam 1.0 olacak şekilde)
+    this.normalizeWeights();
+    
+    // YENİ: Öğrenme geçmişini kaydet
+    this.recordLearningHistory(actualSuccess, predictedSuccess);
+  }
+
+  /**
+   * YENİ: Öğrenme geçmişini kaydet
+   */
+  recordLearningHistory(actualSuccess, predictedSuccess) {
+    this.learningHistory.push({
+      timestamp: Date.now(),
+      actualSuccess,
+      predictedSuccess,
+      weights: { ...this.weights }
+    });
+    
+    // Son 50 öğrenme kaydını sakla
+    if (this.learningHistory.length > 50) {
+      this.learningHistory.shift();
+    }
+  }
+
+  /**
+   * YENİ: Tahminsel faktör hesapla
+   */
+  predictiveFactor(ogrenci) {
+    let factor = 0;
+    
+    // Tıbbi ihtiyaçlar için yüksek tahmin
+    if (ogrenci.tibbiIhtiyac || ogrenci.engelDurumu) {
+      factor += this.weights.medicalNeeds * 0.3;
+    }
+    
+    // Grup koruma için orta tahmin
+    if (ogrenci.grupKoruma || ogrenci.aynıOkul) {
+      factor += this.weights.groupPreservation * 0.2;
+    }
+    
+    // Cinsiyet dengesi için düşük tahmin
+    if (ogrenci.cinsiyet) {
+      factor += this.weights.genderBalance * 0.1;
+    }
+    
+    return factor;
+  }
+
+  /**
+   * YENİ: AI Destekli Gelişmiş Skorlama
+   */
+  calculateAIEnhancedScore(ogrenci, koltuk, komsular, plan2D) {
+    // Mevcut temel skor
+    const baseScore = this.calculateStudentPriority(ogrenci);
+    
+    // AI bonus skorları
+    const genderScore = this.calculateGenderCompatibility(ogrenci, komsular, plan2D);
+    const classScore = this.calculateClassCompatibility(ogrenci, komsular, plan2D);
+    const diversityScore = this.calculateDiversityBonus(ogrenci, komsular, plan2D);
+    const spatialScore = this.calculateSpatialBonus(koltuk, komsular, plan2D);
+    
+    // Ağırlıklı toplam
+    const aiBonus = (
+      genderScore * 0.35 +
+      classScore * 0.25 +
+      diversityScore * 0.20 +
+      spatialScore * 0.20
+    );
+    
+    return baseScore + aiBonus;
+  }
+
+  /**
+   * YENİ: Cinsiyet uyumluluğu hesapla
+   */
+  calculateGenderCompatibility(ogrenci, komsular, plan2D) {
+    if (!ogrenci.cinsiyet) return 0.5;
+    
+    let score = 1.0;
+    let conflictCount = 0;
+    
+    for (const [satir, sutun] of komsular) {
+      const komsuOgrenci = plan2D[satir]?.[sutun]?.ogrenci;
+      if (komsuOgrenci?.cinsiyet) {
+        const ogrenciCinsiyet = this.normalizeGender(ogrenci.cinsiyet);
+        const komsuCinsiyet = this.normalizeGender(komsuOgrenci.cinsiyet);
+        
+        if (ogrenciCinsiyet === komsuCinsiyet) {
+          conflictCount++;
+          score -= 0.3;
+        } else {
+          score += 0.1;
+        }
+      }
+    }
+    
+    return conflictCount > 0 ? 0 : Math.max(0, score);
+  }
+
+  /**
+   * YENİ: Sınıf uyumluluğu hesapla
+   */
+  calculateClassCompatibility(ogrenci, komsular, plan2D) {
+    const ogrenciSeviye = getSinifSeviyesi(ogrenci.sinif);
+    if (!ogrenciSeviye) return 0.5;
+    
+    let score = 1.0;
+    let conflictCount = 0;
+    
+    for (const [satir, sutun] of komsular) {
+      const komsuOgrenci = plan2D[satir]?.[sutun]?.ogrenci;
+      if (komsuOgrenci) {
+        const komsuSeviye = getSinifSeviyesi(komsuOgrenci.sinif);
+        if (komsuSeviye === ogrenciSeviye) {
+          conflictCount++;
+          score -= 0.25;
+        } else {
+          score += 0.05;
+        }
+      }
+    }
+    
+    return conflictCount > 0 ? 0 : Math.max(0, score);
+  }
+
+  /**
+   * YENİ: Çeşitlilik bonusu hesapla
+   */
+  calculateDiversityBonus(ogrenci, komsular, plan2D) {
+    let emptyNeighbors = 0;
+    let differentGender = 0;
+    let differentClass = 0;
+    
+    for (const [satir, sutun] of komsular) {
+      const komsuOgrenci = plan2D[satir]?.[sutun]?.ogrenci;
+      
+      if (!komsuOgrenci) {
+        emptyNeighbors++;
+      } else {
+        // Farklı cinsiyet
+        if (ogrenci.cinsiyet && komsuOgrenci.cinsiyet) {
+          const ogrenciCinsiyet = this.normalizeGender(ogrenci.cinsiyet);
+          const komsuCinsiyet = this.normalizeGender(komsuOgrenci.cinsiyet);
+          if (ogrenciCinsiyet !== komsuCinsiyet) differentGender++;
+        }
+        
+        // Farklı sınıf
+        const ogrenciSeviye = getSinifSeviyesi(ogrenci.sinif);
+        const komsuSeviye = getSinifSeviyesi(komsuOgrenci.sinif);
+        if (ogrenciSeviye && komsuSeviye && ogrenciSeviye !== komsuSeviye) {
+          differentClass++;
+        }
+      }
+    }
+    
+    const totalNeighbors = komsular.length || 1;
+    return (emptyNeighbors * 0.2 + differentGender * 0.4 + differentClass * 0.2) / totalNeighbors;
+  }
+
+  /**
+   * YENİ: Uzamsal bonus hesapla
+   */
+  calculateSpatialBonus(koltuk, komsular, plan2D) {
+    let score = 0.5;
+    
+    // Boş komşu sayısı
+    const emptyCount = komsular.filter(([s, su]) => 
+      !plan2D[s]?.[su]?.ogrenci
+    ).length;
+    
+    score += emptyCount * 0.1;
+    
+    // Köşe/kenar avantajı
+    if (komsular.length < 4) {
+      score += 0.1;
+    }
+    
+    return Math.min(1, score);
+  }
+
+  /**
+   * YENİ: Cinsiyet normalizasyonu
+   */
+  normalizeGender(cinsiyet) {
+    if (!cinsiyet) return null;
+    const normalized = cinsiyet.toString().trim().toUpperCase();
+    if (['E', 'ERKEK', 'MALE', 'M', 'BAY'].includes(normalized)) return 'E';
+    if (['K', 'KIZ', 'KADIN', 'FEMALE', 'F', 'BAYAN'].includes(normalized)) return 'K';
+    return normalized;
+  }
+
+  /**
+   * Ağırlıkları normalize eder
+   */
+  normalizeWeights() {
+    const total = Object.values(this.weights).reduce((sum, weight) => sum + weight, 0);
+    
+    if (total > 0) {
+      for (const key in this.weights) {
+        this.weights[key] /= total;
+      }
+    }
+    
+    logger.debug(`📊 Normalize edilmiş ağırlıklar:`, this.weights);
+  }
+
+  /**
+   * Geçmiş verileri kaydeder
+   */
+  recordPlacementAttempt(attemptData) {
+    this.history.push({
+      timestamp: Date.now(),
+      ...attemptData
+    });
+    
+    // Son 10 denemeyi sakla
+    if (this.history.length > 10) {
+      this.history.shift();
+    }
+  }
+
+  /**
+   * Öğrenme önerileri üretir
+   */
+  generateLearningSuggestions() {
+    if (this.history.length < 3) {
+      return ["Yeterli veri yok - daha fazla yerleştirme yapın"];
+    }
+    
+    const suggestions = [];
+    const recentAttempts = this.history.slice(-5);
+    const avgSuccess = recentAttempts.reduce((sum, attempt) => sum + attempt.successRate, 0) / recentAttempts.length;
+    
+    if (avgSuccess < 0.8) {
+      suggestions.push("Tıbbi ihtiyaç ağırlığını artırmayı deneyin");
+    }
+    
+    if (this.weights.medicalNeeds < 0.3) {
+      suggestions.push("Tıbbi ihtiyaçlar için daha yüksek öncelik verin");
+    }
+    
+    return suggestions;
+  }
+}
+
+/**
+ * Adaptif kısıt seviyesi yöneticisi
+ */
+class AdaptiveConstraintManager {
+  constructor() {
+    this.constraintLevels = {
+      STRICT: {
+        gender: true,
+        classLevel: true,
+        description: 'Tüm kısıtlar aktif'
+      },
+      MODERATE: {
+        gender: true,
+        classLevel: false,
+        description: 'Sadece cinsiyet kısıtı aktif'
+      },
+      RELAXED: {
+        gender: false,
+        classLevel: false,
+        description: 'Tüm kısıtlar gevşetildi'
+      }
+    };
+    
+  }
+
+  getConstraintLevel(deneme, successRate) {
+    // ORİJİNAL: Basit gevşetme stratejisi
+    if (deneme === 1) {
+      return 'STRICT';
+    } else if (deneme === 2) {
+      return 'STRICT';
+    } else if (deneme === 3) {
+      return 'STRICT';
+    } else if (deneme === 4) {
+      return 'MODERATE';
+    } else if (deneme === 5) {
+      // Son denemede de kısıtlar tamamen kaldırılmasın
+      return 'MODERATE';
+    }
+    // Varsayılan olarak da kısıtlar en az MODERATE seviyede kalsın
+    return 'MODERATE';
+  }
+
+  checkConstraints(ogrenci, komsular, plan, constraintLevel, currentGroup = null) {
+    // ORİJİNAL: Basit kısıt kontrolü
+    // Tamamen serbest bırakma kaldırıldı
+    
+    const level = this.constraintLevels[constraintLevel];
+    if (!level) return true;
+    
+    // Cinsiyet kısıtı kontrolü
+    if (level.gender && !isGenderValid(ogrenci, komsular, plan, currentGroup)) {
+      return false;
+    }
+    
+    // Sınıf seviyesi kısıtı kontrolü
+    if (level.classLevel && !isClassLevelValid(ogrenci, komsular, plan, currentGroup)) {
+      return false;
+    }
+    
+    return true;
+  }
+
+
+  /**
+   * Cinsiyet değerini normalize eder
+   */
+  normalizeGender(cinsiyet) {
+    if (!cinsiyet) return null;
+    
+    const normalized = cinsiyet.toString().trim().toUpperCase();
+    
+    // Erkek pattern'leri
+    if (['E', 'ERKEK', 'MALE', 'M', 'BAY'].includes(normalized)) {
+      return 'E';
+    }
+    
+    // Kadın pattern'leri  
+    if (['K', 'KIZ', 'KADIN', 'FEMALE', 'F', 'BAYAN'].includes(normalized)) {
+      return 'K';
+    }
+    
+    return normalized; // Bilinmeyen değerleri olduğu gibi döndür
+  }
+
+}
+
+/**
+ * Gelişmiş istatistik sistemi
+ */
+class EnhancedStatistics {
+  constructor(salonlar, yerlesilemeyen) {
+    this.salonlar = salonlar;
+    this.yerlesilemeyen = yerlesilemeyen;
+  }
+
+  generateComprehensiveReport() {
+    const baseStats = this.getBaseStatistics();
+    
+    return {
+      ...baseStats,
+      // Yeni metrikler
+      optimizationImpact: this.calculateOptimizationImpact(),
+      constraintSuccessRates: this.analyzeConstraintSuccess(),
+      placementEfficiency: this.calculateEfficiency(),
+      suggestions: this.generateSuggestions()
+    };
+  }
+
+  getBaseStatistics() {
+    const toplamYerlesen = this.salonlar.reduce((toplam, salon) => toplam + salon.ogrenciler.length, 0);
+  
+  const salonBasinaOgrenci = {};
+    this.salonlar.forEach(salon => {
+    salonBasinaOgrenci[salon.salonAdi] = salon.ogrenciler.length;
+  });
+  
+  const sinifDagilimlari = {};
+  const cinsiyetDagilimlari = { Erkek: 0, Kız: 0 };
+  let esnekYerlestirilenSayisi = 0;
+  
+    this.salonlar.forEach(salon => {
+    salon.ogrenciler.forEach(ogrenci => {
+      // Sınıf dağılımı
+      const seviye = getSinifSeviyesi(ogrenci.sinif);
+      if (seviye) {
+        sinifDagilimlari[seviye] = (sinifDagilimlari[seviye] || 0) + 1;
+      }
+      
+      // Cinsiyet dağılımı
+      if (ogrenci.cinsiyet) {
+        cinsiyetDagilimlari[ogrenci.cinsiyet] = (cinsiyetDagilimlari[ogrenci.cinsiyet] || 0) + 1;
+      }
+      
+      // Esnek yerleştirme sayısı
+      if (ogrenci.esnekYerlestirme) {
+        esnekYerlestirilenSayisi++;
+      }
+    });
+  });
+  
+    const toplamOgrenci = toplamYerlesen + (this.yerlesilemeyen ? this.yerlesilemeyen.length : 0);
+  const basariOrani = toplamOgrenci > 0 ? (toplamYerlesen / toplamOgrenci) * 100 : 0;
+  
+  return {
+    yerlesenOgrenci: toplamYerlesen,
+    toplamOgrenci,
+    toplamYerlesen,
+      toplamYerlesilemeyen: this.yerlesilemeyen ? this.yerlesilemeyen.length : 0,
+    salonBasinaOgrenci,
+    sinifDagilimlari,
+    cinsiyetDagilimlari,
+    esnekYerlestirilenSayisi,
+    basariOrani
+  };
+  }
+
+  calculateOptimizationImpact() {
+    const toplamOptimizasyonSkoru = this.salonlar.reduce((toplam, salon) => {
+      return toplam + (salon.optimizasyonSkoru || 0);
+    }, 0);
+    
+    return {
+      toplamSkor: toplamOptimizasyonSkoru,
+      ortalamaSkor: this.salonlar.length > 0 ? toplamOptimizasyonSkoru / this.salonlar.length : 0,
+      optimizasyonYapilanSalon: this.salonlar.filter(salon => (salon.optimizasyonSkoru || 0) > 0).length
+    };
+  }
+
+  analyzeConstraintSuccess() {
+    const constraintStats = {
+      gender: { success: 0, total: 0 },
+      classLevel: { success: 0, total: 0 }
+    };
+
+    this.salonlar.forEach(salon => {
+      if (salon.plan) {
+        salon.plan.forEach(planItem => {
+          if (planItem.ogrenci) {
+            const komsular = getNeighbors(planItem.satir, planItem.sutun, 
+              salon.koltukMatrisi.satirSayisi, salon.koltukMatrisi.sutunSayisi);
+            
+            // 2D plan oluştur (basit versiyon)
+            const plan2D = Array(salon.koltukMatrisi.satirSayisi)
+              .fill(null)
+              .map(() => Array(salon.koltukMatrisi.sutunSayisi).fill(null));
+            
+            salon.plan.forEach(p => {
+              if (p.ogrenci) {
+                plan2D[p.satir][p.sutun] = { ogrenci: p.ogrenci, grup: p.grup };
+              }
+            });
+
+            // Kısıt başarısını kontrol et
+            constraintStats.gender.total++;
+            if (isGenderValid(planItem.ogrenci, komsular, plan2D, planItem.grup)) {
+              constraintStats.gender.success++;
+            }
+
+            constraintStats.classLevel.total++;
+            if (isClassLevelValid(planItem.ogrenci, komsular, plan2D, planItem.grup)) {
+              constraintStats.classLevel.success++;
+            }
+          }
+        });
+      }
+    });
+
+    return {
+      gender: {
+        successRate: constraintStats.gender.total > 0 ? 
+          (constraintStats.gender.success / constraintStats.gender.total) * 100 : 0,
+        success: constraintStats.gender.success,
+        total: constraintStats.gender.total
+      },
+      classLevel: {
+        successRate: constraintStats.classLevel.total > 0 ? 
+          (constraintStats.classLevel.success / constraintStats.classLevel.total) * 100 : 0,
+        success: constraintStats.classLevel.success,
+        total: constraintStats.classLevel.total
+      }
+    };
+  }
+
+  calculateEfficiency() {
+    const baseStats = this.getBaseStatistics();
+    const optimizationImpact = this.calculateOptimizationImpact();
+    
+    return {
+      placementEfficiency: baseStats.basariOrani,
+      optimizationEfficiency: optimizationImpact.ortalamaSkor,
+      overallEfficiency: baseStats.basariOrani + (optimizationImpact.ortalamaSkor * 0.1) // Optimizasyon skorunu %10 etkili yap
+    };
+  }
+
+  generateSuggestions() {
+    const suggestions = [];
+    const baseStats = this.getBaseStatistics();
+    const constraintStats = this.analyzeConstraintSuccess();
+    const optimizationImpact = this.calculateOptimizationImpact();
+
+    if (baseStats.basariOrani < 85) {
+      suggestions.push("• Cinsiyet kısıtını gevşetmeyi deneyin");
+    }
+    
+    if (constraintStats.gender.successRate < 80) {
+      suggestions.push("• Cinsiyet dağılımını kontrol edin");
+    }
+    
+    if (constraintStats.classLevel.successRate < 70) {
+      suggestions.push("• Sınıf seviyesi kısıtını gevşetmeyi düşünün");
+    }
+    
+    if (optimizationImpact.ortalamaSkor < 2) {
+      suggestions.push("• Daha fazla optimizasyon denemesi gerekli");
+    }
+
+    if (baseStats.toplamYerlesilemeyen > 0) {
+      suggestions.push(`• ${baseStats.toplamYerlesilemeyen} öğrenci manuel yerleştirme gerektiriyor`);
+    }
+
+    if (suggestions.length === 0) {
+      suggestions.push("• Mükemmel yerleştirme! Herhangi bir iyileştirme önerisi yok.");
+    }
+
+    return suggestions;
+  }
+}
+
+/**
+ * İstatistikleri hesaplar (eski fonksiyon - geriye uyumluluk için)
+ */
+const calculateStatistics = (salonlar, yerlesilemeyen) => {
+  const enhancedStats = new EnhancedStatistics(salonlar, yerlesilemeyen);
+  return enhancedStats.generateComprehensiveReport();
+};
+
+/**
+ * DÜZELTİLMİŞ KISITLARI TEST ET
+ */
+export const testDuzeltilmisKisitlar = () => {
+  console.log('🧪 DÜZELTİLMİŞ KISIT TESTİ\n' + '='.repeat(60));
+  
+  // Test öğrencileri
+  const ogrenci1 = { id: 1, ad: 'Ali', cinsiyet: 'E', sinif: '9-A' };
+  const ogrenci2 = { id: 2, ad: 'Ayşe', cinsiyet: 'K', sinif: '10-B' };
+  const ogrenci3 = { id: 3, ad: 'Mehmet', cinsiyet: 'E', sinif: '9-C' };
+  const ogrenci4 = { id: 4, ad: 'Fatma', cinsiyet: 'K', sinif: '10-A' };
+  
+  // Test planı
+  const plan2D = [
+    [{ ogrenci: ogrenci1 }, null],
+    [null, null]
+  ];
+  
+  console.log('\n📋 TEST SENARYOLARI:\n');
+  
+  // Test 1: Aynı cinsiyet (Erkek-Erkek) - OLMALI
+  console.log('1️⃣  Test: Erkek yanına Erkek');
+  console.log('   Mevcut: Ali (E, 9-A)');
+  console.log('   Aday: Mehmet (E, 9-C)');
+  const test1 = isGenderValid(ogrenci3, [[0, 0]], plan2D);
+  console.log(`   Cinsiyet Kontrolü: ${test1 ? '✅ UYGUN (Aynı cinsiyet OK)' : '❌ UYGUN DEĞİL'}`);
+  
+  // Test 2: Farklı cinsiyet (Erkek-Kız) - OLMAMALI
+  console.log('\n2️⃣  Test: Erkek yanına Kız');
+  console.log('   Mevcut: Ali (E, 9-A)');
+  console.log('   Aday: Ayşe (K, 10-B)');
+  const test2 = isGenderValid(ogrenci2, [[0, 0]], plan2D);
+  console.log(`   Cinsiyet Kontrolü: ${test2 ? '✅ UYGUN' : '❌ UYGUN DEĞİL (Farklı cinsiyet YASAK)'}`);
+  
+  // Test 3: Aynı sınıf seviyesi (9-9) - OLMAMALI
+  console.log('\n3️⃣  Test: 9. sınıf yanına 9. sınıf');
+  console.log('   Mevcut: Ali (E, 9-A)');
+  console.log('   Aday: Mehmet (E, 9-C)');
+  const test3 = isClassLevelValid(ogrenci3, [[0, 0]], plan2D);
+  console.log(`   Sınıf Kontrolü: ${test3 ? '✅ UYGUN' : '❌ UYGUN DEĞİL (Aynı seviye YASAK)'}`);
+  
+  // Test 4: Farklı sınıf seviyesi (9-10) - OLMALI
+  console.log('\n4️⃣  Test: 9. sınıf yanına 10. sınıf');
+  console.log('   Mevcut: Ali (E, 9-A)');
+  console.log('   Aday: Fatma (K, 10-A)');
+  const test4_sinif = isClassLevelValid(ogrenci4, [[0, 0]], plan2D);
+  console.log(`   Sınıf Kontrolü: ${test4_sinif ? '✅ UYGUN (Farklı seviye OK)' : '❌ UYGUN DEĞİL'}`);
+  
+  console.log('\n' + '='.repeat(60));
+  console.log('✅ Düzeltilmiş kısıt testi tamamlandı!\n');
+  
+  return {
+    genderSame: test1,      // Aynı cinsiyet OK olmalı
+    genderDiff: !test2,    // Farklı cinsiyet YASAK olmalı
+    classSame: !test3,      // Aynı sınıf YASAK olmalı
+    classDiff: test4_sinif // Farklı sınıf OK olmalı
+  };
+};
+
+export default gelismisYerlestirme;

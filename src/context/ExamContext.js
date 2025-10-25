@@ -1,0 +1,663 @@
+import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import logger from '../utils/logger';
+import db from '../database/database';
+
+// localStorage yardımcı fonksiyonları
+const loadFromStorage = (key, defaultValue) => {
+  try {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : defaultValue;
+  } catch (error) {
+    logger.error(`localStorage'dan ${key} yüklenirken hata:`, error);
+    return defaultValue;
+  }
+};
+
+const saveToStorage = async (key, value) => {
+  try {
+    // IndexedDB'ye kaydet
+    if (key === 'exam_ogrenciler') {
+      await db.saveStudents(value);
+    } else if (key === 'exam_ayarlar') {
+      await db.saveSettings(value);
+    } else if (key === 'exam_salonlar') {
+      await db.saveSalons(value);
+    } else if (key === 'exam_yerlestirme') {
+      // Yerleştirme sonucunu session-based olarak kaydet
+      if (value && value.salon) {
+        const sessionManager = (await import('../utils/sessionManager')).default;
+        const debouncedSave = (await import('../utils/debouncedSave')).default;
+        
+        // Session'a kaydet (anında)
+        sessionManager.saveTempData(value);
+        
+        // Debounced IndexedDB kayıt (kullanıcı durduktan sonra)
+        debouncedSave.scheduleSave(value, async (data) => {
+          const { updateTempPlan } = await import('../utils/cleanupTempPlans');
+          await updateTempPlan(data);
+        });
+        
+        logger.debug('✅ Yerleştirme sonucu session\'a kaydedildi, IndexedDB kayıt planlandı');
+      }
+    }
+    
+    // Fallback: localStorage'a da kaydet
+    localStorage.setItem(key, JSON.stringify(value));
+    logger.debug(`✅ ${key} IndexedDB ve localStorage'a kaydedildi`);
+  } catch (error) {
+    logger.error(`❌ IndexedDB'ye ${key} kaydedilirken hata:`, error);
+    // Fallback: sadece localStorage'a kaydet
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+      logger.warn(`⚠️ ${key} sadece localStorage'a kaydedildi (fallback)`);
+    } catch (localError) {
+      logger.error(`❌ localStorage fallback hatası:`, localError);
+    }
+  }
+};
+
+// IndexedDB'den veri yükleme fonksiyonu
+const loadFromIndexedDB = async () => {
+  try {
+    // console.log('📥 IndexedDB\'den veriler yükleniyor...');
+    
+    const [ogrenciler, ayarlar, salonlar] = await Promise.all([
+      db.getAllStudents().catch(() => []),
+      db.getSettings().catch(() => null),
+      db.getAllSalons().catch(() => [])
+    ]);
+    
+    console.log('🔍 IndexedDB\'den yüklenen salonlar:', salonlar?.map(s => s.ad || s.salonAdi || 'İsimsiz') || []);
+    
+    // console.log('✅ IndexedDB\'den veriler yüklendi:', {
+    //   ogrenciler: ogrenciler?.length || 0,
+    //   ayarlar: ayarlar ? Object.keys(ayarlar).length : 0,
+    //   salonlar: salonlar?.length || 0
+    // });
+    
+    // IndexedDB'de veri varsa onu kullan
+    if (ogrenciler && ogrenciler.length > 0) {
+      // console.log('✅ IndexedDB\'den öğrenciler yüklendi:', ogrenciler.length, 'öğrenci');
+      return {
+        ogrenciler: ogrenciler,
+        ayarlar: ayarlar || {
+          sinavAdi: '',
+          sinavTarihi: '',
+          sinavSaati: '',
+          dersler: []
+        },
+        salonlar: salonlar?.length > 0 ? salonlar : []
+      };
+    }
+    
+    // IndexedDB'de öğrenci yoksa ama ayarlar/salonlar varsa onları kullan
+    if ((ayarlar && Object.keys(ayarlar).length > 0) || (salonlar && salonlar.length > 0)) {
+      return {
+        ogrenciler: [],
+        ayarlar: ayarlar || {
+          sinavAdi: '',
+          sinavTarihi: '',
+          sinavSaati: '',
+          dersler: []
+        },
+        salonlar: salonlar?.length > 0 ? salonlar : []
+      };
+    }
+    
+    // IndexedDB'de veri yoksa localStorage'dan yükle
+    // console.log('⚠️ IndexedDB\'de öğrenci verisi yok, localStorage\'dan yükleniyor...');
+    const localStorageOgrenciler = loadFromStorage('exam_ogrenciler', []);
+    const localStorageAyarlar = loadFromStorage('exam_ayarlar', {
+      sinavAdi: '',
+      sinavTarihi: '',
+      sinavSaati: '',
+      dersler: []
+    });
+    const localStorageSalonlar = loadFromStorage('exam_salonlar', []);
+    console.log('🔍 localStorage\'dan yüklenen salonlar:', localStorageSalonlar?.map(s => s.ad || s.salonAdi || 'İsimsiz') || []);
+    
+    // console.log('📋 localStorage verileri:', {
+    //   ogrenciler: localStorageOgrenciler.length,
+    //   ayarlar: Object.keys(localStorageAyarlar).length,
+    //   salonlar: localStorageSalonlar.length
+    // });
+    
+    // Eğer localStorage'da da veri yoksa, test verilerini kullan
+    if (localStorageOgrenciler.length === 0 && localStorageSalonlar.length === 0) {
+      // console.log('⚠️ localStorage\'da da veri yok, test verileri yükleniyor...');
+      return {
+        ogrenciler: [],
+        ayarlar: {
+          sinavAdi: '',
+          sinavTarihi: '',
+          sinavSaati: '',
+          dersler: []
+        },
+        salonlar: []
+      };
+    }
+    
+    return {
+      ogrenciler: localStorageOgrenciler,
+      ayarlar: localStorageAyarlar,
+      salonlar: localStorageSalonlar
+    };
+    
+  } catch (error) {
+    // console.error('❌ IndexedDB\'den veri yükleme hatası:', error);
+    // Fallback: localStorage'dan yükle
+    return {
+      ogrenciler: loadFromStorage('exam_ogrenciler', []),
+      ayarlar: loadFromStorage('exam_ayarlar', {
+        sinavAdi: '',
+        sinavTarihi: '',
+        sinavSaati: '',
+        dersler: []
+      }),
+      salonlar: loadFromStorage('exam_salonlar', [])
+    };
+  }
+};
+
+// Initial State - IndexedDB'den yükle (async olmadığı için boş başlat)
+const initialState = {
+  // Öğrenci verileri
+  ogrenciler: [],
+  seciliOgrenciler: [],
+  
+  // Sınıf verileri
+  siniflar: [],
+  seciliSinif: null,
+  
+  // Salon verileri
+  salonlar: [],
+  
+  // Sınav ayarları
+  ayarlar: {
+    sinavAdi: '',
+    sinavTarihi: '',
+    sinavSaati: '',
+    dersler: []
+  },
+  
+  // Yerleştirme sonuçları
+  yerlestirmeSonucu: null,
+  
+  // UI durumu
+  aktifTab: 'ayarlar',
+  yukleme: true, // Başlangıçta yükleme durumunda
+  hata: null
+};
+
+// Action Types
+export const ACTIONS = {
+  // Öğrenci işlemleri
+  OGRENCILER_YUKLE: 'OGRENCILER_YUKLE',
+  OGRENCILER_EKLE: 'OGRENCILER_EKLE',
+  OGRENCI_SEC: 'OGRENCI_SEC',
+  OGRENCI_SECIMI_TEMIZLE: 'OGRENCI_SECIMI_TEMIZLE',
+  OGRENCI_SIL: 'OGRENCI_SIL',
+  OGRENCILER_TEMIZLE: 'OGRENCILER_TEMIZLE',
+  
+  // Sınıf işlemleri
+  SINIFLAR_YUKLE: 'SINIFLAR_YUKLE',
+  SINIF_SEC: 'SINIF_SEC',
+  
+  // Salon işlemleri
+  SALONLAR_GUNCELLE: 'SALONLAR_GUNCELLE',
+  SALON_EKLE: 'SALON_EKLE',
+  SALON_SIL: 'SALON_SIL',
+  
+  // Ayarlar işlemleri
+  AYARLAR_GUNCELLE: 'AYARLAR_GUNCELLE',
+  
+  // Yerleştirme işlemleri
+  YERLESTIRME_YAP: 'YERLESTIRME_YAP',
+  YERLESTIRME_GUNCELLE: 'YERLESTIRME_GUNCELLE',
+  YERLESTIRME_TEMIZLE: 'YERLESTIRME_TEMIZLE',
+  
+  // UI işlemleri
+  TAB_DEGISTIR: 'TAB_DEGISTIR',
+  YUKLEME_BASLAT: 'YUKLEME_BASLAT',
+  YUKLEME_BITIR: 'YUKLEME_BITIR',
+  HATA_AYARLA: 'HATA_AYARLA',
+  HATA_TEMIZLE: 'HATA_TEMIZLE'
+};
+
+// Reducer
+const examReducer = (state, action) => {
+  let newState;
+  
+  switch (action.type) {
+    case ACTIONS.OGRENCILER_YUKLE:
+      newState = {
+        ...state,
+        ogrenciler: action.payload,
+        yukleme: false
+      };
+      // SADECE VERİ VARSA IndexedDB'ye kaydet
+      if (action.payload && action.payload.length > 0) {
+        saveToStorage('exam_ogrenciler', newState.ogrenciler);
+      }
+      return newState;
+      
+    case ACTIONS.OGRENCILER_EKLE:
+      newState = {
+        ...state,
+        ogrenciler: [...state.ogrenciler, ...action.payload],
+        yukleme: false
+      };
+      saveToStorage('exam_ogrenciler', newState.ogrenciler);
+      return newState;
+      
+    case ACTIONS.OGRENCI_SEC:
+      const ogrenci = action.payload;
+      const mevcutSecili = state.seciliOgrenciler.find(o => o.id === ogrenci.id);
+      
+      return {
+        ...state,
+        seciliOgrenciler: mevcutSecili
+          ? state.seciliOgrenciler.filter(o => o.id !== ogrenci.id)
+          : [...state.seciliOgrenciler, ogrenci]
+      };
+      
+    case ACTIONS.OGRENCI_SECIMI_TEMIZLE:
+      return {
+        ...state,
+        seciliOgrenciler: []
+      };
+      
+    case ACTIONS.OGRENCI_SIL:
+      newState = {
+        ...state,
+        ogrenciler: state.ogrenciler.filter(o => o.id !== action.payload)
+      };
+      saveToStorage('exam_ogrenciler', newState.ogrenciler);
+      return newState;
+      
+    case ACTIONS.OGRENCILER_TEMIZLE:
+      newState = {
+        ...state,
+        ogrenciler: []
+      };
+      saveToStorage('exam_ogrenciler', newState.ogrenciler);
+      return newState;
+      
+    case ACTIONS.SINIFLAR_YUKLE:
+      return {
+        ...state,
+        siniflar: action.payload,
+        yukleme: false
+      };
+      
+    case ACTIONS.SINIF_SEC:
+      return {
+        ...state,
+        seciliSinif: action.payload
+      };
+      
+    case ACTIONS.SALONLAR_GUNCELLE:
+      newState = {
+        ...state,
+        salonlar: action.payload
+      };
+      // SADECE VERİ VARSA IndexedDB'ye kaydet
+      if (action.payload && action.payload.length > 0) {
+        saveToStorage('exam_salonlar', newState.salonlar);
+      }
+      return newState;
+      
+    case ACTIONS.SALON_EKLE:
+      newState = {
+        ...state,
+        salonlar: [...state.salonlar, action.payload]
+      };
+      saveToStorage('exam_salonlar', newState.salonlar);
+      return newState;
+      
+    case ACTIONS.SALON_SIL:
+      newState = {
+        ...state,
+        salonlar: state.salonlar.filter(salon => salon.id !== action.payload)
+      };
+      saveToStorage('exam_salonlar', newState.salonlar);
+      return newState;
+      
+    case ACTIONS.AYARLAR_GUNCELLE:
+      newState = {
+        ...state,
+        ayarlar: { ...state.ayarlar, ...action.payload }
+      };
+      
+      // SADECE VERİ VARSA IndexedDB'ye kaydet
+      if (action.payload && Object.keys(action.payload).length > 0) {
+        saveToStorage('exam_ayarlar', newState.ayarlar);
+      }
+      return newState;
+      
+    case ACTIONS.YERLESTIRME_YAP:
+      newState = {
+        ...state,
+        yerlestirmeSonucu: action.payload,
+        yukleme: false
+      };
+      saveToStorage('exam_yerlestirme', newState.yerlestirmeSonucu);
+      return newState;
+      
+    case ACTIONS.YERLESTIRME_GUNCELLE:
+      newState = {
+        ...state,
+        yerlestirmeSonucu: { 
+          ...state.yerlestirmeSonucu, 
+          ...action.payload,
+          // Salon objesini deep copy et
+          salon: action.payload.salon ? {
+            ...action.payload.salon,
+            masalar: action.payload.salon.masalar ? [...action.payload.salon.masalar] : []
+          } : state.yerlestirmeSonucu?.salon
+        }
+      };
+      
+      // CRITICAL: Hem localStorage hem IndexedDB'ye kaydet
+      saveToStorage('exam_yerlestirme', newState.yerlestirmeSonucu);
+      
+      logger.debug('🔄 Context: State güncellendi, salon:', !!newState.yerlestirmeSonucu?.salon);
+      logger.debug('🔄 Context: Masalar sayısı:', newState.yerlestirmeSonucu?.salon?.masalar?.length);
+      logger.debug('✅ Context: Yerleştirme sonucu localStorage\'a kaydedildi');
+      return newState;
+      
+    case ACTIONS.YERLESTIRME_TEMIZLE:
+      newState = {
+        ...state,
+        yerlestirmeSonucu: null
+      };
+      saveToStorage('exam_yerlestirme', newState.yerlestirmeSonucu);
+      return newState;
+      
+    case ACTIONS.TAB_DEGISTIR:
+      newState = {
+        ...state,
+        aktifTab: action.payload
+      };
+      saveToStorage('exam_aktif_tab', newState.aktifTab);
+      return newState;
+      
+    case ACTIONS.YUKLEME_BASLAT:
+      return {
+        ...state,
+        yukleme: true,
+        hata: null
+      };
+      
+    case ACTIONS.YUKLEME_BITIR:
+      return {
+        ...state,
+        yukleme: false
+      };
+      
+    case ACTIONS.HATA_AYARLA:
+      return {
+        ...state,
+        hata: action.payload,
+        yukleme: false
+      };
+      
+    case ACTIONS.HATA_TEMIZLE:
+      return {
+        ...state,
+        hata: null
+      };
+      
+    default:
+      return state;
+  }
+};
+
+// Context
+const ExamContext = createContext();
+
+// Provider Component
+export const ExamProvider = ({ children }) => {
+  const [state, dispatch] = useReducer(examReducer, initialState);
+  const [isInitialized, setIsInitialized] = React.useState(false);
+
+  // IndexedDB'den veri yükleme (sadece bir kez)
+  useEffect(() => {
+        // console.log('🚀 ExamProvider useEffect başladı!');
+    
+    const initializeData = async () => {
+      // TEMİZLEME İŞLEMİ KALDIRILDI - Kullanıcı salonları korunuyor
+      console.log('✅ Salon temizleme işlemi kaldırıldı, tüm salonlar korunuyor');
+      try {
+        // console.log('🔄 ExamProvider: Veriler IndexedDB\'den yükleniyor...');
+        const data = await loadFromIndexedDB();
+        
+        // console.log('📊 Yüklenen veriler:', {
+        //   ogrenciler: data.ogrenciler?.length || 0,
+        //   ayarlar: data.ayarlar ? Object.keys(data.ayarlar).length : 0,
+        //   salonlar: data.salonlar?.length || 0
+        // });
+        
+        // Verileri state'e yükle - SADECE VERİ VARSA
+        console.log('🔍 Veri kontrolü:', {
+          ogrenciler: data.ogrenciler?.length || 0,
+          ayarlar: data.ayarlar ? Object.keys(data.ayarlar).length : 0,
+          salonlar: data.salonlar?.length || 0
+        });
+        console.log('🔍 Salon verileri detayı:', data.salonlar);
+        console.log('🔍 Salon isimleri:', data.salonlar?.map(s => s.ad || s.salonAdi || 'İsimsiz') || []);
+        
+        if (data.ogrenciler && data.ogrenciler.length > 0) {
+          console.log('✅ Öğrenciler yükleniyor:', data.ogrenciler.length);
+          dispatch({ type: ACTIONS.OGRENCILER_YUKLE, payload: data.ogrenciler });
+        } else {
+          console.log('⚠️ Öğrenci verisi yok, yükleme atlanıyor');
+        }
+        if (data.ayarlar && Object.keys(data.ayarlar).length > 0) {
+          console.log('✅ Ayarlar yükleniyor:', Object.keys(data.ayarlar).length);
+          dispatch({ type: ACTIONS.AYARLAR_GUNCELLE, payload: data.ayarlar });
+        } else {
+          console.log('⚠️ Ayar verisi yok, yükleme atlanıyor');
+        }
+        if (data.salonlar && data.salonlar.length > 0) {
+          console.log('✅ Salonlar yükleniyor:', data.salonlar.length);
+          dispatch({ type: ACTIONS.SALONLAR_GUNCELLE, payload: data.salonlar });
+        } else {
+          console.log('⚠️ Salon verisi yok, yükleme atlanıyor - TEST SALONLARI YÜKLENMEYECEK');
+        }
+        
+        // console.log('✅ State\'e veriler yüklendi');
+        
+        // Yerleştirme sonucunu localStorage'dan yükle (otomatik yükleme)
+        try {
+          const yerlestirmeSonucu = loadFromStorage('exam_yerlestirme', null);
+          if (yerlestirmeSonucu) {
+            dispatch({ type: ACTIONS.YERLESTIRME_YAP, payload: yerlestirmeSonucu });
+            // console.log('✅ Yerleştirme sonucu localStorage\'dan yüklendi');
+          } else {
+            // console.log('ℹ️ localStorage\'da yerleştirme sonucu bulunamadı');
+          }
+        } catch (error) {
+          // console.error('❌ localStorage\'dan yerleştirme sonucu yüklenirken hata:', error);
+        }
+        
+        // Aktif tab'ı localStorage'dan yükle
+        const aktifTab = loadFromStorage('exam_aktif_tab', 'ayarlar');
+        dispatch({ type: ACTIONS.TAB_DEGISTIR, payload: aktifTab });
+        
+        setIsInitialized(true);
+        // console.log('✅ ExamProvider: Tüm veriler yüklendi!');
+        
+      } catch (error) {
+        // console.error('❌ ExamProvider: Veri yükleme hatası:', error);
+        setIsInitialized(true); // Hata olsa bile devam et
+      }
+    };
+    
+    initializeData();
+  }, []); // Sadece component mount olduğunda çalış
+
+  // IndexedDB'ye otomatik kaydetme
+  useEffect(() => {
+    if (!isInitialized) return; // İlk yükleme tamamlanana kadar bekle
+    
+    const saveToIndexedDB = async () => {
+      try {
+        await db.saveStudents(state.ogrenciler);
+        logger.debug('✅ Öğrenciler IndexedDB\'ye kaydedildi');
+      } catch (error) {
+        logger.error('❌ Öğrenciler IndexedDB\'ye kaydedilemedi:', error);
+      }
+    };
+    
+    if (state.ogrenciler.length > 0) {
+      saveToIndexedDB();
+    }
+  }, [state.ogrenciler, isInitialized]);
+
+  useEffect(() => {
+    if (!isInitialized) return; // İlk yükleme tamamlanana kadar bekle
+    
+    const saveToIndexedDB = async () => {
+      try {
+        // console.log('💾 Ayarlar kaydediliyor:', {
+        //   sinavAdi: state.ayarlar.sinavAdi,
+        //   sinavTarihi: state.ayarlar.sinavTarihi,
+        //   sinavSaati: state.ayarlar.sinavSaati,
+        //   dersler: state.ayarlar.dersler?.length || 0
+        // });
+        await db.saveSettings(state.ayarlar);
+        logger.debug('✅ Ayarlar IndexedDB\'ye kaydedildi');
+      } catch (error) {
+        logger.error('❌ Ayarlar IndexedDB\'ye kaydedilemedi:', error);
+      }
+    };
+    
+    if (state.ayarlar && Object.keys(state.ayarlar).length > 0) {
+      saveToIndexedDB();
+    }
+  }, [state.ayarlar, isInitialized]);
+
+  useEffect(() => {
+    if (!isInitialized) return; // İlk yükleme tamamlanana kadar bekle
+    
+    const saveToIndexedDB = async () => {
+      try {
+        await db.saveSalons(state.salonlar);
+        logger.debug('✅ Salonlar IndexedDB\'ye kaydedildi');
+      } catch (error) {
+        logger.error('❌ Salonlar IndexedDB\'ye kaydedilemedi:', error);
+      }
+    };
+    
+    if (state.salonlar.length > 0) {
+      saveToIndexedDB();
+    }
+  }, [state.salonlar, isInitialized]);
+
+  // Action Creators
+  const actions = {
+    ogrencilerYukle: (ogrenciler) => {
+      dispatch({ type: ACTIONS.OGRENCILER_YUKLE, payload: ogrenciler });
+    },
+    
+    ogrencilerEkle: (yeniOgrenciler) => {
+      dispatch({ type: ACTIONS.OGRENCILER_EKLE, payload: yeniOgrenciler });
+    },
+    
+    ogrenciSec: (ogrenci) => {
+      dispatch({ type: ACTIONS.OGRENCI_SEC, payload: ogrenci });
+    },
+    
+    ogrenciSecimiTemizle: () => {
+      dispatch({ type: ACTIONS.OGRENCI_SECIMI_TEMIZLE });
+    },
+    
+    ogrenciSil: (ogrenciId) => {
+      dispatch({ type: ACTIONS.OGRENCI_SIL, payload: ogrenciId });
+    },
+    
+    ogrencileriTemizle: () => {
+      dispatch({ type: ACTIONS.OGRENCILER_TEMIZLE });
+    },
+    
+    siniflarYukle: (siniflar) => {
+      dispatch({ type: ACTIONS.SINIFLAR_YUKLE, payload: siniflar });
+    },
+    
+    sinifSec: (sinif) => {
+      dispatch({ type: ACTIONS.SINIF_SEC, payload: sinif });
+    },
+    
+    salonlarGuncelle: (salonlar) => {
+      dispatch({ type: ACTIONS.SALONLAR_GUNCELLE, payload: salonlar });
+    },
+    
+    salonEkle: (salon) => {
+      dispatch({ type: ACTIONS.SALON_EKLE, payload: salon });
+    },
+    
+    salonSil: (salonId) => {
+      dispatch({ type: ACTIONS.SALON_SIL, payload: salonId });
+    },
+    
+    ayarlarGuncelle: (ayarlar) => {
+      dispatch({ type: ACTIONS.AYARLAR_GUNCELLE, payload: ayarlar });
+    },
+    
+    yerlestirmeYap: (sonuc) => {
+      dispatch({ type: ACTIONS.YERLESTIRME_YAP, payload: sonuc });
+    },
+    
+    yerlestirmeGuncelle: (guncelleme) => {
+      dispatch({ type: ACTIONS.YERLESTIRME_GUNCELLE, payload: guncelleme });
+    },
+    
+    yerlestirmeTemizle: () => {
+      dispatch({ type: ACTIONS.YERLESTIRME_TEMIZLE });
+    },
+    
+    tabDegistir: (tab) => {
+      dispatch({ type: ACTIONS.TAB_DEGISTIR, payload: tab });
+    },
+    
+    yuklemeBaslat: () => {
+      dispatch({ type: ACTIONS.YUKLEME_BASLAT });
+    },
+    
+    yuklemeBitir: () => {
+      dispatch({ type: ACTIONS.YUKLEME_BITIR });
+    },
+    
+    hataAyarla: (hata) => {
+      dispatch({ type: ACTIONS.HATA_AYARLA, payload: hata });
+    },
+    
+    hataTemizle: () => {
+      dispatch({ type: ACTIONS.HATA_TEMIZLE });
+    }
+  };
+
+  const value = {
+    ...state,
+    ...actions,
+    isInitialized
+  };
+
+  return (
+    <ExamContext.Provider value={value}>
+      {children}
+    </ExamContext.Provider>
+  );
+};
+
+// Custom Hook
+export const useExam = () => {
+  const context = useContext(ExamContext);
+  if (!context) {
+    throw new Error('useExam hook must be used within ExamProvider');
+  }
+  return context;
+};
+
+export default ExamContext;

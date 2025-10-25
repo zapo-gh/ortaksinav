@@ -1,0 +1,60 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Print styles - Hide browser information */
+@media print {
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  /* Hide browser headers and footers */
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* Hide any browser-generated content */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* Hide all pseudo-elements */
+  *::before,
+  *::after {
+    content: none !important;
+    display: none !important;
+  }
+  
+  /* Hide specific browser footer text */
+  *:contains("Bu liste"),
+  *:contains("tarihinde oluşturulmuştur"),
+  *:contains("oluşturulmuştur"),
+  *:contains("tarihinde"),
+  *:contains("18.10.2025"),
+  *:contains("2025") {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+  
+  /* Force hide any element containing date patterns */
+  *[class*="date"],
+  *[class*="created"],
+  *[class*="timestamp"],
+  *[class*="footer"] {
+    display: none !important;
+  }
+}

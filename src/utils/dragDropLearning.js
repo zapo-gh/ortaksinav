@@ -1,0 +1,549 @@
+/**
+ * Drag & Drop Öğrenme Sistemi
+ * Kullanıcının manuel düzenlemelerini AI'ye öğretir
+ */
+
+import logger from './logger';
+
+class DragDropLearningSystem {
+  constructor() {
+    this.learningData = {
+      // Kullanıcı tercihleri
+      userPreferences: {
+        genderPlacements: [], // Cinsiyet yerleştirme tercihleri
+        classPlacements: [], // Sınıf yerleştirme tercihleri
+        neighborPreferences: [], // Komşu tercihleri
+        riskAvoidance: [] // Risk kaçınma tercihleri
+      },
+      
+      // Öğrenme istatistikleri
+      learningStats: {
+        totalMoves: 0,
+        successfulMoves: 0,
+        failedMoves: 0,
+        learningRate: 0.1
+      },
+      
+      // Ağırlık güncellemeleri
+      weightUpdates: []
+    };
+    
+    this.loadLearningData();
+  }
+
+  /**
+   * Drag & Drop hareketini kaydet ve öğren
+   */
+  recordMove(fromMasaId, toMasaId, student, context) {
+    const moveData = {
+      timestamp: Date.now(),
+      fromMasaId,
+      toMasaId,
+      student: {
+        id: student.id,
+        ad: student.ad,
+        soyad: student.soyad,
+        cinsiyet: student.cinsiyet,
+        sinif: student.sinif,
+        gecmisSkor: student.gecmisSkor,
+        ozelDurum: student.ozelDurum
+      },
+      context: {
+        salonId: context.salonId,
+        salonAdi: context.salonAdi,
+        totalStudents: context.totalStudents,
+        currentPlan: context.currentPlan
+      }
+    };
+
+    // Hareketi kaydet
+    this.learningData.learningStats.totalMoves++;
+    
+    // Öğrenme analizi yap
+    this.analyzeMove(moveData);
+    
+    // Ağırlıkları güncelle
+    this.updateWeights(moveData);
+    
+    // Veriyi kaydet
+    this.saveLearningData();
+    
+    logger.info('🎓 Drag & Drop öğrenme kaydedildi:', {
+      student: student.ad,
+      from: fromMasaId,
+      to: toMasaId,
+      totalMoves: this.learningData.learningStats.totalMoves
+    });
+  }
+
+  /**
+   * Hareket analizi yap
+   */
+  analyzeMove(moveData) {
+    const { student, fromMasaId, toMasaId, context } = moveData;
+    
+    // Cinsiyet analizi
+    if (student.cinsiyet) {
+      this.learningData.userPreferences.genderPlacements.push({
+        student: student,
+        fromMasaId,
+        toMasaId,
+        preference: this.analyzeGenderPreference(student, context)
+      });
+    }
+    
+    // Sınıf analizi
+    if (student.sinif) {
+      this.learningData.userPreferences.classPlacements.push({
+        student: student,
+        fromMasaId,
+        toMasaId,
+        preference: this.analyzeClassPreference(student, context)
+      });
+    }
+    
+    // Komşu analizi
+    this.learningData.userPreferences.neighborPreferences.push({
+      student: student,
+      fromMasaId,
+      toMasaId,
+      preference: this.analyzeNeighborPreference(student, context)
+    });
+    
+    // Risk analizi
+    this.learningData.userPreferences.riskAvoidance.push({
+      student: student,
+      fromMasaId,
+      toMasaId,
+      preference: this.analyzeRiskPreference(student, context)
+    });
+  }
+
+  /**
+   * Cinsiyet tercihi analizi
+   */
+  analyzeGenderPreference(student, context) {
+    // Komşu cinsiyet analizi
+    const neighborGenders = this.getNeighborGenders(context.currentPlan, student);
+    const genderDiversity = this.calculateGenderDiversity(student, neighborGenders);
+    
+    return {
+      type: 'gender',
+      diversity: genderDiversity,
+      preference: genderDiversity > 0.5 ? 'diverse' : 'similar',
+      confidence: Math.abs(genderDiversity - 0.5) * 2
+    };
+  }
+
+  /**
+   * Sınıf tercihi analizi
+   */
+  analyzeClassPreference(student, context) {
+    const neighborClasses = this.getNeighborClasses(context.currentPlan, student);
+    const classDiversity = this.calculateClassDiversity(student, neighborClasses);
+    
+    return {
+      type: 'class',
+      diversity: classDiversity,
+      preference: classDiversity > 0.5 ? 'diverse' : 'similar',
+      confidence: Math.abs(classDiversity - 0.5) * 2
+    };
+  }
+
+  /**
+   * Komşu tercihi analizi
+   */
+  analyzeNeighborPreference(student, context) {
+    const neighbors = this.getNeighbors(context.currentPlan, student);
+    const neighborCount = neighbors.length;
+    const emptyNeighbors = this.getEmptyNeighbors(context.currentPlan, student);
+    
+    return {
+      type: 'neighbor',
+      neighborCount,
+      emptyNeighbors,
+      preference: emptyNeighbors > neighborCount ? 'isolated' : 'social',
+      confidence: Math.abs(emptyNeighbors - neighborCount) / Math.max(emptyNeighbors, neighborCount, 1)
+    };
+  }
+
+  /**
+   * Risk tercihi analizi
+   */
+  analyzeRiskPreference(student, context) {
+    const riskFactors = this.calculateRiskFactors(student, context);
+    const riskLevel = this.calculateRiskLevel(riskFactors);
+    
+    return {
+      type: 'risk',
+      riskLevel,
+      factors: riskFactors,
+      preference: riskLevel < 0.3 ? 'low_risk' : riskLevel > 0.7 ? 'high_risk' : 'medium_risk',
+      confidence: Math.abs(riskLevel - 0.5) * 2
+    };
+  }
+
+  /**
+   * Ağırlıkları güncelle
+   */
+  updateWeights(moveData) {
+    const { student, fromMasaId, toMasaId } = moveData;
+    
+    // Kullanılmayan parametreleri işaretle
+    void student;
+    void fromMasaId;
+    void toMasaId;
+    
+    // Mevcut ağırlıkları al
+    const currentWeights = this.getCurrentWeights();
+    
+    // Yeni ağırlıkları hesapla
+    const newWeights = this.calculateNewWeights(currentWeights, moveData);
+    
+    // Ağırlık güncellemesini kaydet
+    this.learningData.weightUpdates.push({
+      timestamp: Date.now(),
+      oldWeights: currentWeights,
+      newWeights: newWeights,
+      moveData: moveData
+    });
+    
+    // Ağırlıkları güncelle
+    this.setWeights(newWeights);
+    
+    logger.info('⚖️ Ağırlıklar güncellendi:', newWeights);
+  }
+
+  /**
+   * Yeni ağırlıkları hesapla
+   */
+  calculateNewWeights(currentWeights, moveData) {
+    const learningRate = this.learningData.learningStats.learningRate;
+    const newWeights = { ...currentWeights };
+    
+    // Cinsiyet ağırlığı güncelleme
+    if (moveData.student.cinsiyet) {
+      const genderPreference = this.analyzeGenderPreference(moveData.student, moveData.context);
+      const genderUpdate = learningRate * genderPreference.confidence * (genderPreference.diversity - 0.5);
+      newWeights.genderBalance += genderUpdate;
+    }
+    
+    // Sınıf ağırlığı güncelleme
+    if (moveData.student.sinif) {
+      const classPreference = this.analyzeClassPreference(moveData.student, moveData.context);
+      const classUpdate = learningRate * classPreference.confidence * (classPreference.diversity - 0.5);
+      newWeights.classLevelMix += classUpdate;
+    }
+    
+    // Komşu ağırlığı güncelleme
+    const neighborPreference = this.analyzeNeighborPreference(moveData.student, moveData.context);
+    const neighborUpdate = learningRate * neighborPreference.confidence * (neighborPreference.emptyNeighbors - neighborPreference.neighborCount);
+    newWeights.neighborIsolation += neighborUpdate;
+    
+    // Risk ağırlığı güncelleme
+    const riskPreference = this.analyzeRiskPreference(moveData.student, moveData.context);
+    const riskUpdate = learningRate * riskPreference.confidence * (0.5 - riskPreference.riskLevel);
+    newWeights.riskAvoidance += riskUpdate;
+    
+    // Ağırlıkları normalize et
+    return this.normalizeWeights(newWeights);
+  }
+
+  /**
+   * Öğrenme verilerini AI sistemine aktar
+   */
+  transferToAI() {
+    const aiWeights = this.calculateAIWeights();
+    const learningSuggestions = this.generateLearningSuggestions();
+    
+    return {
+      weights: aiWeights,
+      suggestions: learningSuggestions,
+      confidence: this.calculateLearningConfidence()
+    };
+  }
+
+  /**
+   * AI ağırlıklarını hesapla
+   */
+  calculateAIWeights() {
+    const recentMoves = this.learningData.userPreferences.genderPlacements.slice(-10);
+    const genderWeight = this.calculateAveragePreference(recentMoves, 'gender');
+    const classWeight = this.calculateAveragePreference(recentMoves, 'class');
+    const neighborWeight = this.calculateAveragePreference(recentMoves, 'neighbor');
+    const riskWeight = this.calculateAveragePreference(recentMoves, 'risk');
+    
+    return {
+      genderBalance: genderWeight,
+      classLevelMix: classWeight,
+      neighborIsolation: neighborWeight,
+      riskAvoidance: riskWeight
+    };
+  }
+
+  /**
+   * Öğrenme önerileri oluştur
+   */
+  generateLearningSuggestions() {
+    const suggestions = [];
+    
+    // Cinsiyet çeşitliliği önerisi
+    const genderDiversity = this.calculateAverageDiversity('gender');
+    if (genderDiversity < 0.3) {
+      suggestions.push({
+        type: 'gender_diversity',
+        message: 'Cinsiyet çeşitliliğini artırmayı tercih ediyorsunuz',
+        weight: 0.8
+      });
+    }
+    
+    // Sınıf çeşitliliği önerisi
+    const classDiversity = this.calculateAverageDiversity('class');
+    if (classDiversity < 0.3) {
+      suggestions.push({
+        type: 'class_diversity',
+        message: 'Sınıf çeşitliliğini artırmayı tercih ediyorsunuz',
+        weight: 0.6
+      });
+    }
+    
+    // Komşu tercihi önerisi
+    const neighborPreference = this.calculateAverageNeighborPreference();
+    if (neighborPreference > 0.7) {
+      suggestions.push({
+        type: 'neighbor_isolation',
+        message: 'Öğrencileri izole etmeyi tercih ediyorsunuz',
+        weight: 0.9
+      });
+    }
+    
+    return suggestions;
+  }
+
+  /**
+   * Öğrenme güvenini hesapla
+   */
+  calculateLearningConfidence() {
+    const totalMoves = this.learningData.learningStats.totalMoves;
+    const successfulMoves = this.learningData.learningStats.successfulMoves;
+    
+    if (totalMoves === 0) return 0;
+    
+    const successRate = successfulMoves / totalMoves;
+    const dataVolume = Math.min(totalMoves / 50, 1); // 50 hareket = %100 güven
+    
+    return (successRate * 0.7 + dataVolume * 0.3);
+  }
+
+  // Yardımcı fonksiyonlar
+  getNeighborGenders(plan, student) {
+    // Komşu cinsiyetleri hesapla
+    return [];
+  }
+
+  getNeighborClasses(plan, student) {
+    // Komşu sınıfları hesapla
+    return [];
+  }
+
+  getNeighbors(plan, student) {
+    // Komşuları hesapla
+    return [];
+  }
+
+  getEmptyNeighbors(plan, student) {
+    // Boş komşuları hesapla
+    return 0;
+  }
+
+  calculateGenderDiversity(student, neighborGenders) {
+    // Cinsiyet çeşitliliği hesapla
+    return 0.5;
+  }
+
+  calculateClassDiversity(student, neighborClasses) {
+    // Sınıf çeşitliliği hesapla
+    return 0.5;
+  }
+
+  calculateRiskFactors(student, context) {
+    // Risk faktörlerini hesapla
+    return {};
+  }
+
+  calculateRiskLevel(riskFactors) {
+    // Risk seviyesini hesapla
+    return 0.5;
+  }
+
+  getCurrentWeights() {
+    // Mevcut ağırlıkları al
+    return {
+      genderBalance: 0.5,
+      classLevelMix: 0.5,
+      neighborIsolation: 0.5,
+      riskAvoidance: 0.5
+    };
+  }
+
+  setWeights(weights) {
+    // Ağırlıkları ayarla
+    this.learningData.currentWeights = weights;
+  }
+
+  normalizeWeights(weights) {
+    // Ağırlıkları normalize et
+    const total = Object.values(weights).reduce((sum, weight) => sum + weight, 0);
+    const normalized = {};
+    for (const [key, value] of Object.entries(weights)) {
+      normalized[key] = value / total;
+    }
+    return normalized;
+  }
+
+  calculateAveragePreference(moves, type) {
+    // Ortalama tercihi hesapla
+    return 0.5;
+  }
+
+  calculateAverageDiversity(type) {
+    // Ortalama çeşitliliği hesapla
+    return 0.5;
+  }
+
+  calculateAverageNeighborPreference() {
+    // Ortalama komşu tercihini hesapla
+    return 0.5;
+  }
+
+  // Veri yönetimi - HİBRİT SİSTEM
+  saveLearningData() {
+    try {
+      // 1. Local Storage'a kaydet
+      localStorage.setItem('dragDropLearning', JSON.stringify(this.learningData));
+      
+      // 2. Production'da sunucuya da gönder
+      if (process.env.NODE_ENV === 'production') {
+        this.syncToServer();
+      }
+    } catch (error) {
+      logger.error('Drag & Drop öğrenme verisi kaydedilemedi:', error);
+    }
+  }
+
+  loadLearningData() {
+    try {
+      // 1. Local Storage'dan yükle
+      const saved = localStorage.getItem('dragDropLearning');
+      if (saved) {
+        this.learningData = { ...this.learningData, ...JSON.parse(saved) };
+      }
+      
+      // 2. Production'da sunucudan da senkronize et
+      if (process.env.NODE_ENV === 'production') {
+        this.syncFromServer();
+      }
+    } catch (error) {
+      logger.error('Drag & Drop öğrenme verisi yüklenemedi:', error);
+    }
+  }
+
+  // YENİ: Sunucu senkronizasyonu
+  async syncToServer() {
+    try {
+      const response = await fetch('/api/learning-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          deviceId: this.getDeviceId(),
+          learningData: this.learningData,
+          timestamp: Date.now()
+        })
+      });
+
+      if (response.ok) {
+        logger.debug('🔄 Sunucuya öğrenme verileri gönderildi');
+      }
+    } catch (error) {
+      logger.warn('⚠️ Sunucu senkronizasyonu başarısız:', error);
+    }
+  }
+
+  async syncFromServer() {
+    try {
+      const response = await fetch(`/api/learning-data/${this.getDeviceId()}`);
+      
+      if (response.ok) {
+        const serverData = await response.json();
+        if (serverData.success) {
+          // Sunucu verisi ile local veriyi birleştir
+          this.mergeServerData(serverData.data);
+          logger.debug('🔄 Sunucudan öğrenme verileri alındı');
+        }
+      }
+    } catch (error) {
+      logger.warn('⚠️ Sunucudan veri alınamadı:', error);
+    }
+  }
+
+  getDeviceId() {
+    let deviceId = localStorage.getItem('deviceId');
+    if (!deviceId) {
+      deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('deviceId', deviceId);
+    }
+    return deviceId;
+  }
+
+  mergeServerData(serverData) {
+    // Ağırlıkları birleştir
+    this.learningData.weights = {
+      ...this.learningData.weights,
+      ...serverData.weights
+    };
+
+    // İstatistikleri topla
+    this.learningData.learningStats.totalMoves += serverData.learningStats?.totalMoves || 0;
+    this.learningData.learningStats.successfulMoves += serverData.learningStats?.successfulMoves || 0;
+    this.learningData.learningStats.failedMoves += serverData.learningStats?.failedMoves || 0;
+  }
+
+  // İstatistikler
+  getLearningStats() {
+    return {
+      totalMoves: this.learningData.learningStats.totalMoves,
+      successfulMoves: this.learningData.learningStats.successfulMoves,
+      failedMoves: this.learningData.learningStats.failedMoves,
+      successRate: this.learningData.learningStats.totalMoves > 0 ? 
+        this.learningData.learningStats.successfulMoves / this.learningData.learningStats.totalMoves : 0,
+      confidence: this.calculateLearningConfidence()
+    };
+  }
+
+  // Öğrenme verilerini temizle
+  clearLearningData() {
+    this.learningData = {
+      userPreferences: {
+        genderPlacements: [],
+        classPlacements: [],
+        neighborPreferences: [],
+        riskAvoidance: []
+      },
+      learningStats: {
+        totalMoves: 0,
+        successfulMoves: 0,
+        failedMoves: 0,
+        learningRate: 0.1
+      },
+      weightUpdates: []
+    };
+    this.saveLearningData();
+  }
+}
+
+// Singleton instance
+const dragDropLearning = new DragDropLearningSystem();
+
+export default dragDropLearning;
