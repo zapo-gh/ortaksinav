@@ -107,56 +107,36 @@ const akilliDagitim = (sinifSeviyeleri, aktifSalonlar, salonHavuzlari, kisitAnal
     logger.debug(`  📍 Salon ${salon.salonAdi || salon.ad}: hedef ${hedefSayi} öğrenci`);
   });
 
-  // EŞİT DAĞITIM: Her sınıf seviyesinden salonlara eşit sayıda dağıt
+  // YENİ: ROUND-ROBIN DAĞITIM - Sınıf seviyelerini dönüşümlü olarak dağıt
+  logger.info(`\n🔄 ROUND-ROBIN DAĞITIM: Sınıf seviyeleri dönüşümlü olarak dağıtılıyor`);
+  
+  // Tüm sınıf seviyelerini birleştir ve karıştır
+  const tumOgrenciler = [];
   Object.keys(sinifSeviyeleri).forEach(seviye => {
-    const seviyeOgrencileri = [...sinifSeviyeleri[seviye]];
-    const seviyeToplamOgrenci = seviyeOgrencileri.length;
-    
-    logger.info(`\n🎯 Sınıf ${seviye} dağıtılıyor: ${seviyeToplamOgrenci} öğrenci`);
-    logger.info(`🔍 DEBUG: sinifSeviyeleri[${seviye}] =`, sinifSeviyeleri[seviye].length, 'öğrenci');
-    
-    // Her salona bu seviyeden eşit sayıda öğrenci ver
-    const seviyeBasiOgrenci = Math.floor(seviyeToplamOgrenci / salonSayisi);
-    const seviyeKalanOgrenci = seviyeToplamOgrenci % salonSayisi;
-    
-    logger.debug(`  📊 Sınıf ${seviye} dağıtımı: Her salona ${seviyeBasiOgrenci} öğrenci, ${seviyeKalanOgrenci} öğrenci fazla`);
-    
-    aktifSalonlar.forEach((salon, index) => {
-      const seviyeOgrenciSayisi = seviyeBasiOgrenci + (index < seviyeKalanOgrenci ? 1 : 0);
-      
-      logger.debug(`  📍 Salon ${salon.salonAdi || salon.ad}: ${seviyeOgrenciSayisi} öğrenci alacak`);
-      
-      // Bu salona öğrencileri yerleştir
-      for (let i = 0; i < seviyeOgrenciSayisi && seviyeOgrencileri.length > 0; i++) {
-            const ogrenci = seviyeOgrencileri.shift();
-            salonHavuzlari[index].push(ogrenci);
-            logger.debug(`  ✅ Salon ${salon.salonAdi || salon.ad}: ${ogrenci.ad} ${ogrenci.soyad} eklendi`);
-      }
-    });
-
-    // Kalan öğrencileri dengeli dağıt (eğer varsa)
-    while (seviyeOgrencileri.length > 0) {
-      let yerlestirildi = false;
-      
-      for (let i = 0; i < aktifSalonlar.length; i++) {
-        if (seviyeOgrencileri.length > 0 && 
-            salonHavuzlari[i].length < salonHavuzlari[i].hedefSayi) {
-          salonHavuzlari[i].push(seviyeOgrencileri.shift());
-          yerlestirildi = true;
-          break; // Bir öğrenci yerleştirildi, döngüyü yeniden başlat
-        }
-      }
-      
-      // Hiçbir salona yerleştirilemediyse, hedef sayıyı aşmaya izin ver
-      if (!yerlestirildi && seviyeOgrencileri.length > 0) {
-        const enAzDoluIndex = salonHavuzlari
-          .map((havuz, idx) => ({ havuz, idx, length: havuz.length }))
-          .sort((a, b) => a.length - b.length)[0].idx;
-        
-        salonHavuzlari[enAzDoluIndex].push(seviyeOgrencileri.shift());
-        logger.warn(`  ⚠️ Kalan öğrenci en az dolu salona yerleştirildi: Salon ${aktifSalonlar[enAzDoluIndex].salonAdi || aktifSalonlar[enAzDoluIndex].ad}`);
-      }
+    tumOgrenciler.push(...sinifSeviyeleri[seviye]);
+  });
+  
+  // Tüm öğrencileri karıştır (round-robin için)
+  const karisikOgrenciler = seedShuffle(tumOgrenciler, seed);
+  
+  logger.info(`📊 Toplam ${karisikOgrenciler.length} öğrenci round-robin ile dağıtılacak`);
+  
+  // Round-robin dağıtım
+  let salonIndex = 0;
+  karisikOgrenciler.forEach((ogrenci, index) => {
+    // Salon kapasitesini kontrol et
+    if (salonHavuzlari[salonIndex].length < salonHavuzlari[salonIndex].hedefSayi) {
+      salonHavuzlari[salonIndex].push(ogrenci);
+      logger.debug(`  ✅ Salon ${aktifSalonlar[salonIndex].salonAdi || aktifSalonlar[salonIndex].ad}: ${ogrenci.ad} (${ogrenci.sinif}) eklendi`);
+    } else {
+      // Bu salon dolu, bir sonrakine geç
+      salonIndex = (salonIndex + 1) % aktifSalonlar.length;
+      salonHavuzlari[salonIndex].push(ogrenci);
+      logger.debug(`  ✅ Salon ${aktifSalonlar[salonIndex].salonAdi || aktifSalonlar[salonIndex].ad}: ${ogrenci.ad} (${ogrenci.sinif}) eklendi`);
     }
+    
+    // Sonraki salona geç
+    salonIndex = (salonIndex + 1) % aktifSalonlar.length;
   });
 
   // Son durumu logla
@@ -1292,29 +1272,36 @@ export const gelismisYerlestirmeEski = (ogrenciler, salonlar, ayarlar) => {
     logger.debug(`📊 Salon ${salon.salonAdi || salon.ad}: Kapasite=${salon.kapasite}, Oran=${oran.toFixed(3)}, Hedef=${finalHedefSayi}`);
   });
   
-  // Her sınıf seviyesinden salonlara dağıt
+  // YENİ: ROUND-ROBIN DAĞITIM - Sınıf seviyelerini dönüşümlü olarak dağıt
+  logger.info(`\n🔄 AKILLI HAVUZ ROUND-ROBIN DAĞITIM: Sınıf seviyeleri dönüşümlü olarak dağıtılıyor`);
+  
+  // Tüm sınıf seviyelerini birleştir ve karıştır
+  const tumOgrenciler = [];
   Object.keys(sinifSeviyeleri).forEach(seviye => {
-    const seviyeOgrencileri = [...sinifSeviyeleri[seviye]];
-    const seviyeToplamOgrenci = seviyeOgrencileri.length;
-    const seviyeToplamHedef = salonHavuzlari.reduce((toplam, havuz) => toplam + havuz.hedefSayi, 0);
-    
-    aktifSalonlar.forEach((salon, index) => {
-      const seviyeOran = salonHavuzlari[index].hedefSayi / seviyeToplamHedef;
-      const seviyeSayi = Math.floor(seviyeToplamOgrenci * seviyeOran);
-      
-      for (let i = 0; i < seviyeSayi && seviyeOgrencileri.length > 0; i++) {
-        salonHavuzlari[index].push(seviyeOgrencileri.shift());
-      }
-    });
-    
-    // Kalanları dağıt
-    while (seviyeOgrencileri.length > 0) {
-      salonHavuzlari.forEach(havuz => {
-        if (seviyeOgrencileri.length > 0 && havuz.length < havuz.hedefSayi) {
-          havuz.push(seviyeOgrencileri.shift());
-        }
-      });
+    tumOgrenciler.push(...sinifSeviyeleri[seviye]);
+  });
+  
+  // Tüm öğrencileri karıştır (round-robin için)
+  const karisikOgrenciler = seedShuffle(tumOgrenciler, seed);
+  
+  logger.info(`📊 Toplam ${karisikOgrenciler.length} öğrenci akıllı havuz round-robin ile dağıtılacak`);
+  
+  // Round-robin dağıtım
+  let salonIndex = 0;
+  karisikOgrenciler.forEach((ogrenci, index) => {
+    // Salon kapasitesini kontrol et
+    if (salonHavuzlari[salonIndex].length < salonHavuzlari[salonIndex].hedefSayi) {
+      salonHavuzlari[salonIndex].push(ogrenci);
+      logger.debug(`  ✅ Salon ${aktifSalonlar[salonIndex].salonAdi || aktifSalonlar[salonIndex].ad}: ${ogrenci.ad} (${ogrenci.sinif}) eklendi`);
+    } else {
+      // Bu salon dolu, bir sonrakine geç
+      salonIndex = (salonIndex + 1) % aktifSalonlar.length;
+      salonHavuzlari[salonIndex].push(ogrenci);
+      logger.debug(`  ✅ Salon ${aktifSalonlar[salonIndex].salonAdi || aktifSalonlar[salonIndex].ad}: ${ogrenci.ad} (${ogrenci.sinif}) eklendi`);
     }
+    
+    // Sonraki salona geç
+    salonIndex = (salonIndex + 1) % aktifSalonlar.length;
   });
   
   // 4. Her salon için yerleştirme yap (çoklu deneme sistemi ile)
