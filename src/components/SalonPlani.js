@@ -1189,15 +1189,19 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                             onTransferClick={handleTransferClick}
                             currentSalon={sinif}
                             allSalons={tumSalonlar || []}
-                            conflict={(() => {
-                              const plan2D = Array(sinifDuzeni.satirSayisi).fill(null).map(() => Array(sinifDuzeni.sutunSayisi).fill(null));
-                              sinifDuzeni.masalar.forEach(m => {
-                                if (m.ogrenci) {
-                                  plan2D[m.satir][m.sutun] = { ogrenci: m.ogrenci, grup: m.grup };
-                                }
-                              });
-                              return hasConstraintConflict(masa, plan2D);
-                            })()}
+                                                conflict={(() => {
+                      const plan2D = Array(sinifDuzeni.satirSayisi).fill(null).map(() => Array(sinifDuzeni.sutunSayisi).fill(null));
+                      sinifDuzeni.masalar.forEach(m => {
+                        if (m.ogrenci && m.satir != null && m.sutun != null) {
+                          // Güvenlik kontrolü: satır ve sütun indekslerinin geçerli olduğundan emin ol
+                          if (m.satir >= 0 && m.satir < plan2D.length && 
+                              m.sutun >= 0 && m.sutun < plan2D[m.satir].length) {
+                            plan2D[m.satir][m.sutun] = { ogrenci: m.ogrenci, grup: m.grup };
+                          }
+                        }
+                      });
+                      return hasConstraintConflict(masa, plan2D);
+                    })()}
                           />
                         </DroppableSeat>
                       </Tooltip>
@@ -1282,15 +1286,19 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                     onTransferClick={handleTransferClick}
                     currentSalon={sinif}
                     allSalons={tumSalonlar || []}
-                    conflict={(() => {
-                      const plan2D = Array(sinifDuzeni.satirSayisi).fill(null).map(() => Array(sinifDuzeni.sutunSayisi).fill(null));
-                      sinifDuzeni.masalar.forEach(m => {
-                        if (m.ogrenci) {
-                          plan2D[m.satir][m.sutun] = { ogrenci: m.ogrenci, grup: m.grup };
-                        }
-                      });
-                      return hasConstraintConflict(masa, plan2D);
-                    })()}
+                                        conflict={(() => {
+                              const plan2D = Array(sinifDuzeni.satirSayisi).fill(null).map(() => Array(sinifDuzeni.sutunSayisi).fill(null));
+                              sinifDuzeni.masalar.forEach(m => {
+                                if (m.ogrenci && m.satir != null && m.sutun != null) {
+                                  // Güvenlik kontrolü: satır ve sütun indekslerinin geçerli olduğundan emin ol
+                                  if (m.satir >= 0 && m.satir < plan2D.length && 
+                                      m.sutun >= 0 && m.sutun < plan2D[m.satir].length) {
+                                    plan2D[m.satir][m.sutun] = { ogrenci: m.ogrenci, grup: m.grup };
+                                  }
+                                }
+                              });
+                              return hasConstraintConflict(masa, plan2D);
+                            })()}
                   />
                 </DroppableSeat>
             </Tooltip>
