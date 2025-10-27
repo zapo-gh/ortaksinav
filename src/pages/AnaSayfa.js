@@ -699,36 +699,61 @@ const AnaSayfaContent = React.memo(() => {
       }
 
       // Masa numaralarını yeniden hesapla - Tüm salonlar için
-      if (yerlestirmeFormatinda.tumSalonlar && yerlestirmeFormatinda.tumSalonlar.length > 0) {
-        yerlestirmeFormatinda.tumSalonlar = yerlestirmeFormatinda.tumSalonlar.map((salon, salonIndex) => {
-          try {
-            if (salon.masalar && Array.isArray(salon.masalar) && salon.masalar.length > 0) {
-              // Her masanın geçerli verilere sahip olduğundan emin ol
-              const validMasalar = salon.masalar.filter(masa => masa && typeof masa === 'object' && masa.hasOwnProperty('id'));
-              
-              if (validMasalar.length > 0) {
-                // Masa numaralarını yeniden hesapla
-                const masalarWithNumbers = calculateDeskNumbersForMasalar(validMasalar);
-                return {
-                  ...salon,
-                  masalar: masalarWithNumbers
-                };
-              } else {
-                logger.warn(`⚠️ Salon ${salonIndex} için geçerli masa yok!`);
-                return salon;
+      try {
+        if (yerlestirmeFormatinda.tumSalonlar && yerlestirmeFormatinda.tumSalonlar.length > 0) {
+          yerlestirmeFormatinda.tumSalonlar = yerlestirmeFormatinda.tumSalonlar.map((salon, salonIndex) => {
+            try {
+              if (!salon || typeof salon !== 'object') {
+                logger.error(`❌ Salon ${salonIndex} geçersiz format!`);
+                return null;
               }
+              
+              if (salon.masalar && Array.isArray(salon.masalar) && salon.masalar.length > 0) {
+                // Her masanın geçerli verilere sahip olduğundan emin ol
+                const validMasalar = salon.masalar.filter(masa => masa && typeof masa === 'object' && masa.hasOwnProperty('id'));
+                
+                if (validMasalar.length > 0) {
+                  try {
+                    // Masa numaralarını yeniden hesapla
+                    const masalarWithNumbers = calculateDeskNumbersForMasalar(validMasalar);
+                    return {
+                      ...salon,
+                      masalar: masalarWithNumbers
+                    };
+                  } catch (calcError) {
+                    logger.error(`❌ Salon ${salonIndex} masa numarası hesaplama hatası:`, calcError);
+                    return salon;
+                  }
+                } else {
+                  logger.warn(`⚠️ Salon ${salonIndex} için geçerli masa yok!`);
+                  return salon;
+                }
+              }
+            } catch (masaError) {
+              logger.error(`❌ Salon ${salonIndex} masalar işlenirken hata:`, masaError);
+              return salon || {};
             }
-          } catch (masaError) {
-            logger.error(`❌ Salon ${salonIndex} masalar işlenirken hata:`, masaError);
-            return salon;
+            return salon || {};
+          }).filter(salon => salon !== null); // null salonları temizle
+          
+          // Ana salon masalarını da güncelle
+          if (yerlestirmeFormatinda.salon && yerlestirmeFormatinda.salon.masalar && yerlestirmeFormatinda.tumSalonlar.length > 0) {
+            const ilkSalonMasalari = yerlestirmeFormatinda.tumSalonlar[0]?.masalar;
+            if (ilkSalonMasalari && Array.isArray(ilkSalonMasalari)) {
+              yerlestirmeFormatinda.salon.masalar = ilkSalonMasalari;
+            }
           }
-          return salon;
-        });
-        
-        // Ana salon masalarını da güncelle
-        if (yerlestirmeFormatinda.salon && yerlestirmeFormatinda.salon.masalar) {
-          yerlestirmeFormatinda.salon.masalar = yerlestirmeFormatinda.tumSalonlar[0]?.masalar || yerlestirmeFormatinda.salon.masalar;
         }
+      } catch (tumSalonlarError) {
+        logger.error('❌ Tüm salonlar işlenirken hata:', tumSalonlarError);
+        // Hataya rağmen devam et, sadece logla
+      }
+
+      // Yerleştirme güncellemesinden önce son kontrol
+      if (!yerlestirmeFormatinda.tumSalonlar || yerlestirmeFormatinda.tumSalonlar.length === 0) {
+        logger.error('❌ Yerleştirme verisi geçersiz: tumSalonlar boş!');
+        showError('Plan verisi geçersiz: Salon bilgileri bulunamadı!');
+        return;
       }
 
       yerlestirmeGuncelle(yerlestirmeFormatinda);
