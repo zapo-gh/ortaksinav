@@ -13,6 +13,24 @@ import {
 } from '@mui/material';
 
 const SalonOgrenciListesiPrintable = forwardRef(({ ogrenciler, yerlestirmeSonucu, ayarlar = {} }, ref) => {
+  // DEBUG: Yerleştirme sonucunu logla
+  console.log('🔍 DEBUG: yerlestirmeSonucu:', yerlestirmeSonucu);
+  if (yerlestirmeSonucu?.tumSalonlar) {
+    console.log('🔍 DEBUG: tumSalonlar sayısı:', yerlestirmeSonucu.tumSalonlar.length);
+    yerlestirmeSonucu.tumSalonlar.forEach((salon, index) => {
+      console.log(`🔍 DEBUG: Salon ${index + 1} (${salon.salonAdi || salon.ad}):`, {
+        hasPlan: !!salon.plan,
+        planLength: salon.plan?.length || 0,
+        hasMasalar: !!salon.masalar,
+        masalarLength: salon.masalar?.length || 0,
+        hasOgrenciler: !!salon.ogrenciler,
+        ogrencilerLength: salon.ogrenciler?.length || 0
+      });
+    });
+  } else {
+    console.log('❌ DEBUG: tumSalonlar yok! yerlestirmeSonucu:', yerlestirmeSonucu);
+  }
+  
   // Masa numarası hesaplama fonksiyonu
   const calculateDeskNumberForMasa = (masa) => {
     if (!masa || !yerlestirmeSonucu?.tumSalonlar) return masa?.id + 1 || 1;
