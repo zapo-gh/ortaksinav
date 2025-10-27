@@ -133,9 +133,22 @@ const SalonOgrenciListesiPrintable = forwardRef(({ ogrenciler, yerlestirmeSonucu
         
         // ÖNCE PLAN'DAN KONTROL ET
         if (salon.plan && Array.isArray(salon.plan) && salon.plan.length > 0) {
-          const planItem = salon.plan.find(p => p.ogrenci?.id === ogrenci.id);
+          const planItem = salon.plan.find(p => {
+            // ID kontrolü
+            if (p.ogrenci?.id === ogrenci.id) return true;
+            // Alternatif: numara kontrolü
+            if (p.ogrenci?.numara === ogrenci.numara) return true;
+            return false;
+          });
           if (debugMode) {
             console.log(`  📋 Plan kontrolü: ${planItem ? 'BULUNDU' : 'BULUNAMADI'}`);
+            if (!planItem && salon.plan.length > 0) {
+              console.log(`  📋 Plan ilk öğrenci örneği:`, {
+                id: salon.plan[0].ogrenci?.id,
+                numara: salon.plan[0].ogrenci?.numara,
+                ad: salon.plan[0].ogrenci?.ad
+              });
+            }
           }
           if (planItem) {
             salonBilgisi = salon.salonAdi || salon.ad || salon.id;
@@ -149,9 +162,22 @@ const SalonOgrenciListesiPrintable = forwardRef(({ ogrenciler, yerlestirmeSonucu
         
         // SONRA MASALAR'DAN KONTROL ET
         if (salon.masalar && Array.isArray(salon.masalar)) {
-          const masa = salon.masalar.find(m => m.ogrenci?.id === ogrenci.id);
+          const masa = salon.masalar.find(m => {
+            // ID kontrolü
+            if (m.ogrenci?.id === ogrenci.id) return true;
+            // Alternatif: numara kontrolü
+            if (m.ogrenci?.numara === ogrenci.numara) return true;
+            return false;
+          });
           if (debugMode) {
             console.log(`  🪑 Masalar kontrolü: ${masa ? 'BULUNDU' : 'BULUNAMADI'}`);
+            if (!masa && salon.masalar.length > 0) {
+              console.log(`  🪑 Masalar ilk öğrenci örneği:`, {
+                id: salon.masalar[0].ogrenci?.id,
+                numara: salon.masalar[0].ogrenci?.numara,
+                ad: salon.masalar[0].ogrenci?.ad
+              });
+            }
           }
           if (masa) {
             salonBilgisi = salon.salonAdi || salon.ad || salon.id;
@@ -165,9 +191,22 @@ const SalonOgrenciListesiPrintable = forwardRef(({ ogrenciler, yerlestirmeSonucu
         
         // SON OLARAK OGRENCILER'DEN KONTROL ET
         if (salon.ogrenciler && Array.isArray(salon.ogrenciler)) {
-          const bulunanOgrenci = salon.ogrenciler.find(o => o.id === ogrenci.id);
+          const bulunanOgrenci = salon.ogrenciler.find(o => {
+            // ID kontrolü
+            if (o.id === ogrenci.id) return true;
+            // Alternatif: numara kontrolü
+            if (o.numara === ogrenci.numara) return true;
+            return false;
+          });
           if (debugMode) {
             console.log(`  👥 Ogrenciler kontrolü: ${bulunanOgrenci ? 'BULUNDU' : 'BULUNAMADI'}`);
+            if (!bulunanOgrenci && salon.ogrenciler.length > 0) {
+              console.log(`  👥 Ogrenciler ilk öğrenci örneği:`, {
+                id: salon.ogrenciler[0].id,
+                numara: salon.ogrenciler[0].numara,
+                ad: salon.ogrenciler[0].ad
+              });
+            }
           }
           if (bulunanOgrenci) {
             salonBilgisi = salon.salonAdi || salon.ad || salon.id;
