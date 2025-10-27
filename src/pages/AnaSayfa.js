@@ -700,14 +700,27 @@ const AnaSayfaContent = React.memo(() => {
 
       // Masa numaralarını yeniden hesapla - Tüm salonlar için
       if (yerlestirmeFormatinda.tumSalonlar && yerlestirmeFormatinda.tumSalonlar.length > 0) {
-        yerlestirmeFormatinda.tumSalonlar = yerlestirmeFormatinda.tumSalonlar.map(salon => {
-          if (salon.masalar && Array.isArray(salon.masalar)) {
-            // Masa numaralarını yeniden hesapla
-            const masalarWithNumbers = calculateDeskNumbersForMasalar(salon.masalar);
-            return {
-              ...salon,
-              masalar: masalarWithNumbers
-            };
+        yerlestirmeFormatinda.tumSalonlar = yerlestirmeFormatinda.tumSalonlar.map((salon, salonIndex) => {
+          try {
+            if (salon.masalar && Array.isArray(salon.masalar) && salon.masalar.length > 0) {
+              // Her masanın geçerli verilere sahip olduğundan emin ol
+              const validMasalar = salon.masalar.filter(masa => masa && typeof masa === 'object' && masa.hasOwnProperty('id'));
+              
+              if (validMasalar.length > 0) {
+                // Masa numaralarını yeniden hesapla
+                const masalarWithNumbers = calculateDeskNumbersForMasalar(validMasalar);
+                return {
+                  ...salon,
+                  masalar: masalarWithNumbers
+                };
+              } else {
+                logger.warn(`⚠️ Salon ${salonIndex} için geçerli masa yok!`);
+                return salon;
+              }
+            }
+          } catch (masaError) {
+            logger.error(`❌ Salon ${salonIndex} masalar işlenirken hata:`, masaError);
+            return salon;
           }
           return salon;
         });
