@@ -1612,7 +1612,6 @@ const AnaSayfaContent = React.memo(() => {
           {/* Sınıf Listesi */}
           <SalonOgrenciListesiPrintable 
             ref={sinifListesiPrintRef}
-            ogrenciler={ogrenciler}
             yerlestirmeSonucu={yerlestirmeSonucu}
             ayarlar={ayarlar}
           />
