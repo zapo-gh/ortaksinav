@@ -13,22 +13,19 @@ import {
 } from '@mui/material';
 
 const SalonOgrenciListesiPrintable = forwardRef(({ ogrenciler, yerlestirmeSonucu, ayarlar = {} }, ref) => {
-  // DEBUG: Yerleştirme sonucunu logla
-  console.log('🔍 DEBUG: yerlestirmeSonucu:', yerlestirmeSonucu);
-  if (yerlestirmeSonucu?.tumSalonlar) {
-    console.log('🔍 DEBUG: tumSalonlar sayısı:', yerlestirmeSonucu.tumSalonlar.length);
-    yerlestirmeSonucu.tumSalonlar.forEach((salon, index) => {
-      console.log(`🔍 DEBUG: Salon ${index + 1} (${salon.salonAdi || salon.ad}):`, {
-        hasPlan: !!salon.plan,
-        planLength: salon.plan?.length || 0,
-        hasMasalar: !!salon.masalar,
-        masalarLength: salon.masalar?.length || 0,
-        hasOgrenciler: !!salon.ogrenciler,
-        ogrencilerLength: salon.ogrenciler?.length || 0
+  // DEBUG: Yerleştirme sonucunu logla (sadece ilk render)
+  if (ogrenciler && ogrenciler.length > 0) {
+    console.log('🔍 DEBUG: Toplam öğrenci sayısı:', ogrenciler.length);
+    console.log('🔍 DEBUG: tumSalonlar sayısı:', yerlestirmeSonucu?.tumSalonlar?.length || 0);
+    if (yerlestirmeSonucu?.tumSalonlar && yerlestirmeSonucu.tumSalonlar.length > 0) {
+      const ilkSalon = yerlestirmeSonucu.tumSalonlar[0];
+      console.log('🔍 DEBUG: İlk salon örneği:', {
+        salonAdi: ilkSalon.salonAdi || ilkSalon.ad,
+        planLength: ilkSalon.plan?.length || 0,
+        masalarLength: ilkSalon.masalar?.length || 0,
+        ogrencilerLength: ilkSalon.ogrenciler?.length || 0
       });
-    });
-  } else {
-    console.log('❌ DEBUG: tumSalonlar yok! yerlestirmeSonucu:', yerlestirmeSonucu);
+    }
   }
   
   // Masa numarası hesaplama fonksiyonu
@@ -113,6 +110,7 @@ const SalonOgrenciListesiPrintable = forwardRef(({ ogrenciler, yerlestirmeSonucu
   }
 
   // Öğrencileri sınıf seviyesine göre grupla ve salon/koltuk bilgilerini ekle
+  let ilkOgrenciIslendi = false;
   const ogrencilerBySinif = ogrenciler.reduce((acc, ogrenci) => {
     const sinif = ogrenci.sinif || 'Belirtilmemiş';
     if (!acc[sinif]) {
@@ -126,17 +124,25 @@ const SalonOgrenciListesiPrintable = forwardRef(({ ogrenciler, yerlestirmeSonucu
     // YERLEŞTİRME SONUCU KONTROLÜ
     if (yerlestirmeSonucu?.tumSalonlar) {
       for (const salon of yerlestirmeSonucu.tumSalonlar) {
-        // DEBUG: Öğrenci ve salon bilgisi
-        console.log(`🔍 Öğrenci: ${ogrenci.ad || ogrenci.adSoyad} (ID: ${ogrenci.id}), Salon: ${salon.salonAdi}`);
+        // DEBUG: Sadece ilk öğrenci için detaylı log
+        const debugMode = !ilkOgrenciIslendi;
+        
+        if (debugMode) {
+          console.log(`🔍 Öğrenci: ${ogrenci.ad || ogrenci.adSoyad} (ID: ${ogrenci.id}), Salon: ${salon.salonAdi}`);
+        }
         
         // ÖNCE PLAN'DAN KONTROL ET
         if (salon.plan && Array.isArray(salon.plan) && salon.plan.length > 0) {
           const planItem = salon.plan.find(p => p.ogrenci?.id === ogrenci.id);
-          console.log(`  📋 Plan kontrolü: ${planItem ? 'BULUNDU' : 'BULUNAMADI'}`);
+          if (debugMode) {
+            console.log(`  📋 Plan kontrolü: ${planItem ? 'BULUNDU' : 'BULUNAMADI'}`);
+          }
           if (planItem) {
             salonBilgisi = salon.salonAdi || salon.ad || salon.id;
             koltukNo = planItem.masaNumarasi || calculateDeskNumberForMasa(planItem);
-            console.log(`  ✅ Plan'den bulundu: Salon=${salonBilgisi}, Koltuk=${koltukNo}`);
+            if (debugMode) {
+              console.log(`  ✅ Plan'den bulundu: Salon=${salonBilgisi}, Koltuk=${koltukNo}`);
+            }
             break;
           }
         }
@@ -144,11 +150,15 @@ const SalonOgrenciListesiPrintable = forwardRef(({ ogrenciler, yerlestirmeSonucu
         // SONRA MASALAR'DAN KONTROL ET
         if (salon.masalar && Array.isArray(salon.masalar)) {
           const masa = salon.masalar.find(m => m.ogrenci?.id === ogrenci.id);
-          console.log(`  🪑 Masalar kontrolü: ${masa ? 'BULUNDU' : 'BULUNAMADI'}`);
+          if (debugMode) {
+            console.log(`  🪑 Masalar kontrolü: ${masa ? 'BULUNDU' : 'BULUNAMADI'}`);
+          }
           if (masa) {
             salonBilgisi = salon.salonAdi || salon.ad || salon.id;
             koltukNo = masa.masaNumarasi || calculateDeskNumberForMasa(masa);
-            console.log(`  ✅ Masalar'dan bulundu: Salon=${salonBilgisi}, Koltuk=${koltukNo}`);
+            if (debugMode) {
+              console.log(`  ✅ Masalar'dan bulundu: Salon=${salonBilgisi}, Koltuk=${koltukNo}`);
+            }
             break;
           }
         }
@@ -156,31 +166,38 @@ const SalonOgrenciListesiPrintable = forwardRef(({ ogrenciler, yerlestirmeSonucu
         // SON OLARAK OGRENCILER'DEN KONTROL ET
         if (salon.ogrenciler && Array.isArray(salon.ogrenciler)) {
           const bulunanOgrenci = salon.ogrenciler.find(o => o.id === ogrenci.id);
-          console.log(`  👥 Ogrenciler kontrolü: ${bulunanOgrenci ? 'BULUNDU' : 'BULUNAMADI'}`);
+          if (debugMode) {
+            console.log(`  👥 Ogrenciler kontrolü: ${bulunanOgrenci ? 'BULUNDU' : 'BULUNAMADI'}`);
+          }
           if (bulunanOgrenci) {
             salonBilgisi = salon.salonAdi || salon.ad || salon.id;
             
             // Öğrencinin yerleştirme bilgilerinden masa numarasını hesapla
             if (bulunanOgrenci.masaNumarasi) {
               koltukNo = bulunanOgrenci.masaNumarasi;
-              console.log(`  ✅ masaNumarasi'den bulundu: ${koltukNo}`);
+              if (debugMode) console.log(`  ✅ masaNumarasi'den bulundu: ${koltukNo}`);
             } else if (bulunanOgrenci.satir !== undefined && bulunanOgrenci.sutun !== undefined) {
               // Satır-sütun bilgisinden masa numarasını hesapla
               const sutunSayisi = salon.siraDizilimi?.sutun || salon.sutun || 5;
               koltukNo = bulunanOgrenci.satir * sutunSayisi + bulunanOgrenci.sutun + 1;
-              console.log(`  ✅ satir-sutun'dan hesaplandı: ${koltukNo}`);
+              if (debugMode) console.log(`  ✅ satir-sutun'dan hesaplandı: ${koltukNo}`);
             } else {
               koltukNo = bulunanOgrenci.masaNo || bulunanOgrenci.koltukNo || 'Belirtilmemiş';
-              console.log(`  ✅ diğer alanlardan bulundu: ${koltukNo}`);
+              if (debugMode) console.log(`  ✅ diğer alanlardan bulundu: ${koltukNo}`);
             }
-            console.log(`  ✅ Ogrenciler'den bulundu: Salon=${salonBilgisi}, Koltuk=${koltukNo}`);
+            if (debugMode) {
+              console.log(`  ✅ Ogrenciler'den bulundu: Salon=${salonBilgisi}, Koltuk=${koltukNo}`);
+            }
             break;
           }
         }
       }
     }
     
-    console.log(`📊 Final: ${ogrenci.ad || ogrenci.adSoyad} -> Salon: ${salonBilgisi}, Koltuk: ${koltukNo}`);
+    if (!ilkOgrenciIslendi) {
+      console.log(`📊 Final: ${ogrenci.ad || ogrenci.adSoyad} -> Salon: ${salonBilgisi}, Koltuk: ${koltukNo}`);
+      ilkOgrenciIslendi = true;
+    }
     
     acc[sinif].push({
       ...ogrenci,
