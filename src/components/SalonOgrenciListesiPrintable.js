@@ -12,7 +12,29 @@ import {
   Chip
 } from '@mui/material';
 
-const SalonOgrenciListesiPrintable = forwardRef(({ ogrenciler, yerlestirmeSonucu, ayarlar = {} }, ref) => {
+const SalonOgrenciListesiPrintable = forwardRef(({ ogrenciler: ogrencilerProp, yerlestirmeSonucu, ayarlar = {} }, ref) => {
+  // Öğrenci listesini yerleştirme sonucundan çıkar (eğer ogrenciler prop'u yanlışsa)
+  let ogrenciler = ogrencilerProp;
+  
+  // Eğer ogrenciler prop'u ve plan'daki öğrenciler eşleşmiyorsa, plan'dan çıkar
+  if (yerlestirmeSonucu?.tumSalonlar && yerlestirmeSonucu.tumSalonlar.length > 0) {
+    const planOgrencileri = [];
+    yerlestirmeSonucu.tumSalonlar.forEach((salon) => {
+      if (salon.plan && Array.isArray(salon.plan)) {
+        salon.plan.forEach(p => {
+          if (p.ogrenci) {
+            planOgrencileri.push(p.ogrenci);
+          }
+        });
+      }
+    });
+    
+    // Plan'dan gelen öğrenci sayısı > 0 ise ve ogrenciler prop'dan farklıysa, plan'ı kullan
+    if (planOgrencileri.length > 0) {
+      console.log('⚠️ DEBUG: ogrenciler prop ile plan uyuşmuyor, plan kullanılıyor');
+      ogrenciler = planOgrencileri;
+    }
+  }
   // DEBUG: Yerleştirme sonucunu logla (sadece ilk render)
   if (ogrenciler && ogrenciler.length > 0) {
     console.log('🔍 DEBUG: Toplam öğrenci sayısı:', ogrenciler.length);
@@ -25,6 +47,31 @@ const SalonOgrenciListesiPrintable = forwardRef(({ ogrenciler, yerlestirmeSonucu
         masalarLength: ilkSalon.masalar?.length || 0,
         ogrencilerLength: ilkSalon.ogrenciler?.length || 0
       });
+      
+      // İlk öğrencinin numarasını logla
+      if (ogrenciler.length > 0) {
+        console.log('🔍 DEBUG: İlk öğrenci (ogrenciler listesinden):', {
+          id: ogrenciler[0].id,
+          numara: ogrenciler[0].numara,
+          ad: ogrenciler[0].ad,
+          soyad: ogrenciler[0].soyad
+        });
+        
+        // Plan'daki tüm öğrencilerin numaralarını topla
+        const tumPlanNumaralari = [];
+        yerlestirmeSonucu.tumSalonlar.forEach((salon) => {
+          if (salon.plan && Array.isArray(salon.plan)) {
+            salon.plan.forEach(p => {
+              if (p.ogrenci?.numara) {
+                tumPlanNumaralari.push(p.ogrenci.numara);
+              }
+            });
+          }
+        });
+        console.log('🔍 DEBUG: Plan\'daki ilk 10 öğrenci numarası:', tumPlanNumaralari.slice(0, 10));
+        console.log('🔍 DEBUG: Plan\'da toplam öğrenci sayısı:', tumPlanNumaralari.length);
+        console.log('🔍 DEBUG: Aranan numara "30" plan\'da var mı?', tumPlanNumaralari.includes('30'));
+      }
     }
   }
   
