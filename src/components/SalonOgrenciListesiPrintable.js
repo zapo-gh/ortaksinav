@@ -105,68 +105,45 @@ const SalonOgrenciListesiPrintable = forwardRef(({ ogrenciler, yerlestirmeSonucu
     let salonBilgisi = 'Belirtilmemiş';
     let koltukNo = 'Belirtilmemiş';
     
+    // YERLEŞTİRME SONUCU KONTROLÜ
     if (yerlestirmeSonucu?.tumSalonlar) {
       for (const salon of yerlestirmeSonucu.tumSalonlar) {
-        if (salon.ogrenciler) {
+        // ÖNCE PLAN'DAN KONTROL ET
+        if (salon.plan && Array.isArray(salon.plan) && salon.plan.length > 0) {
+          const planItem = salon.plan.find(p => p.ogrenci?.id === ogrenci.id);
+          if (planItem) {
+            salonBilgisi = salon.salonAdi || salon.ad || salon.id;
+            koltukNo = planItem.masaNumarasi || calculateDeskNumberForMasa(planItem);
+            break;
+          }
+        }
+        
+        // SONRA MASALAR'DAN KONTROL ET
+        if (salon.masalar && Array.isArray(salon.masalar)) {
+          const masa = salon.masalar.find(m => m.ogrenci?.id === ogrenci.id);
+          if (masa) {
+            salonBilgisi = salon.salonAdi || salon.ad || salon.id;
+            koltukNo = masa.masaNumarasi || calculateDeskNumberForMasa(masa);
+            break;
+          }
+        }
+        
+        // SON OLARAK OGRENCILER'DEN KONTROL ET
+        if (salon.ogrenciler && Array.isArray(salon.ogrenciler)) {
           const bulunanOgrenci = salon.ogrenciler.find(o => o.id === ogrenci.id);
           if (bulunanOgrenci) {
             salonBilgisi = salon.salonAdi || salon.ad || salon.id;
             
-            // DEBUG: Koltuk numarası bulma işlemi
-            console.log(`🔍 ${ogrenci.ad || ogrenci.adSoyad} için koltuk aranıyor...`);
-            console.log(`📍 Salon: ${salonBilgisi}`);
-            console.log(`📋 Plan var mı:`, !!salon.plan);
-            console.log(`📋 Plan uzunluğu:`, salon.plan?.length || 0);
-            
-            // Koltuk numarasını masalar'dan bul
-            if (salon.masalar && Array.isArray(salon.masalar) && salon.masalar.length > 0) {
-              console.log(`📋 Masalar detayları:`, {
-                masalarUzunlugu: salon.masalar.length,
-                masalarTipi: typeof salon.masalar,
-                masalarIlkItem: salon.masalar[0]
-              });
-
-              const masa = salon.masalar.find(m => m.ogrenci?.id === ogrenci.id);
-              console.log(`🔍 Masa bulundu:`, !!masa);
-              console.log(`🔍 Masa detayı:`, masa);
-
-              if (masa) {
-                // Masa numarasını masa.masaNumarasi olarak hesapla (salon planındaki gibi)
-                koltukNo = masa.masaNumarasi || calculateDeskNumberForMasa(masa);
-                console.log(`✅ Koltuk numarası: ${koltukNo}`);
-              } else {
-                console.log(`❌ Masa bulunamadı! Öğrenci ID: ${ogrenci.id}`);
-                // Masalar'daki tüm öğrenci ID'lerini listele
-                const masaOgrenciIds = salon.masalar.map(m => m.ogrenci?.id).filter(Boolean);
-                console.log(`📝 Masalar'daki öğrenci ID'leri:`, masaOgrenciIds.slice(0, 10));
-                console.log(`📝 Masalar'daki tüm öğrenci bilgileri:`, salon.masalar.map(m => ({
-                  id: m.ogrenci?.id,
-                  ad: m.ogrenci?.ad,
-                  satir: m.satir,
-                  sutun: m.sutun
-                })).slice(0, 5));
-              }
+            // Öğrencinin yerleştirme bilgilerinden masa numarasını hesapla
+            if (bulunanOgrenci.masaNumarasi) {
+              koltukNo = bulunanOgrenci.masaNumarasi;
+            } else if (bulunanOgrenci.satir !== undefined && bulunanOgrenci.sutun !== undefined) {
+              // Satır-sütun bilgisinden masa numarasını hesapla
+              const sutunSayisi = salon.siraDizilimi?.sutun || salon.sutun || 5;
+              koltukNo = bulunanOgrenci.satir * sutunSayisi + bulunanOgrenci.sutun + 1;
             } else {
-              console.log(`❌ Salon ${salonBilgisi} masalar yok veya boş! Masalar:`, salon.masalar);
+              koltukNo = bulunanOgrenci.masaNo || bulunanOgrenci.koltukNo || 'Belirtilmemiş';
             }
-            
-            if (koltukNo === 'Belirtilmemiş') {
-              // Öğrencinin yerleştirme bilgilerinden masa numarasını hesapla
-              if (bulunanOgrenci.masaNumarasi) {
-                koltukNo = bulunanOgrenci.masaNumarasi;
-                console.log(`🔄 Fallback masa numarası (masaNumarasi): ${koltukNo}`);
-              } else if (bulunanOgrenci.satir !== undefined && bulunanOgrenci.sutun !== undefined) {
-                // Satır-sütun bilgisinden masa numarasını hesapla
-                const satirSayisi = salon.siraDizilimi?.sutun || salon.sutun || 5; // Varsayılan sütun sayısı
-                koltukNo = bulunanOgrenci.satir * satirSayisi + bulunanOgrenci.sutun + 1;
-                console.log(`🔄 Fallback masa numarası (satir-sutun): ${koltukNo}`);
-              } else {
-                koltukNo = bulunanOgrenci.masaNo || bulunanOgrenci.koltukNo || 'Belirtilmemiş';
-                console.log(`🔄 Fallback masa numarası (diğer): ${koltukNo}`);
-              }
-            }
-            
-            console.log(`📊 Final koltuk numarası: ${koltukNo}`);
             break;
           }
         }
