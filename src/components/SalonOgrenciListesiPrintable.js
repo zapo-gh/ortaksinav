@@ -107,42 +107,62 @@ const SalonOgrenciListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = 
     });
   }
 
-  // Öğrencileri salon bazında grupla, salon sırasını koru
-  const ogrencilerBySalon = {};
-  
-  if (yerlestirmeSonucu?.tumSalonlar) {
-    yerlestirmeSonucu.tumSalonlar.forEach((salon, salonIndex) => {
-      const salonAdi = salon.salonAdi || salon.ad || salon.id;
-      
-      if (salon.ogrenciler && Array.isArray(salon.ogrenciler)) {
-        salon.ogrenciler.forEach(ogrenci => {
-          if (!ogrencilerBySalon[salonAdi]) {
-            ogrencilerBySalon[salonAdi] = [];
-          }
+  // Öğrencileri sınıf seviyesine göre grupla ve salon/koltuk bilgilerini ekle
+  const ogrencilerBySinif = ogrenciler.reduce((acc, ogrenci) => {
+    const sinif = ogrenci.sinif || 'Belirtilmemiş';
+    if (!acc[sinif]) {
+      acc[sinif] = [];
+    }
+    
+    // Salon ve koltuk bilgilerini bul
+    let salonBilgisi = 'Belirtilmemiş';
+    let koltukNo = 'Belirtilmemiş';
+    
+    // Öğrencinin hangi salonda olduğunu bul
+    if (yerlestirmeSonucu?.tumSalonlar) {
+      for (const salon of yerlestirmeSonucu.tumSalonlar) {
+        // Öğrenci bu salonda mı kontrol et
+        const bulunanOgrenci = salon.ogrenciler?.find(o => o.id === ogrenci.id);
+        
+        if (bulunanOgrenci) {
+          salonBilgisi = salon.salonAdi || salon.ad || salon.id;
           
           // Masa numarasını bul
-          let koltukNo = 'Belirtilmemiş';
           const masa = salon.masalar?.find(m => m.ogrenci?.id === ogrenci.id);
           if (masa) {
             koltukNo = masa.masaNumarasi || calculateDeskNumberForMasa(masa);
-          } else if (ogrenci.masaNumarasi) {
-            koltukNo = ogrenci.masaNumarasi;
-          } else if (ogrenci.satir !== undefined && ogrenci.sutun !== undefined) {
+          } else if (bulunanOgrenci.masaNumarasi) {
+            koltukNo = bulunanOgrenci.masaNumarasi;
+          } else if (bulunanOgrenci.satir !== undefined && bulunanOgrenci.sutun !== undefined) {
             const sutunSayisi = salon.siraDizilimi?.sutun || salon.sutun || 5;
-            koltukNo = ogrenci.satir * sutunSayisi + ogrenci.sutun + 1;
+            koltukNo = bulunanOgrenci.satir * sutunSayisi + bulunanOgrenci.sutun + 1;
           }
           
-          ogrencilerBySalon[salonAdi].push({
-            ...ogrenci,
-            salonBilgisi: salonAdi,
-            koltukNo
-          });
-        });
+          break;
+        }
       }
+    }
+    
+    acc[sinif].push({
+      ...ogrenci,
+      salonBilgisi,
+      koltukNo
     });
-  }
-  
+    return acc;
+  }, {});
 
+  // Salon bazında öğrenci grupları (kullanılmıyor, sınıf bazında listeleme yapıyoruz)
+  // const salonGruplari = ogrenciSalonEslesmeleri.reduce((acc, ogrenci) => {
+  //   const salonId = ogrenci.salonId;
+  //   if (!acc[salonId]) {
+  //     acc[salonId] = {
+  //       salonAdi: ogrenci.salonAdi,
+  //       ogrenciler: []
+  //     };
+  //   }
+  //   acc[salonId].ogrenciler.push(ogrenci);
+  //   return acc;
+  // }, {});
 
   // Yerleştirme yoksa uygun mesaj göster
   if (!yerlestirmeSonucu || !yerlestirmeSonucu.tumSalonlar || yerlestirmeSonucu.tumSalonlar.length === 0) {
@@ -215,42 +235,20 @@ const SalonOgrenciListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = 
 
 
 
-      {/* Salon Bazında Liste - Salon sırası korunarak */}
+      {/* Sınıf Bazında Liste */}
       <Box sx={{ mb: 2 }}>
-        {Object.entries(ogrencilerBySalon).map(([salonAdi, salonOgrencileri], salonIndex) => {
-          // Bu salondaki öğrencileri sınıflara göre grupla
-          const sinifGruplari = {};
-          salonOgrencileri.forEach(ogrenci => {
-            const sinif = ogrenci.sinif || 'Belirtilmemiş';
-            if (!sinifGruplari[sinif]) {
-              sinifGruplari[sinif] = [];
+        {Object.entries(ogrencilerBySinif).map(([sinif, sinifOgrencileri], index) => (
+          <Box key={sinif} sx={{ 
+            mb: 1,
+            pt: 2,
+            pageBreakBefore: index > 0 ? 'always' : 'auto',
+            '@media print': {
+              pageBreakBefore: index > 0 ? 'always' : 'auto',
+              breakBefore: index > 0 ? 'page' : 'auto',
+              pt: 0,
+              mt: 0
             }
-            sinifGruplari[sinif].push(ogrenci);
-          });
-          
-          // Salon içinde sınıfları sırala
-          const sortedSiniflar = Object.keys(sinifGruplari).sort();
-          
-          return (
-            <Box key={salonAdi} sx={{ 
-              mb: 2,
-              pt: 2,
-              pageBreakBefore: salonIndex > 0 ? 'always' : 'auto',
-              '@media print': {
-                pageBreakBefore: salonIndex > 0 ? 'always' : 'auto',
-                breakBefore: salonIndex > 0 ? 'page' : 'auto',
-                pt: 0,
-                mt: 0
-              }
-            }}>
-              {/* Salon için öğrenci listesi - Tüm sınıflar aynı sayfada */}
-              {sortedSiniflar.map((sinif, sinifIndex) => {
-                const sinifOgrencileri = sinifGruplari[sinif];
-                
-                return (
-                  <Box key={`${salonAdi}-${sinif}`} sx={{ 
-                    mb: sinifIndex < sortedSiniflar.length - 1 ? 3 : 0
-                  }}>
+          }}>
             {/* Üst Boşluk - Her sınıf için */}
             <Box sx={{ 
               height: '20px',
@@ -373,12 +371,8 @@ const SalonOgrenciListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = 
                 </TableBody>
               </Table>
             </TableContainer>
-                  </Box>
-                );
-              })}
-            </Box>
-          );
-        })}
+          </Box>
+        ))}
       </Box>
 
       {/* Alt bilgi */}
