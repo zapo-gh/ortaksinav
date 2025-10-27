@@ -666,7 +666,9 @@ const AnaSayfaContent = React.memo(() => {
   // Plan yükleme fonksiyonu
   const handlePlanYukle = async (plan) => {
     try {
+      console.log('🔍 Plan yükleme başlatıldı:', plan);
       const loadedPlan = await planManager.loadPlan(plan.id);
+      console.log('🔍 Plan verisi yüklendi:', loadedPlan);
 
       if (!loadedPlan || !loadedPlan.data) {
         showError('Plan verisi bulunamadı!');
@@ -674,8 +676,10 @@ const AnaSayfaContent = React.memo(() => {
       }
 
       const planData = loadedPlan.data;
+      console.log('🔍 Plan data yapısı:', JSON.stringify(planData).substring(0, 200));
 
       // Plan verisini yerlestirmeSonucu formatına dönüştür
+      console.log('🔍 Plan data salon sayısı:', planData.tumSalonlar?.length || 0);
       const yerlestirmeFormatinda = {
         salon: planData.salon,
         tumSalonlar: planData.tumSalonlar,
@@ -683,6 +687,7 @@ const AnaSayfaContent = React.memo(() => {
         yerlesilemeyenOgrenciler: planData.yerlesilemeyenOgrenciler,
         istatistikler: planData.istatistikler
       };
+      console.log('🔍 Yerleştirme formatı oluşturuldu:', yerlestirmeFormatinda.tumSalonlar?.length || 0, 'salon');
 
       // Ayarlar ve dersler bilgilerini yükle
       if (planData.ayarlar) {
@@ -756,7 +761,17 @@ const AnaSayfaContent = React.memo(() => {
         return;
       }
 
-      yerlestirmeGuncelle(yerlestirmeFormatinda);
+      console.log('🔍 Yerleştirme güncelleniyor...');
+      console.log('🔍 tumSalonlar detayı:', yerlestirmeFormatinda.tumSalonlar);
+      
+      try {
+        yerlestirmeGuncelle(yerlestirmeFormatinda);
+        console.log('✅ Yerleştirme güncellendi!');
+      } catch (updateError) {
+        console.error('❌ Yerleştirme güncelleme hatası:', updateError);
+        console.error('❌ Stack trace:', updateError.stack);
+        throw updateError;
+      }
       
       tabDegistir('salon-plani');
 
