@@ -365,12 +365,32 @@ export const calculateBalancedDistribution = (ogrenciler, kapasite) => {
  * 2.grup: Sıra1-Sol(5), Sıra1-Sağ(6), Sıra2-Sol(7), Sıra2-Sağ(8)...
  */
 export const calculateDeskNumbersForMasalar = (masalar) => {
+  // Güvenlik kontrolü
+  if (!masalar || !Array.isArray(masalar) || masalar.length === 0) {
+    return [];
+  }
+  
   // Grup bazlı sıralama
   const gruplar = {};
-  masalar.forEach(masa => {
+  masalar.forEach((masa, index) => {
+    // Her masanın geçerli olduğundan emin ol
+    if (!masa || typeof masa !== 'object') {
+      logger.warn(`⚠️ Geçersiz masa objesi at index ${index}`);
+      return;
+    }
+    
     const grup = masa.grup || 1;
-    if (!gruplar[grup]) gruplar[grup] = [];
-    gruplar[grup].push(masa);
+    if (!gruplar[grup]) {
+      gruplar[grup] = [];
+    }
+    
+    // Güvenli push işlemi
+    if (Array.isArray(gruplar[grup])) {
+      gruplar[grup].push(masa);
+    } else {
+      logger.error(`❌ Grup ${grup} array değil!`);
+      gruplar[grup] = [masa];
+    }
   });
   
   let masaNumarasi = 1;
@@ -380,18 +400,31 @@ export const calculateDeskNumbersForMasalar = (masalar) => {
   for (const grupId of sortedGruplar) {
     const grupMasalar = gruplar[grupId];
     
+    // Güvenlik kontrolü
+    if (!Array.isArray(grupMasalar) || grupMasalar.length === 0) {
+      continue;
+    }
+    
     // Grup içinde satır-sütun sıralaması
     const sortedGrupMasalar = grupMasalar.sort((a, b) => {
-      if (a.satir !== b.satir) return a.satir - b.satir;
-      return a.sutun - b.sutun;
+      // Null/undefined kontrolü
+      const satirA = a.satir != null ? a.satir : 0;
+      const satirB = b.satir != null ? b.satir : 0;
+      const sutunA = a.sutun != null ? a.sutun : 0;
+      const sutunB = b.sutun != null ? b.sutun : 0;
+      
+      if (satirA !== satirB) return satirA - satirB;
+      return sutunA - sutunB;
     });
     
     // Bu grup için masa numaralarını ata
     sortedGrupMasalar.forEach(masa => {
-      guncellenmisMasalar.push({
-        ...masa,
-        masaNumarasi: masaNumarasi++
-      });
+      if (masa && typeof masa === 'object') {
+        guncellenmisMasalar.push({
+          ...masa,
+          masaNumarasi: masaNumarasi++
+        });
+      }
     });
   }
   
