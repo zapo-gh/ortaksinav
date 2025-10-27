@@ -870,11 +870,23 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
 
   return (
     <Box sx={{ width: '100%', mb: 2 }}>
-      <Paper elevation={1} sx={{ p: 2, maxWidth: 1400, mx: 'auto' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <Paper elevation={1} sx={{ p: { xs: 1, sm: 2 }, maxWidth: { xs: '100%', sm: 1400 }, mx: 'auto' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between', 
+            mb: 1,
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: { xs: 1, sm: 0 }
+          }}>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: { xs: 1, sm: 2 },
+              flexWrap: 'wrap'
+            }}>
             <ChairIcon sx={{ mr: 1, color: 'primary.main' }} />
-              <Typography variant="h5" component="h2">
+              <Typography variant="h5" component="h2" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
               Sınıf Planı
             </Typography>
             
@@ -889,24 +901,34 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                 const toplamOgrenci = toplamYerlesen + toplamYerlesilemeyen;
                 
                 return (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2 }}>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: { xs: 0.5, sm: 1 }, 
+                    ml: { xs: 0, sm: 2 },
+                    flexWrap: 'wrap',
+                    justifyContent: { xs: 'center', sm: 'flex-start' }
+                  }}>
                     <Chip 
                       label={`Toplam: ${toplamOgrenci}`}
                       color="primary"
                       variant="outlined"
                       size="small"
+                      sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
                     />
                     <Chip 
                       label={`Yerleşen: ${toplamYerlesen}`}
                       color="success"
                       variant="outlined"
                       size="small"
+                      sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
                     />
                     <Chip 
                       label={`Yerleşmeyen: ${toplamYerlesilemeyen}`}
                       color="warning"
                       variant="outlined"
                       size="small"
+                      sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
                     />
                   </Box>
                 );
@@ -918,24 +940,34 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                 const yerlesilemeyenSayisi = ogrenciler.filter(o => !o.salonId).length;
                 
                 return (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2 }}>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: { xs: 0.5, sm: 1 }, 
+                    ml: { xs: 0, sm: 2 },
+                    flexWrap: 'wrap',
+                    justifyContent: { xs: 'center', sm: 'flex-start' }
+                  }}>
                     <Chip 
                       label={`Toplam: ${ogrenciler.length}`}
                       color="primary"
                       variant="outlined"
                       size="small"
+                      sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
                     />
                     <Chip 
                       label={`Yerleşen: ${yerlesenSayisi}`}
                       color="success"
                       variant="outlined"
                       size="small"
+                      sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
                     />
                     <Chip 
                       label={`Yerleşmeyen: ${yerlesilemeyenSayisi}`}
                       color="warning"
                       variant="outlined"
                       size="small"
+                      sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
                     />
                   </Box>
                 );
@@ -945,7 +977,12 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
             })()}
           </Box>
 
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            gap: { xs: 0.5, sm: 1 },
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'center', sm: 'flex-start' }
+          }}>
             <Tooltip title="Dağıtımı Sil">
               <IconButton 
                 color="error" 
@@ -962,7 +999,8 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                   bgcolor: 'error.50',
                   '&:hover': {
                     bgcolor: 'error.100'
-                  }
+                  },
+                  size: { xs: 'small', sm: 'medium' }
                 }}
               >
                 <DeleteIcon />
@@ -973,8 +1011,15 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
 
         {/* Salon sekmeleri - Hem yerleştirme planı varken hem de yokken göster */}
         {((tumSalonlar && tumSalonlar.length > 1) || (salonlar && salonlar.length > 0)) && (
-          <Paper elevation={1} sx={{ p: 2, mb: 3, bgcolor: 'grey.50' }}>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
+          <Paper elevation={1} sx={{ p: { xs: 1, sm: 2 }, mb: 3, bgcolor: 'grey.50' }}>
+            <Box sx={{ 
+              display: 'flex', 
+              gap: { xs: 0.5, sm: 1 }, 
+              flexWrap: 'wrap', 
+              justifyContent: 'center', 
+              alignItems: 'center',
+              flexDirection: { xs: 'column', sm: 'row' }
+            }}>
               {/* Yerleştirme planı varken - tumSalonlar kullan */}
               {sortedTumSalonlar && sortedTumSalonlar.length > 0 && sortedTumSalonlar
                 .map((salon) => {
@@ -989,7 +1034,8 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                       }
                     }}
                     sx={{ 
-                      minWidth: 100,
+                      minWidth: { xs: '100%', sm: 100 },
+                      width: { xs: '100%', sm: 'auto' },
                       borderRadius: 3,
                       textTransform: 'none',
                       fontWeight: isActive ? 'bold' : 'normal',
@@ -998,7 +1044,8 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                         boxShadow: 4,
                         transform: 'translateY(-1px)'
                       },
-                      transition: 'opacity 0.1s ease, background-color 0.1s ease'
+                      transition: 'opacity 0.1s ease, background-color 0.1s ease',
+                      mb: { xs: 0.5, sm: 0 }
                     }}
                   >
                     <Typography variant="body2">
@@ -1028,7 +1075,8 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                     variant={isActive ? 'contained' : 'outlined'}
                     onClick={() => onSeciliSalonDegistir && onSeciliSalonDegistir(salon.id)}
                     sx={{ 
-                      minWidth: 100,
+                      minWidth: { xs: '100%', sm: 100 },
+                      width: { xs: '100%', sm: 'auto' },
                       borderRadius: 3,
                       textTransform: 'none',
                       fontWeight: isActive ? 'bold' : 'normal',
@@ -1037,7 +1085,8 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                         boxShadow: 4,
                         transform: 'translateY(-1px)'
                       },
-                      transition: 'opacity 0.1s ease, background-color 0.1s ease'
+                      transition: 'opacity 0.1s ease, background-color 0.1s ease',
+                      mb: { xs: 0.5, sm: 0 }
                     }}
                   >
                     <Typography variant="body2">

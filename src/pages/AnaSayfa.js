@@ -203,8 +203,18 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
     <Container maxWidth="xl" sx={{ py: 3 }}>
       <Card elevation={2}>
         <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" gutterBottom sx={{ mb: 0 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            mb: { xs: 2, sm: 3 },
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: { xs: 1, sm: 0 }
+          }}>
+            <Typography variant="h5" gutterBottom sx={{ 
+              mb: 0,
+              fontSize: { xs: '1.25rem', sm: '1.5rem' }
+            }}>
               Kayıtlı Planlar
             </Typography>
             <Button
@@ -212,7 +222,11 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
               color="warning"
               size="small"
               onClick={handleCleanupTempPlans}
-              sx={{ ml: 2 }}
+              sx={{ 
+                ml: { xs: 0, sm: 2 },
+                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                px: { xs: 1, sm: 2 }
+              }}
             >
               Geçici Kayıtları Temizle
             </Button>
@@ -267,11 +281,20 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
                 <Typography variant="body2" sx={{ mb: 2 }}>
                   Salon Sayısı: {plan.salonCount || 0}
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  gap: { xs: 0.5, sm: 1 }, 
+                  justifyContent: 'center',
+                  flexDirection: { xs: 'column', sm: 'row' }
+                }}>
                   <Button 
                     variant="contained" 
                     size="small"
                     onClick={() => onPlanYukle(plan)}
+                    sx={{ 
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                      px: { xs: 1, sm: 2 }
+                    }}
                   >
                     Yükle
                   </Button>
@@ -280,6 +303,10 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
                     color="error" 
                     size="small"
                     onClick={() => handlePlanSil(plan.id)}
+                    sx={{ 
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                      px: { xs: 1, sm: 2 }
+                    }}
                   >
                     Sil
                   </Button>
@@ -1205,15 +1232,30 @@ const AnaSayfaContent = React.memo(() => {
                 {yerlestirmeSonucu?.yerlesilemeyenOgrenciler && yerlestirmeSonucu.yerlesilemeyenOgrenciler.length > 0 && (
                   <Card sx={{ mt: 1, border: '2px solid', borderColor: 'warning.main' }}>
                     <CardContent>
-                      <Typography variant="h6" sx={{ color: 'warning.main', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="h6" sx={{ 
+                        color: 'warning.main', 
+                        mb: 2, 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 1,
+                        fontSize: { xs: '1rem', sm: '1.25rem' }
+                      }}>
                         <WarningIcon />
                         Yerleşmeyen Öğrenciler ({yerlestirmeSonucu.yerlesilemeyenOgrenciler.length})
                       </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ 
+                        mb: 2,
+                        fontSize: { xs: '0.875rem', sm: '0.875rem' }
+                      }}>
                         Aşağıdaki öğrenciler kısıtlar nedeniyle otomatik yerleştirilemedi. 
                         Manuel olarak yerleştirebilirsiniz.
                       </Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        flexWrap: 'wrap', 
+                        gap: { xs: 0.5, sm: 1 },
+                        justifyContent: { xs: 'center', sm: 'flex-start' }
+                      }}>
                         {yerlestirmeSonucu.yerlesilemeyenOgrenciler.map((ogrenci, index) => (
                           <Chip
                             key={index}
@@ -1409,12 +1451,21 @@ const AnaSayfaContent = React.memo(() => {
         )}
 
         {/* Tab Navigation */}
-        <Paper elevation={1} sx={{ mb: 3 }}>
+        <Paper elevation={1} sx={{ mb: { xs: 2, sm: 3 } }}>
           <Tabs
             value={aktifTab}
             onChange={(e, newValue) => tabDegistir(newValue)}
-            centered
-            sx={{ borderBottom: 1, borderColor: 'divider' }}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{ 
+              borderBottom: 1, 
+              borderColor: 'divider',
+              '& .MuiTab-root': {
+                minWidth: { xs: 'auto', sm: 'auto' },
+                px: { xs: 1, sm: 2 },
+                fontSize: { xs: '0.75rem', sm: '0.875rem' }
+              }
+            }}
           >
             <Tab 
               icon={<SettingsIcon />} 
@@ -1481,14 +1532,16 @@ const AnaSayfaContent = React.memo(() => {
           color="secondary"
           sx={{
             position: 'fixed',
-            bottom: 24,
-            right: 24,
-            zIndex: 1000
+            bottom: { xs: 8, sm: 24 },
+            right: { xs: 8, sm: 24 },
+            zIndex: 1000,
+            width: { xs: 48, sm: 56 },
+            height: { xs: 48, sm: 56 }
           }}
           onClick={handleSaveClick}
           title="Planı Kaydet"
         >
-          <SaveIcon />
+          <SaveIcon sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }} />
         </Fab>
 
         {/* PDF Export FAB */}
@@ -1496,14 +1549,16 @@ const AnaSayfaContent = React.memo(() => {
           color="primary"
           sx={{
             position: 'fixed',
-            bottom: 24,
-            right: 88,
-            zIndex: 1000
+            bottom: { xs: 8, sm: 24 },
+            right: { xs: 64, sm: 88 },
+            zIndex: 1000,
+            width: { xs: 48, sm: 56 },
+            height: { xs: 48, sm: 56 }
           }}
           onClick={handlePrintMenuOpen}
           title="Yazdırma Seçenekleri"
         >
-          <PrintIcon />
+          <PrintIcon sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }} />
         </Fab>
 
         {/* Yazdırma Menüsü */}

@@ -5,6 +5,49 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden; /* Prevent horizontal scroll on mobile */
+}
+
+/* Mobile-first responsive design */
+@media (max-width: 600px) {
+  body {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  
+  /* Prevent zoom on input focus */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+  
+  /* Touch-friendly button sizes */
+  button, .MuiButton-root {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Mobile-optimized spacing */
+  .MuiContainer-root {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+  
+  /* Mobile-optimized cards */
+  .MuiCard-root {
+    margin: 4px !important;
+  }
+  
+  /* Mobile-optimized tabs */
+  .MuiTabs-root {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Mobile-optimized chips */
+  .MuiChip-root {
+    font-size: 0.7rem;
+    height: 24px;
+  }
 }
 
 code {
