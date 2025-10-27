@@ -235,9 +235,29 @@ const SalonOgrenciListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = 
 
 
 
-      {/* Sınıf Bazında Liste */}
+      {/* Sınıf Bazında Liste - Sınıflar alfabetik sıralı */}
       <Box sx={{ mb: 2 }}>
-        {Object.entries(ogrencilerBySinif).map(([sinif, sinifOgrencileri], index) => (
+        {Object.entries(ogrencilerBySinif)
+          .sort(([a], [b]) => {
+            // Sınıf karşılaştırma: 10/A, 10/B, 11/A gibi
+            const matchA = a.match(/^(\d+)\/([A-Z]+)$/);
+            const matchB = b.match(/^(\d+)\/([A-Z]+)$/);
+            
+            if (matchA && matchB) {
+              const [_, levelA, groupA] = matchA;
+              const [__, levelB, groupB] = matchB;
+              
+              // Önce seviye (10, 11, vs), sonra grup (A, B, C)
+              if (levelA !== levelB) {
+                return parseInt(levelA) - parseInt(levelB);
+              }
+              return groupA.localeCompare(groupB);
+            }
+            
+            // Fallback: Alfabetik
+            return a.localeCompare(b);
+          })
+          .map(([sinif, sinifOgrencileri], index) => (
           <Box key={sinif} sx={{ 
             mb: 1,
             pt: 2,
