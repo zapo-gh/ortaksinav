@@ -420,7 +420,7 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
 
                       {ders.siniflar.length > 0 && (
                         <Grid size={12} key={`siniflar-listesi-${ders.id}`}>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1, textAlign: 'left' }}>
                             Bu dersi alan sınıflar:
                           </Typography>
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
