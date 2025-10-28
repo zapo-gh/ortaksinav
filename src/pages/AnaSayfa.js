@@ -405,6 +405,7 @@ const DraggableUnplacedStudent = ({ ogrenci }) => {
 const AnaSayfaContent = React.memo(() => {
   const [seciliSalonId, setSeciliSalonId] = useState(null);
   const [showWelcome, setShowWelcome] = useState(false); // Sayfa yenileme için false
+  const [showTestDashboard, setShowTestDashboard] = useState(false);
   const { showSuccess, showError } = useNotifications();
 
   // Exam context state & actions (erken tanımla - aşağıdaki effectler kullanıyor)
@@ -449,6 +450,30 @@ const AnaSayfaContent = React.memo(() => {
       setShowWelcome(true);
     }
   }, []);
+
+  // Test Dashboard görünürlüğünü kontrol et
+  useEffect(() => {
+    const checkTestDashboardVisibility = () => {
+      const isVisible = localStorage.getItem('show_test_dashboard') === 'true';
+      setShowTestDashboard(isVisible);
+    };
+
+    checkTestDashboardVisibility();
+
+    // Klavye kısayolu: Ctrl+Alt+T
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 't') {
+        e.preventDefault();
+        const newVisibility = !showTestDashboard;
+        setShowTestDashboard(newVisibility);
+        localStorage.setItem('show_test_dashboard', newVisibility.toString());
+        console.log('🧪 Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showTestDashboard]);
 
   // Giriş sayfasından ana sisteme geçiş
   const handleStartSystem = useCallback(() => {

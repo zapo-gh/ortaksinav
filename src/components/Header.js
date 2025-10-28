@@ -22,6 +22,31 @@ import {
 
 const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
   const [anchorEl, setAnchorEl] = React.useState(null);
+  const [showTestDashboard, setShowTestDashboard] = React.useState(false);
+
+  // Test Dashboard görünürlüğünü kontrol et
+  React.useEffect(() => {
+    const checkTestDashboardVisibility = () => {
+      const isVisible = localStorage.getItem('show_test_dashboard') === 'true';
+      setShowTestDashboard(isVisible);
+    };
+
+    checkTestDashboardVisibility();
+
+    // Klavye kısayolu: Ctrl+Alt+T
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 't') {
+        e.preventDefault();
+        const newVisibility = !showTestDashboard;
+        setShowTestDashboard(newVisibility);
+        localStorage.setItem('show_test_dashboard', newVisibility.toString());
+        console.log('🧪 Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showTestDashboard]);
 
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
@@ -58,9 +83,11 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
           >
             Ana Sayfa
           </Button>
-          <Button color="inherit" sx={{ mr: 2 }} onClick={onTestDashboardClick}>
-            Test Dashboard
-          </Button>
+          {showTestDashboard && (
+            <Button color="inherit" sx={{ mr: 2 }} onClick={onTestDashboardClick}>
+              Test Dashboard
+            </Button>
+          )}
         </Box>
 
         {/* Kullanıcı Bölgesi */}
