@@ -24,6 +24,7 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
   const [anchorEl, setAnchorEl] = React.useState(null);
   const [showTestDashboard, setShowTestDashboard] = React.useState(false);
   const [lastKeyPress, setLastKeyPress] = React.useState(0);
+  const [lastKeyCode, setLastKeyCode] = React.useState(null);
 
   // Test Dashboard görünürlüğünü kontrol et
   React.useEffect(() => {
@@ -50,8 +51,8 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
       const now = Date.now();
       
       // Debounce: 1000ms içinde aynı tuş basılırsa ignore et
-      if (now - lastKeyPress < 1000) {
-        console.log('⏰ Debounce: Tuş basımı çok yakın, ignore ediliyor');
+      if (now - lastKeyPress < 1000 && e.keyCode === lastKeyCode) {
+        console.log('⏰ Debounce: Aynı tuş çok yakın zamanda basıldı, ignore ediliyor', e.keyCode);
         return;
       }
       
@@ -59,6 +60,7 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
       const toggleTestDashboard = (keyName) => {
         console.log(`✅ ${keyName} algılandı! (Debounce geçildi)`);
         setLastKeyPress(now);
+        setLastKeyCode(e.keyCode);
         setShowTestDashboard(prev => {
           const newVisibility = !prev;
           localStorage.setItem('show_test_dashboard', newVisibility.toString());
@@ -96,13 +98,11 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
       }
     };
 
-    // Event listener'ları ekle
+    // Event listener'ı sadece document'a ekle (window'a gerek yok)
     document.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keydown', handleKeyDown);
     
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keydown', handleKeyDown);
     };
   }, []); // Dependency array'i boş bırak
 
