@@ -20,7 +20,7 @@ import {
   Home as HomeIcon
 } from '@mui/icons-material';
 
-const Header = ({ baslik, kullanici, onHomeClick, onReportsClick, onTestDashboardClick }) => {
+const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
   const [anchorEl, setAnchorEl] = React.useState(null);
 
   const handleMenu = (event) => {
@@ -57,9 +57,6 @@ const Header = ({ baslik, kullanici, onHomeClick, onReportsClick, onTestDashboar
             startIcon={<HomeIcon />}
           >
             Ana Sayfa
-          </Button>
-          <Button color="inherit" sx={{ mr: 2 }} onClick={onReportsClick}>
-            Raporlar
           </Button>
           <Button color="inherit" sx={{ mr: 2 }} onClick={onTestDashboardClick}>
             Test Dashboard
