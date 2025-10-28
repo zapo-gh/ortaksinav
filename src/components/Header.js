@@ -86,6 +86,32 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
           return newVisibility;
         });
       }
+      
+      // Alternatif: Ctrl+Shift+T kombinasyonu
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'T') {
+        e.preventDefault();
+        console.log('✅ Header - Ctrl+Shift+T algılandı!');
+        setShowTestDashboard(prev => {
+          const newVisibility = !prev;
+          console.log('🔄 State güncelleniyor:', prev, '→', newVisibility);
+          localStorage.setItem('show_test_dashboard', newVisibility.toString());
+          console.log('🧪 Header - Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
+          return newVisibility;
+        });
+      }
+      
+      // Alternatif: F12 tuşu
+      if (e.key === 'F12') {
+        e.preventDefault();
+        console.log('✅ Header - F12 algılandı!');
+        setShowTestDashboard(prev => {
+          const newVisibility = !prev;
+          console.log('🔄 State güncelleniyor:', prev, '→', newVisibility);
+          localStorage.setItem('show_test_dashboard', newVisibility.toString());
+          console.log('🧪 Header - Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
+          return newVisibility;
+        });
+      }
     };
 
     // Document'a da ekle
