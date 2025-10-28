@@ -51,8 +51,9 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
         console.log('🔍 ₺ sembolü ile Ctrl+Alt kontrolü:', e.ctrlKey, e.altKey);
       }
       
-      // Basit test: sadece ₺ sembolü ile çalış
-      if (e.key === '₺') {
+      // Geniş kontrol: ₺ sembolü için
+      if (e.key.includes('₺') || e.key === '₺' || e.keyCode === 84) {
+        console.log('🎯 ₺ sembolü algılandı! Key:', e.key, 'KeyCode:', e.keyCode);
         console.log('🎯 ₺ sembolü ile Test Dashboard toggle!');
         setShowTestDashboard(prev => {
           const newVisibility = !prev;
