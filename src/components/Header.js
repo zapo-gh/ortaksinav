@@ -27,6 +27,8 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
 
   // Test Dashboard görünürlüğünü kontrol et
   React.useEffect(() => {
+    console.log('🚀 Header v2.1 - useEffect çalıştı (Debounce ile)');
+    
     const checkTestDashboardVisibility = () => {
       // URL parametresi kontrolü - basit ?test
       const urlParams = new URLSearchParams(window.location.search);
@@ -47,14 +49,15 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
     const handleKeyDown = (e) => {
       const now = Date.now();
       
-      // Debounce: 500ms içinde aynı tuş basılırsa ignore et
-      if (now - lastKeyPress < 500) {
+      // Debounce: 1000ms içinde aynı tuş basılırsa ignore et
+      if (now - lastKeyPress < 1000) {
+        console.log('⏰ Debounce: Tuş basımı çok yakın, ignore ediliyor');
         return;
       }
       
       // Test Dashboard toggle fonksiyonu
       const toggleTestDashboard = (keyName) => {
-        console.log(`✅ ${keyName} algılandı!`);
+        console.log(`✅ ${keyName} algılandı! (Debounce geçildi)`);
         setLastKeyPress(now);
         setShowTestDashboard(prev => {
           const newVisibility = !prev;
