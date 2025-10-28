@@ -181,7 +181,7 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
               Test Dashboard
             </Button>
           )}
-          {console.log('🎯 Test Dashboard render kontrolü:', showTestDashboard)}
+          {console.log('🎯 Test Dashboard render kontrolü:', showTestDashboard, 'Type:', typeof showTestDashboard)}
         </Box>
 
         {/* Kullanıcı Bölgesi */}
