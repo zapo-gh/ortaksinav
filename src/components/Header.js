@@ -116,15 +116,27 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
         });
       }
       
-      // Alternatif: F12 tuşu
+      // Basit çözüm: F12 tuşu
       if (e.key === 'F12') {
         e.preventDefault();
         console.log('✅ Header - F12 algılandı!');
         setShowTestDashboard(prev => {
           const newVisibility = !prev;
-          console.log('🔄 State güncelleniyor:', prev, '→', newVisibility);
+          console.log('🔄 F12 State güncelleniyor:', prev, '→', newVisibility);
           localStorage.setItem('show_test_dashboard', newVisibility.toString());
-          console.log('🧪 Header - Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
+          console.log('🧪 F12 Header - Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
+          return newVisibility;
+        });
+      }
+      
+      // Daha basit: Escape tuşu
+      if (e.key === 'Escape') {
+        console.log('✅ Header - Escape algılandı!');
+        setShowTestDashboard(prev => {
+          const newVisibility = !prev;
+          console.log('🔄 Escape State güncelleniyor:', prev, '→', newVisibility);
+          localStorage.setItem('show_test_dashboard', newVisibility.toString());
+          console.log('🧪 Escape Header - Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
           return newVisibility;
         });
       }
