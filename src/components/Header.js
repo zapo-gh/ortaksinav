@@ -75,23 +75,25 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
         keyCharCodes: e.key.split('').map(c => c.charCodeAt(0))
       });
       
+      // Test Dashboard toggle - sadece bir kez çalışsın
+      let shouldToggle = false;
+      
       // Geniş kontrol: ₺ sembolü için
       if (e.key.includes('₺') || e.key === '₺' || e.keyCode === 84) {
         console.log('🎯 ₺ sembolü algılandı! Key:', e.key, 'KeyCode:', e.keyCode);
-        console.log('🎯 ₺ sembolü ile Test Dashboard toggle!');
-        setShowTestDashboard(prev => {
-          const newVisibility = !prev;
-          console.log('🔄 State güncelleniyor:', prev, '→', newVisibility);
-          localStorage.setItem('show_test_dashboard', newVisibility.toString());
-          console.log('🧪 Header - Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
-          return newVisibility;
-        });
+        shouldToggle = true;
       }
       
       // Ctrl+Alt+T kombinasyonu için hem 't' hem '₺' kontrol et
       if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 't' || e.key === '₺')) {
         e.preventDefault();
         console.log('✅ Header - Ctrl+Alt+T algılandı!');
+        shouldToggle = true;
+      }
+      
+      // Sadece bir kez toggle yap
+      if (shouldToggle) {
+        console.log('🎯 Test Dashboard toggle!');
         setShowTestDashboard(prev => {
           const newVisibility = !prev;
           console.log('🔄 State güncelleniyor:', prev, '→', newVisibility);
