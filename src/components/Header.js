@@ -54,8 +54,10 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
       if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 't' || e.key === '₺')) {
         e.preventDefault();
         console.log('✅ Header - Ctrl+Alt+T algılandı!');
+        console.log('🔍 Mevcut showTestDashboard durumu:', showTestDashboard);
         setShowTestDashboard(prev => {
           const newVisibility = !prev;
+          console.log('🔄 State güncelleniyor:', prev, '→', newVisibility);
           localStorage.setItem('show_test_dashboard', newVisibility.toString());
           console.log('🧪 Header - Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
           return newVisibility;
@@ -116,6 +118,7 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
               Test Dashboard
             </Button>
           )}
+          {console.log('🎯 Test Dashboard render kontrolü:', showTestDashboard)}
         </Box>
 
         {/* Kullanıcı Bölgesi */}
