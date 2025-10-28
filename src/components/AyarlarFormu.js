@@ -316,105 +316,106 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                       </Grid>
 
                       <Grid size={{ xs: 12, md: 6 }} key={`sinif-secimi-${ders.id}`}>
-                        <FormControl fullWidth>
-                          <InputLabel>Sınıf Seç (Çoklu)</InputLabel>
-                          <Select
-                            multiple
-                            value={seciliSiniflar[ders.id] || []}
-                            onChange={(e) => handleSinifSecimi(ders.id, e.target.value)}
-                            label="Sınıf Seç (Çoklu)"
-                            renderValue={(selected) => {
-                              if (selected.length === 0) {
-                                return <span style={{ color: '#999' }}>Sınıf seçin...</span>;
-                              }
-                              return (
-                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, maxHeight: '40px', overflow: 'hidden' }}>
-                                  {selected.map((value) => (
-                                    <Chip 
-                                      key={value} 
-                                      label={value} 
-                                      size="small" 
-                                      color="primary"
-                                      variant="outlined"
-                                      sx={{ fontSize: '0.75rem' }}
-                                    />
-                                  ))}
-                                </Box>
-                              );
-                            }}
-                            sx={{
-                              minWidth: 200,
-                              '& .MuiSelect-select': {
-                                minWidth: '180px'
-                              }
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                          <FormControl fullWidth>
+                            <InputLabel>Sınıf Seç (Çoklu)</InputLabel>
+                            <Select
+                              multiple
+                              value={seciliSiniflar[ders.id] || []}
+                              onChange={(e) => handleSinifSecimi(ders.id, e.target.value)}
+                              label="Sınıf Seç (Çoklu)"
+                              renderValue={(selected) => {
+                                if (selected.length === 0) {
+                                  return <span style={{ color: '#999' }}>Sınıf seçin...</span>;
+                                }
+                                return (
+                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, maxHeight: '40px', overflow: 'hidden' }}>
+                                    {selected.map((value) => (
+                                      <Chip 
+                                        key={value} 
+                                        label={value} 
+                                        size="small" 
+                                        color="primary"
+                                        variant="outlined"
+                                        sx={{ fontSize: '0.75rem' }}
+                                      />
+                                    ))}
+                                  </Box>
+                                );
+                              }}
+                              sx={{
+                                minWidth: 200,
+                                '& .MuiSelect-select': {
+                                  minWidth: '180px'
+                                }
+                              }}
+                            >
+                              {mevcutSiniflar
+                                .filter(sinif => {
+                                  // Bu derse zaten eklenmiş sınıfları filtrele
+                                  if (ders.siniflar.includes(sinif)) return false;
+                                  
+                                  // Diğer derslere eklenmiş sınıfları filtrele
+                                  const digerDerslerdeKullanilanSiniflar = formData.dersler
+                                    .filter(d => d.id !== ders.id)
+                                    .flatMap(d => d.siniflar);
+                                  
+                                  return !digerDerslerdeKullanilanSiniflar.includes(sinif);
+                                })
+                                .map(sinif => (
+                                  <MenuItem 
+                                    key={sinif} 
+                                    value={sinif}
+                                    sx={{
+                                      fontWeight: (seciliSiniflar[ders.id] || []).includes(sinif) ? 'bold' : 'normal',
+                                      backgroundColor: (seciliSiniflar[ders.id] || []).includes(sinif) 
+                                        ? 'rgba(25, 118, 210, 0.15)' 
+                                        : 'transparent',
+                                      '&.Mui-selected': {
+                                        backgroundColor: 'rgba(25, 118, 210, 0.25)',
+                                        fontWeight: 'bold',
+                                        '&:hover': {
+                                          backgroundColor: 'rgba(25, 118, 210, 0.35)',
+                                        }
+                                      },
+                                      '&:hover': {
+                                        backgroundColor: (seciliSiniflar[ders.id] || []).includes(sinif)
+                                          ? 'rgba(25, 118, 210, 0.25)'
+                                          : 'rgba(0, 0, 0, 0.04)',
+                                      }
+                                    }}
+                                  >
+                                    {sinif}
+                                  </MenuItem>
+                                ))}
+                            </Select>
+                          </FormControl>
+                          
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={() => handleSinifEkleButon(ders.id)}
+                            disabled={mevcutSiniflar.filter(sinif => {
+                              // Bu derse zaten eklenmiş sınıfları filtrele
+                              if (ders.siniflar.includes(sinif)) return false;
+                              
+                              // Diğer derslere eklenmiş sınıfları filtrele
+                              const digerDerslerdeKullanilanSiniflar = formData.dersler
+                                .filter(d => d.id !== ders.id)
+                                .flatMap(d => d.siniflar);
+                              
+                              return !digerDerslerdeKullanilanSiniflar.includes(sinif);
+                            }).length === 0}
+                            sx={{ 
+                              minWidth: 'auto',
+                              px: 2,
+                              height: '56px', // Select ile aynı yükseklik
+                              flexShrink: 0
                             }}
                           >
-                            {mevcutSiniflar
-                              .filter(sinif => {
-                                // Bu derse zaten eklenmiş sınıfları filtrele
-                                if (ders.siniflar.includes(sinif)) return false;
-                                
-                                // Diğer derslere eklenmiş sınıfları filtrele
-                                const digerDerslerdeKullanilanSiniflar = formData.dersler
-                                  .filter(d => d.id !== ders.id)
-                                  .flatMap(d => d.siniflar);
-                                
-                                return !digerDerslerdeKullanilanSiniflar.includes(sinif);
-                              })
-                              .map(sinif => (
-                                <MenuItem 
-                                  key={sinif} 
-                                  value={sinif}
-                                  sx={{
-                                    fontWeight: (seciliSiniflar[ders.id] || []).includes(sinif) ? 'bold' : 'normal',
-                                    backgroundColor: (seciliSiniflar[ders.id] || []).includes(sinif) 
-                                      ? 'rgba(25, 118, 210, 0.15)' 
-                                      : 'transparent',
-                                    '&.Mui-selected': {
-                                      backgroundColor: 'rgba(25, 118, 210, 0.25)',
-                                      fontWeight: 'bold',
-                                      '&:hover': {
-                                        backgroundColor: 'rgba(25, 118, 210, 0.35)',
-                                      }
-                                    },
-                                    '&:hover': {
-                                      backgroundColor: (seciliSiniflar[ders.id] || []).includes(sinif)
-                                        ? 'rgba(25, 118, 210, 0.25)'
-                                        : 'rgba(0, 0, 0, 0.04)',
-                                    }
-                                  }}
-                                >
-                                  {sinif}
-                                </MenuItem>
-                              ))}
-                          </Select>
-                        </FormControl>
-                      </Grid>
-
-                      <Grid size={{ xs: 12, md: 6 }} key={`butonlar-${ders.id}`}>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={() => handleSinifEkleButon(ders.id)}
-                          disabled={mevcutSiniflar.filter(sinif => {
-                            // Bu derse zaten eklenmiş sınıfları filtrele
-                            if (ders.siniflar.includes(sinif)) return false;
-                            
-                            // Diğer derslere eklenmiş sınıfları filtrele
-                            const digerDerslerdeKullanilanSiniflar = formData.dersler
-                              .filter(d => d.id !== ders.id)
-                              .flatMap(d => d.siniflar);
-                            
-                            return !digerDerslerdeKullanilanSiniflar.includes(sinif);
-                          }).length === 0}
-                          sx={{ 
-                            minWidth: '120px',
-                            height: '56px',
-                            px: 2
-                          }}
-                        >
-                          Ekle
-                        </Button>
+                            Ekle
+                          </Button>
+                        </Box>
                       </Grid>
 
                       {ders.siniflar.length > 0 && (
