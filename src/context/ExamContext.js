@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import logger from '../utils/logger';
-import db from '../database';
 
 // localStorage yardımcı fonksiyonları (sıkıştırmasız)
 const loadFromStorage = (key, defaultValue) => {
@@ -15,6 +14,9 @@ const loadFromStorage = (key, defaultValue) => {
 
 const saveToStorage = async (key, value) => {
   try {
+    // Lazy import db
+    const { default: db } = await import('../database');
+    
     // IndexedDB'ye kaydet
     if (key === 'exam_ogrenciler') {
       await db.saveStudents(value);
@@ -53,6 +55,9 @@ const saveToStorage = async (key, value) => {
 const loadFromIndexedDB = async () => {
   try {
     // console.log('📥 IndexedDB\'den veriler yükleniyor...');
+    
+    // Lazy import db
+    const { default: db } = await import('../database');
     
     const [ogrenciler, ayarlar, salonlar] = await Promise.all([
       db.getAllStudents().catch(() => []),
@@ -496,6 +501,7 @@ export const ExamProvider = ({ children }) => {
     
     const saveToIndexedDB = async () => {
       try {
+        const { default: db } = await import('../database');
         await db.saveStudents(state.ogrenciler);
         logger.debug('✅ Öğrenciler veritabanına kaydedildi (adapter)');
       } catch (error) {
@@ -513,6 +519,7 @@ export const ExamProvider = ({ children }) => {
     
     const saveToIndexedDB = async () => {
       try {
+        const { default: db } = await import('../database');
         // console.log('💾 Ayarlar kaydediliyor:', {
         //   sinavAdi: state.ayarlar.sinavAdi,
         //   sinavTarihi: state.ayarlar.sinavTarihi,
@@ -536,6 +543,7 @@ export const ExamProvider = ({ children }) => {
     
     const saveToIndexedDB = async () => {
       try {
+        const { default: db } = await import('../database');
         await db.saveSalons(state.salonlar);
         logger.debug('✅ Salonlar veritabanına kaydedildi (adapter)');
       } catch (error) {

@@ -8,7 +8,7 @@ import logger from '../utils/logger';
  */
 class DatabaseAdapter {
   constructor() {
-    this.useFirestore = true; // Feature flag
+    this.useFirestore = true; // Firestore'u aktif et
     this.firestore = firestoreClient;
     this.indexedDB = null; // Lazy load IndexedDB
   }

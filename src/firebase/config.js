@@ -29,5 +29,10 @@ enableIndexedDbPersistence(db).catch((err) => {
   }
 });
 
+// Firebase bağlantı testi
+console.log('🔥 Firebase App initialized:', app);
+console.log('🔥 Firestore DB initialized:', db);
+console.log('🔥 Firebase Config:', firebaseConfig);
+
 export { db };
 export default app;

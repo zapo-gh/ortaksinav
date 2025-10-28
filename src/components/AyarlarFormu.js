@@ -276,7 +276,7 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
           <Grid container spacing={3}>
 
             {/* Ders Bilgileri */}
-            <Grid item xs={12}>
+            <Grid xs={12}>
               <Divider sx={{ my: 2 }} />
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -304,7 +304,7 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                     </Box>
 
                     <Grid container spacing={2}>
-                      <Grid item xs={12} md={6}>
+                      <Grid xs={12} md={6}>
                         <TextField
                           fullWidth
                           label="Ders Adı"
@@ -315,7 +315,7 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                         />
                       </Grid>
 
-                      <Grid item xs={12} md={6}>
+                      <Grid xs={12} md={6}>
                         <FormControl fullWidth>
                           <InputLabel>Sınıf Seç (Çoklu)</InputLabel>
                           <Select
@@ -391,7 +391,7 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                         </FormControl>
                       </Grid>
 
-                      <Grid item xs={12} md={6}>
+                      <Grid xs={12} md={6}>
                         <Button
                           variant="outlined"
                           size="small"
@@ -418,7 +418,7 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                       </Grid>
 
                       {ders.siniflar.length > 0 && (
-                        <Grid item xs={12}>
+                        <Grid xs={12}>
                           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                             Bu dersi alan sınıflar:
                           </Typography>

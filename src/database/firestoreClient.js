@@ -17,6 +17,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import logger from '../utils/logger';
+import { sanitizeForFirestore, sanitizeFromFirestore, checkDataSize, chunkArray } from '../utils/firestoreUtils';
 
 /**
  * Firestore Database Client - Parçalı Model
@@ -43,15 +44,23 @@ class FirestoreClient {
       const planRef = doc(collection(this.db, 'plans'));
       const planId = planRef.id;
       
-      const safe = (v, def = null) => (v === undefined ? def : v);
+      // Veriyi sanitize et
+      const sanitizedPlanData = sanitizeForFirestore(planData);
+      
       const planMeta = {
-        name: safe(planData?.name, ''),
-        date: safe(planData?.date, null),
-        totalStudents: safe(planData?.totalStudents, null),
-        salonCount: safe(planData?.salonCount, null),
+        name: sanitizedPlanData?.name || 'İsimsiz Plan',
+        date: sanitizedPlanData?.date || null,
+        totalStudents: sanitizedPlanData?.totalStudents || null,
+        salonCount: sanitizedPlanData?.salonCount || null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
+      
+      // Veri boyutunu kontrol et
+      const sizeCheck = checkDataSize(planMeta);
+      if (!sizeCheck.isValid) {
+        throw new Error(`Plan meta verisi çok büyük: ${sizeCheck.sizeInMB.toFixed(2)}MB`);
+      }
       
       await setDoc(planRef, planMeta);
       
@@ -86,10 +95,11 @@ class FirestoreClient {
         
         chunk.forEach(salon => {
           const salonRef = doc(this.db, 'plans', planId, 'salons', salon.salonId || salon.id);
-          batch.set(salonRef, {
+          const sanitizedSalon = sanitizeForFirestore({
             ...salon,
             updatedAt: serverTimestamp()
           });
+          batch.set(salonRef, sanitizedSalon);
         });
         
         await batch.commit();

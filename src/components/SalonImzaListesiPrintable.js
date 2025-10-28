@@ -58,8 +58,13 @@ const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {} 
     return masa.id + 1; // Fallback
   };
   
-  // Tüm salonları al
-  const tumSalonlar = yerlestirmeSonucu?.tumSalonlar || [];
+  // Tüm salonları al - salon sırasına göre sırala
+  const tumSalonlar = (yerlestirmeSonucu?.tumSalonlar || []).sort((a, b) => {
+    // Salon ID'lerine göre sırala (sayısal olarak)
+    const aId = parseInt(a.id || a.salonId || 0);
+    const bId = parseInt(b.id || b.salonId || 0);
+    return aId - bId;
+  });
   
   if (!tumSalonlar || tumSalonlar.length === 0) {
     return (

@@ -204,34 +204,8 @@ const SalonOgrenciListesiPrintable = forwardRef(({ ogrenciler, yerlestirmeSonucu
     return acc;
   }, {});
 
-  // Sınıfları PDF'te salon sırasına göre sırala
-  const salonIdOrder = new Map(
-    (yerlestirmeSonucu?.tumSalonlar || []).map((s, i) => [s.id, i])
-  );
-
-  const salonSiraliSiniflar = [];
-  if (yerlestirmeSonucu?.tumSalonlar) {
-    for (const salon of yerlestirmeSonucu.tumSalonlar) {
-      const sinifSet = new Set();
-      if (Array.isArray(salon.masalar)) {
-        salon.masalar.forEach(m => {
-          const o = m?.ogrenci;
-          if (o?.sinif) sinifSet.add(o.sinif);
-        });
-      }
-      if (Array.isArray(salon.ogrenciler)) {
-        salon.ogrenciler.forEach(o => { if (o?.sinif) sinifSet.add(o.sinif); });
-      }
-      for (const s of sinifSet) {
-        if (!salonSiraliSiniflar.includes(s)) salonSiraliSiniflar.push(s);
-      }
-    }
-  }
-
-  const sinifEntries = Object.entries(ogrencilerBySinif);
-
-  // Yardımcılar: sınıf adını normalize et ve (örn. "9/A") seviyeye ve şubeye ayır
-  const normalizeClassName = (s) => {
+  // Yardımcılar: normalize ve parse
+  function normalizeClassName(s) {
     if (!s) return '';
     const raw = String(s).trim().toUpperCase();
     // Ayırıcıları tek tipe çevir ("-", " ", "_" -> "/")
@@ -242,9 +216,9 @@ const SalonOgrenciListesiPrintable = forwardRef(({ ogrenciler, yerlestirmeSonucu
     const level = m[1];
     const section = (m[2] || '').toUpperCase();
     return section ? `${level}/${section}` : `${level}`;
-  };
+  }
 
-  const parseSinif = (s) => {
+  function parseSinif(s) {
     if (!s || typeof s !== 'string') return { seviye: Number.MAX_SAFE_INTEGER, sube: s || '' };
     const norm = normalizeClassName(s);
     const match = norm.match(/(\d+)/);
@@ -253,14 +227,17 @@ const SalonOgrenciListesiPrintable = forwardRef(({ ogrenciler, yerlestirmeSonucu
     const subeMatch = norm.replace(/\d+/g, '').match(/[A-ZÇĞİÖŞÜ]+/i);
     const sube = subeMatch ? subeMatch[0].trim() : '';
     return { seviye, sube };
-  };
+  }
 
-  // Belirli bir sınıfın ilk göründüğü salon indeksini bul
-  const findFirstSalonIndexForClass = (sinifAdi) => {
+  function findFirstSalonIndexForClass(sinifAdi) {
     const hedef = normalizeClassName(sinifAdi);
-    const tumSalonlar = yerlestirmeSonucu?.tumSalonlar || [];
-    for (let i = 0; i < tumSalonlar.length; i++) {
-      const salon = tumSalonlar[i];
+    const sortedSalonlar = (yerlestirmeSonucu?.tumSalonlar || []).sort((a, b) => {
+      const aId = parseInt(a.id || a.salonId || 0);
+      const bId = parseInt(b.id || b.salonId || 0);
+      return aId - bId;
+    });
+    for (let i = 0; i < sortedSalonlar.length; i++) {
+      const salon = sortedSalonlar[i];
       // Önce masalarda ara
       if (Array.isArray(salon?.masalar) && salon.masalar.some(m => normalizeClassName(m?.ogrenci?.sinif) === hedef)) {
         return i;
@@ -271,18 +248,60 @@ const SalonOgrenciListesiPrintable = forwardRef(({ ogrenciler, yerlestirmeSonucu
       }
     }
     return Number.MAX_SAFE_INTEGER;
-  };
+  }
 
-  const sortedSinifEntries = sinifEntries.sort((a, b) => {
-    const aSinif = a[0];
-    const bSinif = b[0];
-    const ia = findFirstSalonIndexForClass(aSinif);
-    const ib = findFirstSalonIndexForClass(bSinif);
-    if (ia !== ib) return ia - ib;
-    // Salon indeksi eşitse, sayısal seviye sonra şube adına göre sırala
-    const pa = parseSinif(aSinif);
-    const pb = parseSinif(bSinif);
+  // Sınıfları PDF'te salon sırasına göre sırala
+  // Salonları ID'ye göre sırala (sayısal olarak)
+  const sortedSalonlar = (yerlestirmeSonucu?.tumSalonlar || []).sort((a, b) => {
+    const aId = parseInt(a.id || a.salonId || 0);
+    const bId = parseInt(b.id || b.salonId || 0);
+    return aId - bId;
+  });
+
+  const salonIdOrder = new Map(sortedSalonlar.map((s, i) => [s.id, i]));
+
+  const salonSiraliSiniflar = [];
+  if (sortedSalonlar.length > 0) {
+    for (const salon of sortedSalonlar) {
+      const sinifSet = new Set();
+      if (Array.isArray(salon.masalar)) {
+        salon.masalar.forEach(m => {
+          const o = m?.ogrenci;
+          if (o?.sinif) sinifSet.add(o.sinif);
+        });
+      }
+      if (Array.isArray(salon.ogrenciler)) {
+        salon.ogrenciler.forEach(o => { if (o?.sinif) sinifSet.add(o.sinif); });
+      }
+      // Normalize ederek ogrencilerBySinif anahtarları ile eşleştir
+      const keys = Object.keys(ogrencilerBySinif);
+      const findKeyForClassName = (target) => {
+        const hedef = normalizeClassName(target);
+        for (const k of keys) {
+          if (normalizeClassName(k) === hedef) return k;
+        }
+        return null;
+      };
+      for (const s of sinifSet) {
+        const rep = findKeyForClassName(s) || s;
+        if (!salonSiraliSiniflar.includes(rep) && Object.prototype.hasOwnProperty.call(ogrencilerBySinif, rep)) {
+          salonSiraliSiniflar.push(rep);
+        }
+      }
+    }
+  }
+
+  const sinifEntries = Object.entries(ogrencilerBySinif);
+
+  // Artık salonSiraliSiniflar üzerinden kesin sırayı kuracağız; bu nedenle eski karma sıralayıcıyı kullanmıyoruz
+
+  // Sınıfları seviye/şube sırasına göre sırala (9/A, 9/B, 9/C, 10/A, 10/B...)
+  const finalSinifList = Object.keys(ogrencilerBySinif).sort((a, b) => {
+    const pa = parseSinif(a);
+    const pb = parseSinif(b);
+    // Önce seviye (9, 10, 11, 12)
     if (pa.seviye !== pb.seviye) return pa.seviye - pb.seviye;
+    // Sonra şube (A, B, C, D...)
     return (pa.sube || '').localeCompare(pb.sube || '', 'tr');
   });
 
@@ -372,7 +391,9 @@ const SalonOgrenciListesiPrintable = forwardRef(({ ogrenciler, yerlestirmeSonucu
 
       {/* Sınıf Bazında Liste */}
       <Box sx={{ mb: 2 }}>
-        {sortedSinifEntries.map(([sinif, sinifOgrencileri], index) => (
+        {finalSinifList.map((sinif, index) => {
+          const sinifOgrencileri = ogrencilerBySinif[sinif] || [];
+          return (
           <Box key={sinif} sx={{ 
             mb: 1,
             pt: 2,
@@ -507,7 +528,8 @@ const SalonOgrenciListesiPrintable = forwardRef(({ ogrenciler, yerlestirmeSonucu
               </Table>
             </TableContainer>
           </Box>
-        ))}
+          );
+        })}
       </Box>
 
       {/* Alt bilgi */}

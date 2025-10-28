@@ -156,8 +156,13 @@ export const SalonPlaniPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {}
     };
   };
 
-  // Tüm salonları al
-  const tumSalonlar = yerlestirmeSonucu?.tumSalonlar || [];
+  // Tüm salonları al - salon sırasına göre sırala
+  const tumSalonlar = (yerlestirmeSonucu?.tumSalonlar || []).sort((a, b) => {
+    // Salon ID'lerine göre sırala (sayısal olarak)
+    const aId = parseInt(a.id || a.salonId || 0);
+    const bId = parseInt(b.id || b.salonId || 0);
+    return aId - bId;
+  });
   
   if (!tumSalonlar || tumSalonlar.length === 0) {
     return (
@@ -270,7 +275,7 @@ export const SalonPlaniPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {}
                 {ayarlar.donem || '1. Dönem'}. Dönem {ayarlar.sinavDonemi || '1. Ortak Sınavı'}. Ortak Sınavı
               </Typography>
               <Typography variant="body2" sx={{ mb: 0.2, lineHeight: 1.3, fontSize: '1.0rem', fontWeight: 'bold' }}>
-                {salon.salonAdi || salon.ad || `Salon ${salonIndex + 1}`} Salon Yerleştirme Planı
+                {salon.salonAdi || salon.ad || `Salon ${salonIndex + 1}`} Salon Yerleşim Planı
               </Typography>
               <Typography variant="body2" sx={{ mb: 0.2, lineHeight: 1.3, fontSize: '0.9rem' }}>
                 Sınav Tarihi: {ayarlar.sinavTarihi ? new Date(ayarlar.sinavTarihi).toLocaleDateString('tr-TR') : new Date().toLocaleDateString('tr-TR')}

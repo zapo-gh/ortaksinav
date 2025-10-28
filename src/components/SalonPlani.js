@@ -715,38 +715,17 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
 
 
   // Salon sıralamasını memoize et - sıralama her render'da değişmesin
+  // KULLANICI DEĞİŞTİRMEDİĞİ SÜRECE SIRALAMA DEĞİŞMESİN
   const sortedTumSalonlar = React.useMemo(() => {
     if (!tumSalonlar || tumSalonlar.length === 0) return [];
-    // Sıralama fonksiyonunu daha stabil hale getir
-    return [...tumSalonlar].sort((a, b) => {
-      const salonAdiA = (a.salonAdi || '').toString().trim();
-      const salonAdiB = (b.salonAdi || '').toString().trim();
-      
-      // Önce salon ID'sine göre sırala (daha stabil)
-      if (a.salonId !== b.salonId) {
-        return (a.salonId || '').toString().localeCompare((b.salonId || '').toString(), 'tr', { numeric: true });
-      }
-      
-      // Sonra salon adına göre sırala
-      return salonAdiA.localeCompare(salonAdiB, 'tr', { numeric: true });
-    });
+    // Orijinal sırayı koru - sıralama yapma
+    return [...tumSalonlar];
   }, [tumSalonlar]);
 
   const sortedSalonlar = React.useMemo(() => {
     if (!salonlar || salonlar.length === 0) return [];
-    // Sıralama fonksiyonunu daha stabil hale getir
-    return [...salonlar].sort((a, b) => {
-      const salonAdiA = (a.salonAdi || a.ad || '').toString().trim();
-      const salonAdiB = (b.salonAdi || b.ad || '').toString().trim();
-      
-      // Önce salon ID'sine göre sırala (daha stabil)
-      if (a.id !== b.id) {
-        return (a.id || '').toString().localeCompare((b.id || '').toString(), 'tr', { numeric: true });
-      }
-      
-      // Sonra salon adına göre sırala
-      return salonAdiA.localeCompare(salonAdiB, 'tr', { numeric: true });
-    });
+    // Orijinal sırayı koru - sıralama yapma
+    return [...salonlar];
   }, [salonlar]);
 
 
