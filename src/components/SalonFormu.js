@@ -490,6 +490,11 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
     setSeciliSalonlar([]);
   };
 
+  const handleTumunuSec = () => {
+    const tumSalonIdleri = aktifSalonFormlari.map(salon => salon.id);
+    setSeciliSalonlar(tumSalonIdleri);
+  };
+
   const handleSalonSecimi = (salonId, secili) => {
     if (secili) {
       setSeciliSalonlar(prev => [...prev, salonId]);
@@ -786,16 +791,32 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
                 </Button>
                 
                 {topluSilmeModu && (
-                  <Button
-                    variant="contained"
-                    color="error"
-                    startIcon={<DeleteIcon />}
-                    size="small"
-                    onClick={handleTopluSilmeOnay}
-                    disabled={seciliSalonlar.length === 0}
-                  >
-                    Seçili Salonları Sil ({seciliSalonlar.length})
-                  </Button>
+                  <>
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      size="small"
+                      onClick={handleTumunuSec}
+                      disabled={seciliSalonlar.length === aktifSalonFormlari.length}
+                      sx={{ 
+                        minWidth: 'auto',
+                        px: 2
+                      }}
+                    >
+                      Tümünü Seç
+                    </Button>
+                    
+                    <Button
+                      variant="contained"
+                      color="error"
+                      startIcon={<DeleteIcon />}
+                      size="small"
+                      onClick={handleTopluSilmeOnay}
+                      disabled={seciliSalonlar.length === 0}
+                    >
+                      Seçili Salonları Sil ({seciliSalonlar.length})
+                    </Button>
+                  </>
                 )}
               </>
             )}
