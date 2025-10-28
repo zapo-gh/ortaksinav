@@ -51,10 +51,10 @@ const saveToStorage = async (key, value) => {
   }
 };
 
-// IndexedDB'den veri yükleme fonksiyonu
-const loadFromIndexedDB = async () => {
+// Firestore'dan veri yükleme fonksiyonu
+const loadFromFirestore = async () => {
   try {
-    // console.log('📥 IndexedDB\'den veriler yükleniyor...');
+    // console.log('📥 Firestore\'dan veriler yükleniyor...');
     
     // Lazy import db
     const { default: db } = await import('../database');
@@ -65,7 +65,7 @@ const loadFromIndexedDB = async () => {
       db.getAllSalons().catch(() => [])
     ]);
     
-    console.log('🔍 IndexedDB\'den yüklenen salonlar:', salonlar?.map(s => s.ad || s.salonAdi || 'İsimsiz') || []);
+    console.log('🔍 Firestore\'dan yüklenen salonlar:', salonlar?.map(s => s.ad || s.salonAdi || 'İsimsiz') || []);
     
     // console.log('✅ IndexedDB\'den veriler yüklendi:', {
     //   ogrenciler: ogrenciler?.length || 0,
@@ -427,8 +427,8 @@ export const ExamProvider = ({ children }) => {
       // TEMİZLEME İŞLEMİ KALDIRILDI - Kullanıcı salonları korunuyor
       console.log('✅ Salon temizleme işlemi kaldırıldı, tüm salonlar korunuyor');
       try {
-        // console.log('🔄 ExamProvider: Veriler IndexedDB\'den yükleniyor...');
-        const data = await loadFromIndexedDB();
+        // console.log('🔄 ExamProvider: Veriler Firestore\'dan yükleniyor...');
+        const data = await loadFromFirestore();
         
         // console.log('📊 Yüklenen veriler:', {
         //   ogrenciler: data.ogrenciler?.length || 0,
@@ -495,29 +495,29 @@ export const ExamProvider = ({ children }) => {
     initializeData();
   }, []); // Sadece component mount olduğunda çalış
 
-  // IndexedDB'ye otomatik kaydetme
+  // Firestore'a otomatik kaydetme
   useEffect(() => {
     if (!isInitialized) return; // İlk yükleme tamamlanana kadar bekle
     
-    const saveToIndexedDB = async () => {
+    const saveToFirestore = async () => {
       try {
         const { default: db } = await import('../database');
         await db.saveStudents(state.ogrenciler);
-        logger.debug('✅ Öğrenciler veritabanına kaydedildi (adapter)');
+        logger.debug('✅ Öğrenciler Firestore\'a kaydedildi');
       } catch (error) {
         logger.error('❌ Öğrenciler kaydedilemedi:', error);
       }
     };
     
     if (state.ogrenciler.length > 0) {
-      saveToIndexedDB();
+      saveToFirestore();
     }
   }, [state.ogrenciler, isInitialized]);
 
   useEffect(() => {
     if (!isInitialized) return; // İlk yükleme tamamlanana kadar bekle
     
-    const saveToIndexedDB = async () => {
+    const saveToFirestore = async () => {
       try {
         const { default: db } = await import('../database');
         // console.log('💾 Ayarlar kaydediliyor:', {
@@ -527,32 +527,32 @@ export const ExamProvider = ({ children }) => {
         //   dersler: state.ayarlar.dersler?.length || 0
         // });
         await db.saveSettings(state.ayarlar);
-        logger.debug('✅ Ayarlar veritabanına kaydedildi (adapter)');
+        logger.debug('✅ Ayarlar Firestore\'a kaydedildi');
       } catch (error) {
         logger.error('❌ Ayarlar kaydedilemedi:', error);
       }
     };
     
     if (state.ayarlar && Object.keys(state.ayarlar).length > 0) {
-      saveToIndexedDB();
+      saveToFirestore();
     }
   }, [state.ayarlar, isInitialized]);
 
   useEffect(() => {
     if (!isInitialized) return; // İlk yükleme tamamlanana kadar bekle
     
-    const saveToIndexedDB = async () => {
+    const saveToFirestore = async () => {
       try {
         const { default: db } = await import('../database');
         await db.saveSalons(state.salonlar);
-        logger.debug('✅ Salonlar veritabanına kaydedildi (adapter)');
+        logger.debug('✅ Salonlar Firestore\'a kaydedildi');
       } catch (error) {
         logger.error('❌ Salonlar kaydedilemedi:', error);
       }
     };
     
     if (state.salonlar.length > 0) {
-      saveToIndexedDB();
+      saveToFirestore();
     }
   }, [state.salonlar, isInitialized]);
 

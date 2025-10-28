@@ -8,9 +8,9 @@ import logger from '../utils/logger';
  */
 class DatabaseAdapter {
   constructor() {
-    this.useFirestore = true; // Firestore'u aktif et
+    this.useFirestore = true; // Sadece Firestore kullan
     this.firestore = firestoreClient;
-    this.indexedDB = null; // Lazy load IndexedDB
+    this.indexedDB = null; // IndexedDB pasif
   }
 
   /**
@@ -43,30 +43,19 @@ class DatabaseAdapter {
   }
 
   /**
-   * IndexedDB'yi lazy load et
+   * IndexedDB'yi lazy load et - DEVRE DIŞI
    */
   async getIndexedDB() {
-    if (!this.indexedDB) {
-      const { default: IndexedDBClient } = await import('./database.js');
-      this.indexedDB = IndexedDBClient;
-    }
-    return this.indexedDB;
+    // IndexedDB tamamen devre dışı - sadece Firestore kullan
+    throw new Error('IndexedDB devre dışı - sadece Firestore kullanılıyor');
   }
 
   /**
-   * Aktif veritabanını döndür
+   * Aktif veritabanını döndür - SADECE FIRESTORE
    */
   async getActiveDB() {
-    if (this.useFirestore) {
-      try {
-        return this.firestore;
-      } catch (error) {
-        logger.warn('⚠️ Firestore hatası, IndexedDB\'ye geçiliyor:', error);
-        this.useFirestore = false;
-        return await this.getIndexedDB();
-      }
-    }
-    return await this.getIndexedDB();
+    // Sadece Firestore kullan - fallback yok
+    return this.firestore;
   }
 
   /**
