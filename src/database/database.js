@@ -46,19 +46,17 @@ class KelebekDatabase extends Dexie {
   }
   
   /**
-   * Plan kaydetme - gelişmiş sıkıştırma ile
+   * Plan kaydetme - sıkıştırmasız
    */
   async savePlan(planData) {
     try {
-      // SIKIŞTIRMA KALDIRILDI - Veriyi doğrudan kaydet
-      console.log('💾 Plan verisi sıkıştırılmadan kaydediliyor...');
-      
+      console.log('💾 Plan verisi kaydediliyor...');
       const plan = {
         name: planData.name,
         date: planData.date,
         totalStudents: planData.totalStudents,
         salonCount: planData.salonCount,
-        data: planData.data // Doğrudan veriyi kaydet
+        data: planData.data
       };
       
       const id = await this.plans.add(plan);
@@ -66,12 +64,37 @@ class KelebekDatabase extends Dexie {
       return id;
     } catch (error) {
       console.error('❌ Plan kaydetme hatası:', error);
+      
+      // Quota hatası durumunda eski planları temizle ve tekrar dene
+      if (error.name === 'QuotaExceededError') {
+        console.log('🧹 Quota hatası - eski planlar temizleniyor...');
+        await this.cleanupOldPlans();
+        
+        // Tekrar dene
+        try {
+          const plan = {
+            name: planData.name,
+            date: planData.date,
+            totalStudents: planData.totalStudents,
+            salonCount: planData.salonCount,
+            data: planData.data
+          };
+          
+          const id = await this.plans.add(plan);
+          console.log('✅ Plan temizlik sonrası kaydedildi:', id);
+          return id;
+        } catch (retryError) {
+          console.error('❌ Temizlik sonrası da kaydetme başarısız:', retryError);
+          throw retryError;
+        }
+      }
+      
       throw error;
     }
   }
   
   /**
-   * Plan yükleme
+   * Plan yükleme - sıkıştırmasız
    */
   async loadPlan(planId) {
     try {
@@ -79,12 +102,10 @@ class KelebekDatabase extends Dexie {
       if (!plan) {
         throw new Error('Plan bulunamadı');
       }
-      
-      // SIKIŞTIRMA KALDIRILDI - Veriyi doğrudan döndür
-      console.log('📥 Plan verisi sıkıştırılmadan yükleniyor...');
+      console.log('📥 Plan verisi yükleniyor...');
       return {
         ...plan,
-        data: plan.data // Doğrudan veriyi döndür
+        data: plan.data
       };
     } catch (error) {
       console.error('❌ Plan yükleme hatası:', error);
@@ -232,125 +253,7 @@ class KelebekDatabase extends Dexie {
     }
   }
   
-  /**
-   * Plan verilerini sıkıştır
-   */
-  compressPlanData(planData) {
-    if (!planData) return null;
-    
-    // Tüm plan verisini koru - sadece gereksiz alanları temizle
-    const compressed = {
-      salon: planData.salon ? {
-        id: planData.salon.id,
-        salonId: planData.salon.salonId,
-        salonAdi: planData.salon.salonAdi,
-        kapasite: planData.salon.kapasite,
-        siraDizilimi: planData.salon.siraDizilimi,
-        ogrenciler: planData.salon.ogrenciler?.map(ogrenci => ({
-          id: ogrenci.id,
-          ad: ogrenci.ad,
-          soyad: ogrenci.soyad,
-          numara: ogrenci.numara,
-          sinif: ogrenci.sinif,
-          cinsiyet: ogrenci.cinsiyet,
-          masaNumarasi: ogrenci.masaNumarasi
-        })) || [],
-        masalar: planData.salon.masalar?.map(masa => ({
-          id: masa.id,
-          masaNumarasi: masa.masaNumarasi,
-          satir: masa.satir,
-          sutun: masa.sutun,
-          grup: masa.grup,
-          koltukTipi: masa.koltukTipi,
-          ogrenci: masa.ogrenci ? {
-            id: masa.ogrenci.id,
-            ad: masa.ogrenci.ad,
-            soyad: masa.ogrenci.soyad,
-            numara: masa.ogrenci.numara,
-            sinif: masa.ogrenci.sinif,
-            cinsiyet: masa.ogrenci.cinsiyet,
-            masaNumarasi: masa.ogrenci.masaNumarasi
-          } : null
-        })) || [],
-        yerlesilemeyenOgrenciler: planData.salon.yerlesilemeyenOgrenciler?.map(ogrenci => ({
-          id: ogrenci.id,
-          ad: ogrenci.ad,
-          soyad: ogrenci.soyad,
-          numara: ogrenci.numara,
-          sinif: ogrenci.sinif,
-          cinsiyet: ogrenci.cinsiyet
-        })) || []
-      } : null,
-      kalanOgrenciler: planData.kalanOgrenciler?.map(ogrenci => ({
-        id: ogrenci.id,
-        ad: ogrenci.ad,
-        soyad: ogrenci.soyad,
-        numara: ogrenci.numara,
-        sinif: ogrenci.sinif,
-        cinsiyet: ogrenci.cinsiyet
-      })) || [],
-      yerlesilemeyenOgrenciler: planData.yerlesilemeyenOgrenciler?.map(ogrenci => ({
-        id: ogrenci.id,
-        ad: ogrenci.ad,
-        soyad: ogrenci.soyad,
-        numara: ogrenci.numara,
-        sinif: ogrenci.sinif,
-        cinsiyet: ogrenci.cinsiyet
-      })) || [],
-      istatistikler: planData.istatistikler,
-      tumSalonlar: planData.tumSalonlar?.map(salon => ({
-        id: salon.id,
-        salonId: salon.salonId,
-        salonAdi: salon.salonAdi,
-        kapasite: salon.kapasite,
-        siraDizilimi: salon.siraDizilimi,
-        ogrenciler: salon.ogrenciler?.map(ogrenci => ({
-          id: ogrenci.id,
-          ad: ogrenci.ad,
-          soyad: ogrenci.soyad,
-          numara: ogrenci.numara,
-          sinif: ogrenci.sinif,
-          cinsiyet: ogrenci.cinsiyet,
-          masaNumarasi: ogrenci.masaNumarasi
-        })) || [],
-        masalar: salon.masalar?.map(masa => ({
-          id: masa.id,
-          masaNumarasi: masa.masaNumarasi,
-          satir: masa.satir,
-          sutun: masa.sutun,
-          grup: masa.grup,
-          koltukTipi: masa.koltukTipi,
-          ogrenci: masa.ogrenci ? {
-            id: masa.ogrenci.id,
-            ad: masa.ogrenci.ad,
-            soyad: masa.ogrenci.soyad,
-            numara: masa.ogrenci.numara,
-            sinif: masa.ogrenci.sinif,
-            cinsiyet: masa.ogrenci.cinsiyet,
-            masaNumarasi: masa.ogrenci.masaNumarasi
-          } : null
-        })) || [],
-        yerlesilemeyenOgrenciler: salon.yerlesilemeyenOgrenciler?.map(ogrenci => ({
-          id: ogrenci.id,
-          ad: ogrenci.ad,
-          soyad: ogrenci.soyad,
-          numara: ogrenci.numara,
-          sinif: ogrenci.sinif,
-          cinsiyet: ogrenci.cinsiyet
-        })) || []
-      })) || []
-    };
-    
-    return compressed;
-  }
-  
-  /**
-   * Plan verilerini aç
-   */
-  decompressPlanData(compressedData) {
-    if (!compressedData) return null;
-    return compressedData;
-  }
+  // compress/decompress kaldırıldı
   
   /**
    * Süresi dolmuş geçici verileri temizle
@@ -557,6 +460,88 @@ class KelebekDatabase extends Dexie {
     } catch (error) {
       console.error('❌ Salon silme hatası:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Plan verisini sıkıştır
+   */
+  compressPlanData(data) {
+    try {
+      const jsonString = JSON.stringify(data);
+      // Basit sıkıştırma: tekrarlanan karakterleri azalt
+      const compressed = jsonString
+        .replace(/"ogrenci":null/g, '"o":null')
+        .replace(/"ogrenciler":/g, '"o":')
+        .replace(/"masalar":/g, '"m":')
+        .replace(/"salonAdi":/g, '"s":')
+        .replace(/"masaNumarasi":/g, '"mn":')
+        .replace(/"satir":/g, '"r":')
+        .replace(/"sutun":/g, '"c":')
+        .replace(/"grup":/g, '"g":')
+        .replace(/"koltukTipi":/g, '"kt":')
+        .replace(/"ad":/g, '"a":')
+        .replace(/"soyad":/g, '"sn":')
+        .replace(/"sinif":/g, '"sf":')
+        .replace(/"cinsiyet":/g, '"cs":')
+        .replace(/"id":/g, '"i":');
+      
+      return compressed;
+    } catch (error) {
+      console.warn('⚠️ Sıkıştırma hatası, orijinal veri kullanılıyor:', error);
+      return data;
+    }
+  }
+
+  /**
+   * Sıkıştırılmış plan verisini aç
+   */
+  decompressPlanData(compressedData) {
+    try {
+      // Sıkıştırma tersine çevir
+      const decompressed = compressedData
+        .replace(/"o":null/g, '"ogrenci":null')
+        .replace(/"o":/g, '"ogrenciler":')
+        .replace(/"m":/g, '"masalar":')
+        .replace(/"s":/g, '"salonAdi":')
+        .replace(/"mn":/g, '"masaNumarasi":')
+        .replace(/"r":/g, '"satir":')
+        .replace(/"c":/g, '"sutun":')
+        .replace(/"g":/g, '"grup":')
+        .replace(/"kt":/g, '"koltukTipi":')
+        .replace(/"a":/g, '"ad":')
+        .replace(/"sn":/g, '"soyad":')
+        .replace(/"sf":/g, '"sinif":')
+        .replace(/"cs":/g, '"cinsiyet":')
+        .replace(/"i":/g, '"id":');
+      
+      return JSON.parse(decompressed);
+    } catch (error) {
+      console.warn('⚠️ Açma hatası, orijinal veri kullanılıyor:', error);
+      return compressedData;
+    }
+  }
+
+  /**
+   * Eski planları temizle (quota hatası önleme)
+   */
+  async cleanupOldPlans() {
+    try {
+      const plans = await this.plans.orderBy('createdAt').toArray();
+      
+      // En eski 3 planı sil (en az 5 plan kalacak şekilde)
+      if (plans.length > 5) {
+        const plansToDelete = plans.slice(0, plans.length - 5);
+        
+        for (const plan of plansToDelete) {
+          await this.plans.delete(plan.id);
+          console.log('🗑️ Eski plan silindi:', plan.id, plan.name);
+        }
+        
+        console.log(`✅ ${plansToDelete.length} eski plan temizlendi`);
+      }
+    } catch (error) {
+      console.error('❌ Plan temizleme hatası:', error);
     }
   }
 }

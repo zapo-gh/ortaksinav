@@ -407,30 +407,7 @@ const AnaSayfaContent = React.memo(() => {
   const [showWelcome, setShowWelcome] = useState(false); // Sayfa yenileme için false
   const { showSuccess, showError } = useNotifications();
 
-  // Sadece ilk açılışta giriş sayfası göster
-  useEffect(() => {
-    // İlk açılış kontrolü - localStorage'dan kontrol et
-    try {
-      const hasVisited = localStorage.getItem('hasVisited');
-      const isFirstVisit = !hasVisited || hasVisited !== 'true';
-      
-      if (isFirstVisit) {
-        setShowWelcome(true);
-        localStorage.setItem('hasVisited', 'true');
-      }
-    } catch (error) {
-      console.error('❌ localStorage kontrolü hatası:', error);
-      // Hata durumunda karşılama sayfasını göster
-      setShowWelcome(true);
-    }
-  }, []);
-
-  // Giriş sayfasından ana sisteme geçiş
-  const handleStartSystem = useCallback(() => {
-    setShowWelcome(false);
-    showSuccess('Sisteme hoş geldiniz!');
-  }, [showSuccess]);
-  
+  // Exam context state & actions (erken tanımla - aşağıdaki effectler kullanıyor)
   const {
     // State
     ogrenciler,
@@ -454,6 +431,56 @@ const AnaSayfaContent = React.memo(() => {
     hataAyarla,
     hataTemizle
   } = useExam();
+
+  // Sadece ilk açılışta giriş sayfası göster
+  useEffect(() => {
+    // İlk açılış kontrolü - localStorage'dan kontrol et
+    try {
+      const hasVisited = localStorage.getItem('hasVisited');
+      const isFirstVisit = !hasVisited || hasVisited !== 'true';
+      
+      if (isFirstVisit) {
+        setShowWelcome(true);
+        localStorage.setItem('hasVisited', 'true');
+      }
+    } catch (error) {
+      console.error('❌ localStorage kontrolü hatası:', error);
+      // Hata durumunda karşılama sayfasını göster
+      setShowWelcome(true);
+    }
+  }, []);
+
+  // Giriş sayfasından ana sisteme geçiş
+  const handleStartSystem = useCallback(() => {
+    setShowWelcome(false);
+    showSuccess('Sisteme hoş geldiniz!');
+  }, [showSuccess]);
+
+  // Gizli kısayol: Ctrl+Alt+D ile veritabanı test panelini aç/kapat
+  useEffect(() => {
+    const handler = (e) => {
+      try {
+        const isToggle = (e.ctrlKey || e.metaKey) && e.altKey && (e.key === 'd' || e.key === 'D');
+        if (isToggle) {
+          const enabled = localStorage.getItem('enable_db_test') === '1';
+          const next = enabled ? '0' : '1';
+          localStorage.setItem('enable_db_test', next);
+          // panel görünürse hemen geç
+          if (next === '1') {
+            tabDegistir('database-test');
+            showSuccess('Veritabanı Test paneli etkinleştirildi (Ctrl+Alt+D)');
+          } else {
+            showSuccess('Veritabanı Test paneli devre dışı bırakıldı');
+            if (aktifTab === 'database-test') tabDegistir('genel-ayarlar');
+          }
+        }
+      } catch (err) {
+        logger.debug('Kısayol işleyicisinde hata yakalandı:', err);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [tabDegistir, showSuccess, aktifTab]);
 
 
   // PDF Export için ref'ler
@@ -666,9 +693,7 @@ const AnaSayfaContent = React.memo(() => {
   // Plan yükleme fonksiyonu
   const handlePlanYukle = async (plan) => {
     try {
-      console.log('🔍 Plan yükleme başlatıldı:', plan);
       const loadedPlan = await planManager.loadPlan(plan.id);
-      console.log('🔍 Plan verisi yüklendi:', loadedPlan);
 
       if (!loadedPlan || !loadedPlan.data) {
         showError('Plan verisi bulunamadı!');
@@ -676,10 +701,8 @@ const AnaSayfaContent = React.memo(() => {
       }
 
       const planData = loadedPlan.data;
-      console.log('🔍 Plan data yapısı:', JSON.stringify(planData).substring(0, 200));
 
       // Plan verisini yerlestirmeSonucu formatına dönüştür
-      console.log('🔍 Plan data salon sayısı:', planData.tumSalonlar?.length || 0);
       const yerlestirmeFormatinda = {
         salon: planData.salon,
         tumSalonlar: planData.tumSalonlar,
@@ -687,7 +710,6 @@ const AnaSayfaContent = React.memo(() => {
         yerlesilemeyenOgrenciler: planData.yerlesilemeyenOgrenciler,
         istatistikler: planData.istatistikler
       };
-      console.log('🔍 Yerleştirme formatı oluşturuldu:', yerlestirmeFormatinda.tumSalonlar?.length || 0, 'salon');
 
       // Ayarlar ve dersler bilgilerini yükle
       if (planData.ayarlar) {
@@ -704,74 +726,26 @@ const AnaSayfaContent = React.memo(() => {
       }
 
       // Masa numaralarını yeniden hesapla - Tüm salonlar için
-      try {
-        if (yerlestirmeFormatinda.tumSalonlar && yerlestirmeFormatinda.tumSalonlar.length > 0) {
-          yerlestirmeFormatinda.tumSalonlar = yerlestirmeFormatinda.tumSalonlar.map((salon, salonIndex) => {
-            try {
-              if (!salon || typeof salon !== 'object') {
-                logger.error(`❌ Salon ${salonIndex} geçersiz format!`);
-                return null;
-              }
-              
-              if (salon.masalar && Array.isArray(salon.masalar) && salon.masalar.length > 0) {
-                // Her masanın geçerli verilere sahip olduğundan emin ol
-                const validMasalar = salon.masalar.filter(masa => masa && typeof masa === 'object' && masa.hasOwnProperty('id'));
-                
-                if (validMasalar.length > 0) {
-                  try {
-                    // Masa numaralarını yeniden hesapla
-                    const masalarWithNumbers = calculateDeskNumbersForMasalar(validMasalar);
-                    return {
-                      ...salon,
-                      masalar: masalarWithNumbers
-                    };
-                  } catch (calcError) {
-                    logger.error(`❌ Salon ${salonIndex} masa numarası hesaplama hatası:`, calcError);
-                    return salon;
-                  }
-                } else {
-                  logger.warn(`⚠️ Salon ${salonIndex} için geçerli masa yok!`);
-                  return salon;
-                }
-              }
-            } catch (masaError) {
-              logger.error(`❌ Salon ${salonIndex} masalar işlenirken hata:`, masaError);
-              return salon || {};
-            }
-            return salon || {};
-          }).filter(salon => salon !== null); // null salonları temizle
-          
-          // Ana salon masalarını da güncelle
-          if (yerlestirmeFormatinda.salon && yerlestirmeFormatinda.salon.masalar && yerlestirmeFormatinda.tumSalonlar.length > 0) {
-            const ilkSalonMasalari = yerlestirmeFormatinda.tumSalonlar[0]?.masalar;
-            if (ilkSalonMasalari && Array.isArray(ilkSalonMasalari)) {
-              yerlestirmeFormatinda.salon.masalar = ilkSalonMasalari;
-            }
+      if (yerlestirmeFormatinda.tumSalonlar && yerlestirmeFormatinda.tumSalonlar.length > 0) {
+        yerlestirmeFormatinda.tumSalonlar = yerlestirmeFormatinda.tumSalonlar.map(salon => {
+          if (salon.masalar && Array.isArray(salon.masalar)) {
+            // Masa numaralarını yeniden hesapla
+            const masalarWithNumbers = calculateDeskNumbersForMasalar(salon.masalar);
+            return {
+              ...salon,
+              masalar: masalarWithNumbers
+            };
           }
+          return salon;
+        });
+        
+        // Ana salon masalarını da güncelle
+        if (yerlestirmeFormatinda.salon && yerlestirmeFormatinda.salon.masalar) {
+          yerlestirmeFormatinda.salon.masalar = yerlestirmeFormatinda.tumSalonlar[0]?.masalar || yerlestirmeFormatinda.salon.masalar;
         }
-      } catch (tumSalonlarError) {
-        logger.error('❌ Tüm salonlar işlenirken hata:', tumSalonlarError);
-        // Hataya rağmen devam et, sadece logla
       }
 
-      // Yerleştirme güncellemesinden önce son kontrol
-      if (!yerlestirmeFormatinda.tumSalonlar || yerlestirmeFormatinda.tumSalonlar.length === 0) {
-        logger.error('❌ Yerleştirme verisi geçersiz: tumSalonlar boş!');
-        showError('Plan verisi geçersiz: Salon bilgileri bulunamadı!');
-        return;
-      }
-
-      console.log('🔍 Yerleştirme güncelleniyor...');
-      console.log('🔍 tumSalonlar detayı:', yerlestirmeFormatinda.tumSalonlar);
-      
-      try {
-        yerlestirmeGuncelle(yerlestirmeFormatinda);
-        console.log('✅ Yerleştirme güncellendi!');
-      } catch (updateError) {
-        console.error('❌ Yerleştirme güncelleme hatası:', updateError);
-        console.error('❌ Stack trace:', updateError.stack);
-        throw updateError;
-      }
+      yerlestirmeGuncelle(yerlestirmeFormatinda);
       
       tabDegistir('salon-plani');
 
@@ -1055,6 +1029,12 @@ const AnaSayfaContent = React.memo(() => {
           // Gelişmiş yerleştirme algoritması kullanılıyor - sadece seçili sınıf öğrencileri
           sonuc = gelismisYerlestirme(seciliSinifOgrencileri, aktifSalonlar, ayarlar);
           
+          // KRİTİK DÜZELTME: İstatistikleri gerçek öğrenci sayısına göre güncelle
+          if (sonuc && sonuc.istatistikler) {
+            sonuc.istatistikler.toplamOgrenci = ogrenciler.length; // Tüm öğrenci sayısı
+            sonuc.istatistikler.yerlesemeyenOgrenci = ogrenciler.length - sonuc.istatistikler.yerlesenOgrenci;
+          }
+          
           
           const bitisZamani = performance.now();
           const islemSuresi = bitisZamani - baslangicZamani;
@@ -1103,16 +1083,36 @@ const AnaSayfaContent = React.memo(() => {
 
     // Tüm salonları formatla
     const formatlanmisSalonlar = sonuc.salonlar.map(salon => {
+      // KRİTİK GÜVENLİK: Duplicate'ları temizle
+      const uniqueOgrenciler = [];
+      const seenIds = new Set();
+      
+      if (salon.ogrenciler && Array.isArray(salon.ogrenciler)) {
+        salon.ogrenciler.forEach(ogrenci => {
+          if (ogrenci && ogrenci.id && !seenIds.has(ogrenci.id)) {
+            uniqueOgrenciler.push(ogrenci);
+            seenIds.add(ogrenci.id);
+          }
+        });
+      }
+      
+      if (uniqueOgrenciler.length !== salon.ogrenciler?.length) {
+        console.warn(`⚠️ ${salon.salonAdi}: ${salon.ogrenciler?.length || 0} -> ${uniqueOgrenciler.length} öğrenci (${(salon.ogrenciler?.length || 0) - uniqueOgrenciler.length} duplicate temizlendi)`);
+      }
+      
+      // KRİTİK: Gerçek salon kapasitesini hesapla (masa sayısı)
+      const gercekKapasite = salon.koltukMatrisi?.masalar?.length || salon.koltukMatrisi?.satirSayisi * salon.koltukMatrisi?.sutunSayisi || 0;
+      
       const formatlanmisSalon = {
         id: salon.salonId, // SalonPlani için id property'si ekle
         salonId: salon.salonId,
         salonAdi: salon.salonAdi,
-        kapasite: salon.ogrenciler.length,
+        kapasite: gercekKapasite, // KRİTİK DÜZELTME: Gerçek salon kapasitesi (masa sayısı)
         siraDizilimi: {
           satir: salon.koltukMatrisi.satirSayisi,
           sutun: salon.koltukMatrisi.sutunSayisi
         },
-        ogrenciler: salon.ogrenciler,
+        ogrenciler: uniqueOgrenciler, // DÜZELTME: Temizlenmiş liste
         masalar: [],
         plan: salon.plan || [] // Plan verisini ekle
       };
@@ -1416,7 +1416,22 @@ const AnaSayfaContent = React.memo(() => {
         );
       
       case 'database-test':
-        return <DatabaseTestLazy />;
+        // Gizli erişim: sadece yetkilendirme anahtarı aktifse göster
+        try {
+          const urlParams = new URLSearchParams(window.location.search);
+          const enabledByQuery = urlParams.get('dbtest') === '1';
+          const enabledByStorage = localStorage.getItem('enable_db_test') === '1';
+          if (enabledByQuery || enabledByStorage) {
+            // Query ile açılırsa bayrağı kalıcı yap
+            if (enabledByQuery) {
+              localStorage.setItem('enable_db_test', '1');
+            }
+            return <DatabaseTestLazy />;
+          }
+        } catch (e) {
+          logger.debug('Database test sekmesi kontrolünde hata:', e);
+        }
+        return null;
       
       case 'test-dashboard':
         return <TestDashboardLazy />;
@@ -1508,8 +1523,7 @@ const AnaSayfaContent = React.memo(() => {
           <Tabs
             value={aktifTab}
             onChange={(e, newValue) => tabDegistir(newValue)}
-            variant="scrollable"
-            scrollButtons="auto"
+            centered
             sx={{ 
               borderBottom: 1, 
               borderColor: 'divider',
@@ -1555,11 +1569,26 @@ const AnaSayfaContent = React.memo(() => {
               label="Kayıtlı Planlar" 
               value="kayitli-planlar"
             />
-            <Tab 
-              icon={<BugReportIcon />} 
-              label="Veritabanı Test" 
-              value="database-test"
-            />
+            {(() => {
+              try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const enabledByQuery = urlParams.get('dbtest') === '1';
+                const enabledByStorage = localStorage.getItem('enable_db_test') === '1';
+                if (enabledByQuery || enabledByStorage) {
+                  if (enabledByQuery) localStorage.setItem('enable_db_test', '1');
+                  return (
+                    <Tab 
+                      icon={<BugReportIcon />} 
+                      label="Veritabanı Test" 
+                      value="database-test"
+                    />
+                  );
+                }
+              } catch (e) {
+                logger.debug('Database test tab görünürlük kontrolünde hata:', e);
+              }
+              return null;
+            })()}
           </Tabs>
         </Paper>
 
@@ -1665,6 +1694,7 @@ const AnaSayfaContent = React.memo(() => {
           {/* Sınıf Listesi */}
           <SalonOgrenciListesiPrintable 
             ref={sinifListesiPrintRef}
+            ogrenciler={ogrenciler}
             yerlestirmeSonucu={yerlestirmeSonucu}
             ayarlar={ayarlar}
           />

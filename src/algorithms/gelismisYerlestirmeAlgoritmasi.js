@@ -23,9 +23,24 @@ export { getNeighbors };
 export const createAkilliSalonHavuzu = (ogrenciler, salonlar, seed) => {
   logger.info('🧠 Akıllı salon havuzu oluşturuluyor...');
   
+  // KRİTİK: Önce öğrencileri benzersiz hale getir (duplicate önleme - 1. seviye)
+  const uniqueOgrenciler = [];
+  const seenIds = new Set();
+  
+  ogrenciler.forEach(ogrenci => {
+    if (ogrenci && ogrenci.id && !seenIds.has(ogrenci.id)) {
+      uniqueOgrenciler.push(ogrenci);
+      seenIds.add(ogrenci.id);
+    } else if (ogrenci && ogrenci.id) {
+      logger.warn(`⚠️ DUPLICATE ÖNLEME: ${ogrenci.ad} ${ogrenci.soyad} (ID: ${ogrenci.id}) zaten listede, atlandı`);
+    }
+  });
+  
+  logger.info(`✅ Benzersiz öğrenci kontrolü: ${ogrenciler.length} -> ${uniqueOgrenciler.length} (${ogrenciler.length - uniqueOgrenciler.length} duplicate önlendi)`);
+  
   // Mevcut gruplama mantığını koru
   const sinifSeviyeleri = {};
-  ogrenciler.forEach(ogrenci => {
+  uniqueOgrenciler.forEach(ogrenci => {
     const seviye = getSinifSeviyesi(ogrenci.sinif);
     logger.debug(`🔍 Öğrenci ${ogrenci.ad} ${ogrenci.soyad} - Sınıf: "${ogrenci.sinif}" -> Seviye: "${seviye}"`);
     if (seviye && seviye !== null) {
@@ -47,13 +62,16 @@ export const createAkilliSalonHavuzu = (ogrenciler, salonlar, seed) => {
   });
 
   const aktifSalonlar = salonlar.filter(salon => salon.aktif);
+  
+  // KRİTİK: Her salon havuzunu Set ile takip et (duplicate önleme - 2. seviye)
   const salonHavuzlari = aktifSalonlar.map(() => []);
+  const salonOgrenciSets = aktifSalonlar.map(() => new Set()); // Her salon için benzersiz ID seti
 
   // YENİ: Kısıt optimizasyonu için ön analiz
-  const kisitAnalizi = analyzeKisitlar(ogrenciler, sinifSeviyeleri);
+  const kisitAnalizi = analyzeKisitlar(uniqueOgrenciler, sinifSeviyeleri);
   
   // YENİ: Akıllı dağıtım algoritması
-  return akilliDagitim(sinifSeviyeleri, aktifSalonlar, salonHavuzlari, kisitAnalizi);
+  return akilliDagitim(sinifSeviyeleri, aktifSalonlar, salonHavuzlari, kisitAnalizi, salonOgrenciSets);
 };
 
 /**
@@ -90,7 +108,11 @@ const analyzeKisitlar = (ogrenciler, sinifSeviyeleri) => {
 /**
  * EŞİT DAĞITIM algoritması - Her salona eşit sayıda öğrenci dağıtım
  */
-const akilliDagitim = (sinifSeviyeleri, aktifSalonlar, salonHavuzlari, kisitAnalizi) => {
+const akilliDagitim = (sinifSeviyeleri, aktifSalonlar, salonHavuzlari, kisitAnalizi, salonOgrenciSets = null) => {
+  // Eğer Set'ler yoksa oluştur (geriye uyumluluk)
+  if (!salonOgrenciSets) {
+    salonOgrenciSets = aktifSalonlar.map(() => new Set());
+  }
   const toplamOgrenci = kisitAnalizi.toplamOgrenci;
   const salonSayisi = aktifSalonlar.length;
 
@@ -127,44 +149,97 @@ const akilliDagitim = (sinifSeviyeleri, aktifSalonlar, salonHavuzlari, kisitAnal
       
       logger.debug(`  📍 Salon ${salon.salonAdi || salon.ad}: ${seviyeOgrenciSayisi} öğrenci alacak`);
       
-      // Bu salona öğrencileri yerleştir
+      // Bu salona öğrencileri yerleştir (DUPLICATE ÖNLEME)
       for (let i = 0; i < seviyeOgrenciSayisi && seviyeOgrencileri.length > 0; i++) {
             const ogrenci = seviyeOgrencileri.shift();
-            salonHavuzlari[index].push(ogrenci);
-            logger.debug(`  ✅ Salon ${salon.salonAdi || salon.ad}: ${ogrenci.ad} ${ogrenci.soyad} eklendi`);
+            
+            // DUPLICATE KONTROLÜ
+            if (!salonOgrenciSets[index].has(ogrenci.id)) {
+              salonHavuzlari[index].push(ogrenci);
+              salonOgrenciSets[index].add(ogrenci.id);
+              logger.debug(`  ✅ Salon ${salon.salonAdi || salon.ad}: ${ogrenci.ad} ${ogrenci.soyad} eklendi`);
+            } else {
+              logger.error(`  🚨 DUPLICATE ÖNLENDI: ${ogrenci.ad} ${ogrenci.soyad} (${ogrenci.id}) zaten ${salon.salonAdi} salonunda!`);
+              i--; // Sayacı azalt çünkü bu öğrenci eklenmedi
+            }
       }
     });
 
-    // Kalan öğrencileri dengeli dağıt (eğer varsa)
+    // Kalan öğrencileri dengeli dağıt (eğer varsa) - DUPLICATE ÖNLEME
     while (seviyeOgrencileri.length > 0) {
       let yerlestirildi = false;
+      const ogrenci = seviyeOgrencileri.shift();
       
       for (let i = 0; i < aktifSalonlar.length; i++) {
-        if (seviyeOgrencileri.length > 0 && 
-            salonHavuzlari[i].length < salonHavuzlari[i].hedefSayi) {
-          salonHavuzlari[i].push(seviyeOgrencileri.shift());
-          yerlestirildi = true;
-          break; // Bir öğrenci yerleştirildi, döngüyü yeniden başlat
+        if (salonHavuzlari[i].length < salonHavuzlari[i].hedefSayi) {
+          // DUPLICATE KONTROLÜ
+          if (!salonOgrenciSets[i].has(ogrenci.id)) {
+            salonHavuzlari[i].push(ogrenci);
+            salonOgrenciSets[i].add(ogrenci.id);
+            yerlestirildi = true;
+            break; // Bir öğrenci yerleştirildi, döngüyü yeniden başlat
+          }
         }
       }
       
       // Hiçbir salona yerleştirilemediyse, hedef sayıyı aşmaya izin ver
-      if (!yerlestirildi && seviyeOgrencileri.length > 0) {
-        const enAzDoluIndex = salonHavuzlari
-          .map((havuz, idx) => ({ havuz, idx, length: havuz.length }))
-          .sort((a, b) => a.length - b.length)[0].idx;
+      if (!yerlestirildi) {
+        // Öğrencinin hiçbir salonda olmadığı bir salon bul
+        let placed = false;
         
-        salonHavuzlari[enAzDoluIndex].push(seviyeOgrencileri.shift());
-        logger.warn(`  ⚠️ Kalan öğrenci en az dolu salona yerleştirildi: Salon ${aktifSalonlar[enAzDoluIndex].salonAdi || aktifSalonlar[enAzDoluIndex].ad}`);
+        for (let i = 0; i < aktifSalonlar.length; i++) {
+          if (!salonOgrenciSets[i].has(ogrenci.id)) {
+            const enAzDoluIndex = salonHavuzlari
+              .map((havuz, idx) => ({ havuz, idx, length: havuz.length, hasStudent: salonOgrenciSets[idx].has(ogrenci.id) }))
+              .filter(item => !item.hasStudent) // Bu öğrenciyi içermeyenleri filtrele
+              .sort((a, b) => a.length - b.length)[0]?.idx;
+            
+            if (enAzDoluIndex !== undefined) {
+              salonHavuzlari[enAzDoluIndex].push(ogrenci);
+              salonOgrenciSets[enAzDoluIndex].add(ogrenci.id);
+              logger.warn(`  ⚠️ Kalan öğrenci en az dolu salona yerleştirildi: ${ogrenci.ad} -> Salon ${aktifSalonlar[enAzDoluIndex].salonAdi || aktifSalonlar[enAzDoluIndex].ad}`);
+              placed = true;
+            }
+            break;
+          }
+        }
+        
+        if (!placed) {
+          logger.error(`  ❌ ÖĞRENCI YERLEŞTİRİLEMEDİ: ${ogrenci.ad} ${ogrenci.soyad} (ID: ${ogrenci.id}) - Tüm salonlarda zaten var!`);
+        }
       }
     }
   });
 
-  // Son durumu logla
+  // Son durumu logla ve SON GÜVENLİK KONTROLÜ
   logger.info(`\n📊 EŞİT DAĞITIM SONUÇLARI:`);
   salonHavuzlari.forEach((havuz, index) => {
     const salon = aktifSalonlar[index];
-    logger.info(`  📍 Salon ${salon.salonAdi || salon.ad}: ${havuz.length} öğrenci (hedef: ${havuz.hedefSayi})`);
+    
+    // SON GÜVENLİK: Her havuzda duplicate var mı kontrol et
+    const uniqueCount = new Set(havuz.map(o => o.id)).size;
+    
+    if (uniqueCount !== havuz.length) {
+      logger.error(`  🚨 HAVUZ DUPLICATE: ${salon.salonAdi || salon.ad}: ${havuz.length} öğrenci ama ${uniqueCount} benzersiz!`);
+      
+      // Havuzu temizle
+      const uniqueHavuz = [];
+      const seenIds = new Set();
+      havuz.forEach(ogrenci => {
+        if (!seenIds.has(ogrenci.id)) {
+          uniqueHavuz.push(ogrenci);
+          seenIds.add(ogrenci.id);
+        }
+      });
+      
+      // Temizlenmiş havuzu geri yaz
+      salonHavuzlari[index] = uniqueHavuz;
+      salonHavuzlari[index].hedefSayi = havuz.hedefSayi; // Hedefi koru
+      
+      logger.info(`  ✅ Havuz temizlendi: ${havuz.length} -> ${uniqueHavuz.length}`);
+    }
+    
+    logger.info(`  📍 Salon ${salon.salonAdi || salon.ad}: ${salonHavuzlari[index].length} öğrenci (hedef: ${havuz.hedefSayi})`);
   });
 
   return salonHavuzlari;
@@ -365,32 +440,12 @@ export const calculateBalancedDistribution = (ogrenciler, kapasite) => {
  * 2.grup: Sıra1-Sol(5), Sıra1-Sağ(6), Sıra2-Sol(7), Sıra2-Sağ(8)...
  */
 export const calculateDeskNumbersForMasalar = (masalar) => {
-  // Güvenlik kontrolü
-  if (!masalar || !Array.isArray(masalar) || masalar.length === 0) {
-    return [];
-  }
-  
   // Grup bazlı sıralama
   const gruplar = {};
-  masalar.forEach((masa, index) => {
-    // Her masanın geçerli olduğundan emin ol
-    if (!masa || typeof masa !== 'object') {
-      logger.warn(`⚠️ Geçersiz masa objesi at index ${index}`);
-      return;
-    }
-    
+  masalar.forEach(masa => {
     const grup = masa.grup || 1;
-    if (!gruplar[grup]) {
-      gruplar[grup] = [];
-    }
-    
-    // Güvenli push işlemi
-    if (Array.isArray(gruplar[grup])) {
-      gruplar[grup].push(masa);
-    } else {
-      logger.error(`❌ Grup ${grup} array değil!`);
-      gruplar[grup] = [masa];
-    }
+    if (!gruplar[grup]) gruplar[grup] = [];
+    gruplar[grup].push(masa);
   });
   
   let masaNumarasi = 1;
@@ -400,31 +455,18 @@ export const calculateDeskNumbersForMasalar = (masalar) => {
   for (const grupId of sortedGruplar) {
     const grupMasalar = gruplar[grupId];
     
-    // Güvenlik kontrolü
-    if (!Array.isArray(grupMasalar) || grupMasalar.length === 0) {
-      continue;
-    }
-    
     // Grup içinde satır-sütun sıralaması
     const sortedGrupMasalar = grupMasalar.sort((a, b) => {
-      // Null/undefined kontrolü
-      const satirA = a.satir != null ? a.satir : 0;
-      const satirB = b.satir != null ? b.satir : 0;
-      const sutunA = a.sutun != null ? a.sutun : 0;
-      const sutunB = b.sutun != null ? b.sutun : 0;
-      
-      if (satirA !== satirB) return satirA - satirB;
-      return sutunA - sutunB;
+      if (a.satir !== b.satir) return a.satir - b.satir;
+      return a.sutun - b.sutun;
     });
     
     // Bu grup için masa numaralarını ata
     sortedGrupMasalar.forEach(masa => {
-      if (masa && typeof masa === 'object') {
-        guncellenmisMasalar.push({
-          ...masa,
-          masaNumarasi: masaNumarasi++
-        });
-      }
+      guncellenmisMasalar.push({
+        ...masa,
+        masaNumarasi: masaNumarasi++
+      });
     });
   }
   
@@ -858,16 +900,38 @@ class GelismisYerlestirmeMotoru {
     // Yerleştirme yap
     const yerlesenOgrenciler = this.executeYerlestirme();
     
+    // KRİTİK DÜZELTME: Plan'dan gerçek yerleşen öğrencileri çıkar (koltuk bilgileriyle birlikte)
+    const planOgrencileri = this.plan
+      .filter(p => p.ogrenci !== null)
+      .map(p => p.ogrenci);
+    
     // Yerleştirilemeyen öğrencileri bul
-    const yerlesenIdler = new Set(yerlesenOgrenciler.map(o => o.id));
+    const yerlesenIdler = new Set(planOgrencileri.map(o => o.id));
     const yerlesilemeyenOgrenciler = orijinalOgrenciler.filter(o => !yerlesenIdler.has(o.id));
     
     const basariOrani = orijinalOgrenciler.length > 0 
-      ? (yerlesenOgrenciler.length / orijinalOgrenciler.length) * 100 
+      ? (planOgrencileri.length / orijinalOgrenciler.length) * 100 
       : 100;
     
+    // GÜVENLİK: yerlesenOgrenciler ve planOgrencileri sayıları eşit mi kontrol et
+    if (yerlesenOgrenciler.length !== planOgrencileri.length) {
+      logger.warn(`⚠️ UYARI: yerlesenOgrenciler (${yerlesenOgrenciler.length}) ve planOgrencileri (${planOgrencileri.length}) sayıları farklı!`);
+      logger.warn(`   Bu, bazı öğrencilerin plan'a eklenmediği anlamına gelebilir.`);
+      
+      // Hangi öğrencilerin eksik olduğunu bul
+      const planOgrenciIdleri = new Set(planOgrencileri.map(o => o.id));
+      const eksikOgrenciler = yerlesenOgrenciler.filter(o => !planOgrenciIdleri.has(o.id));
+      
+      if (eksikOgrenciler.length > 0) {
+        logger.error(`   ❌ Plan'da olmayan öğrenciler:`);
+        eksikOgrenciler.forEach(o => {
+          logger.error(`      - ${o.ad} ${o.soyad} (ID: ${o.id})`);
+        });
+      }
+    }
+    
     return {
-      ogrenciler: yerlesenOgrenciler, // DÜZELTME: plan'dan değil, yerlesenOgrenciler'den döndür
+      ogrenciler: planOgrencileri, // KRİTİK: Plan'dan çıkar (koltuk bilgileriyle birlikte)
       yerlesilemeyenOgrenciler,
       plan: this.plan,
       basariOrani
@@ -878,7 +942,7 @@ class GelismisYerlestirmeMotoru {
    * Yerleştirme işlemi
    */
   executeYerlestirme() {
-    this.calculateKoltukOncelikleri();
+    // calculateKoltukOncelikleri artık salonYerlestirmeYeni'de çağrılıyor
     
     // Öğrenci havuzunu kopyala (yerleştirme sırasında değişecek)
     const ogrenciHavuzu = [...this.ogrenciler];
@@ -896,14 +960,23 @@ class GelismisYerlestirmeMotoru {
         const uygunOgrenci = this.findUygunOgrenciFromPool(koltuk, koltuk.komsular, katman, ogrenciHavuzu);
         
         if (uygunOgrenci && !kullanilanOgrenciler.has(uygunOgrenci.id)) {
-          this.placeOgrenci(koltuk, uygunOgrenci);
-          yerlesen.push(uygunOgrenci);
-          kullanilanOgrenciler.add(uygunOgrenci.id);
+          // Önce placeOgrenci ile plan'a ekle
+          const placementSuccess = this.placeOgrenci(koltuk, uygunOgrenci);
           
-          // Öğrenciyi havuzdan kaldır
-          const index = ogrenciHavuzu.findIndex(o => o.id === uygunOgrenci.id);
-          if (index > -1) {
-            ogrenciHavuzu.splice(index, 1);
+          if (placementSuccess) {
+            // Plan'a başarıyla eklendi, yerlesen listesine de ekle
+            yerlesen.push(uygunOgrenci);
+            kullanilanOgrenciler.add(uygunOgrenci.id);
+            
+            // Öğrenciyi havuzdan kaldır
+            const index = ogrenciHavuzu.findIndex(o => o.id === uygunOgrenci.id);
+            if (index > -1) {
+              ogrenciHavuzu.splice(index, 1);
+            }
+          } else {
+            // Plan'a eklenemedi - öğrenciyi havuzda bırak, belki başka koltukta yerleşir
+            logger.warn(`⚠️ ${uygunOgrenci.ad} ${uygunOgrenci.soyad} bu koltuğa yerleştirilemedi, havuzda kalacak`);
+            // KRİTİK: placeOgrenci başarısız olduğunda yerlesen listesine EKLEME!
           }
         }
       }
@@ -944,6 +1017,37 @@ class GelismisYerlestirmeMotoru {
 
   placeOgrenci(koltuk, ogrenci) {
     const planItem = this.plan.find(p => p.id === koltuk.id);
+    
+    // KRİTİK GÜVENLİK: Plan item bulunamadıysa hata
+    if (!planItem) {
+      logger.error(`❌ KRİTİK HATA: placeOgrenci - Plan item bulunamadı!`);
+      logger.error(`   Koltuk ID: ${koltuk.id}, Öğrenci: ${ogrenci.ad} ${ogrenci.soyad} (${ogrenci.id})`);
+      logger.error(`   Plan uzunluğu: ${this.plan.length}`);
+      logger.error(`   İlk 5 plan item ID'leri:`, this.plan.slice(0, 5).map(p => p.id));
+      logger.error(`   Koltuk detayları:`, {
+        id: koltuk.id,
+        satir: koltuk.satir,
+        sutun: koltuk.sutun,
+        grup: koltuk.grup
+      });
+      return false; // Yerleştirme başarısız
+    }
+    
+    // DOLU KOLTUK KORUMASI: Aynı koltuğa ikinci kez yerleştirmeyi engelle
+    if (planItem.ogrenci) {
+      const mevcut = planItem.ogrenci;
+      logger.warn(`⚠️ Koltuk zaten dolu: koltukId=${koltuk.id}, mevcut=${mevcut.ad} ${mevcut.soyad} (${mevcut.id}), yeni=${ogrenci.ad} ${ogrenci.soyad} (${ogrenci.id})`);
+      return false;
+    }
+    
+    // 2D planda da doluluk kontrolü (güvenlik için)
+    const hucre = this.plan2D[koltuk.satir]?.[koltuk.sutun];
+    if (hucre?.ogrenci) {
+      const mevcut2D = hucre.ogrenci;
+      logger.warn(`⚠️ 2D plan hücresi dolu: [${koltuk.satir},${koltuk.sutun}] mevcut=${mevcut2D.ad} ${mevcut2D.soyad} (${mevcut2D.id}), yeni=${ogrenci.ad} ${ogrenci.soyad} (${ogrenci.id})`);
+      return false;
+    }
+    
     planItem.ogrenci = {
       ...ogrenci,
       masaNumarasi: koltuk.masaNumarasi || this.calculateDeskNumber(koltuk),
@@ -954,6 +1058,8 @@ class GelismisYerlestirmeMotoru {
     };
     
     this.plan2D[koltuk.satir][koltuk.sutun] = { ogrenci: planItem.ogrenci, grup: koltuk.grup };
+    
+    return true; // Yerleştirme başarılı
   }
 
   /**
@@ -1074,41 +1180,83 @@ export const gelismisYerlestirme = (ogrenciler, salonlar, ayarlar) => {
     return toplam.concat(sonuc.yerlesilemeyenOgrenciler || []);
   }, []);
   
+  // KRİTİK: DUPLICATE ÖĞRENCI KONTROLÜ - HER ZAMAN ÇALIŞTIR!
+  logger.info(`\n🔍 Duplicate öğrenci kontrolü yapılıyor...`);
+  const duplicateKontrol = checkAndRemoveDuplicateStudents(sonuclar);
+  
+  if (duplicateKontrol.duplicateCount > 0) {
+    logger.error(`🚨 DUPLICATE ÖĞRENCI TESPİT EDİLDİ VE TEMİZLENDİ!`);
+    logger.error(`   Toplam duplicate: ${duplicateKontrol.duplicateCount}`);
+    logger.error(`   Detaylar:`);
+    duplicateKontrol.details.forEach(detail => {
+      logger.error(`      - ${detail.ogrenciAd} (${detail.count} kez): ${detail.salonlar}`);
+    });
+    
+    // KRİTİK: Temizlenmiş sonuçları kullan!
+    // sonuclar dizisi referans olarak geçildiği için zaten güncellenmiş durumda
+    
+    // Toplamları yeniden hesapla (benzersiz öğrenci sayısı)
+    const toplamYerlesenYeni = sonuclar.reduce((toplam, sonuc) => {
+      if (!sonuc.ogrenciler) return toplam;
+      const uniqueIds = new Set(sonuc.ogrenciler.map(o => o.id));
+      return toplam + uniqueIds.size;
+    }, 0);
+    logger.info(`   Temizleme sonrası yerleşen (benzersiz): ${toplamYerlesenYeni}`);
+    
+    // Her salon için detaylı rapor
+    sonuclar.forEach((sonuc, idx) => {
+      const uniqueCount = new Set(sonuc.ogrenciler.map(o => o.id)).size;
+      if (sonuc.ogrenciler.length !== uniqueCount) {
+        logger.warn(`   ⚠️ ${sonuc.salonAdi}: ${sonuc.ogrenciler.length} öğrenci ama ${uniqueCount} benzersiz!`);
+      }
+    });
+  } else {
+    logger.info(`✅ Duplicate öğrenci bulunamadı - tüm öğrenciler benzersiz`);
+  }
+  
   // YENİ: Yerleşemeyen öğrenciler için en boş salonları kontrol et
   if (tumYerlesilemeyen.length > 0) {
     logger.info(`\n🔍 ${tumYerlesilemeyen.length} yerleştirilemeyen öğrenci için en boş salonlar kontrol ediliyor...`);
     
-    const bosSalonAnalizi = findEnBosSalonlar(tumYerlesilemeyen, aktifSalonlar, ayarlar);
+    // DÜZELTME: Gerçek salon verilerini kullan (sonuclar dizisinden)
+    const gercekSalonlar = sonuclar.map(sonuc => ({
+      id: sonuc.salonId,
+      salonAdi: sonuc.salonAdi,
+      kapasite: sonuc.kapasite,
+      koltukMatrisi: sonuc.koltukMatrisi,
+      masalar: sonuc.masalar,
+      gruplar: sonuc.gruplar,
+      ogrenciler: sonuc.ogrenciler
+    }));
+    
+    const bosSalonAnalizi = findEnBosSalonlar(tumYerlesilemeyen, gercekSalonlar, ayarlar);
     
     logger.info(`📊 En boş salon analizi:`);
     bosSalonAnalizi.oneriler.forEach(oneri => {
       logger.info(`   ${oneri}`);
     });
     
-    // Alternatif yerleştirme dene
-    const alternatifSonuc = yerlesilemeyenOgrencileriYerlestir(tumYerlesilemeyen, aktifSalonlar, ayarlar);
+    // Alternatif yerleştirme dene - gerçek salon verilerini kullan
+    const alternatifSonuc = yerlesilemeyenOgrencileriYerlestir(tumYerlesilemeyen, gercekSalonlar, ayarlar);
     
     if (alternatifSonuc.basarili) {
       logger.info(`✅ Gelişmiş alternatif yerleştirme başarılı: ${alternatifSonuc.yerlesenOgrenciler.length} öğrenci gerçek salon planına yerleştirildi`);
       
-      // GELİŞMİŞ: Sonuçları gerçek salon planlarına entegre et
+      // DÜZELTME: Agresif yerleştirme aşamaları artık doğrudan gerçek salon verilerini güncelliyor
+      // Bu entegrasyon kodu artık gereksiz - sadece sonuclar.ogrenciler listesini güncelle
       alternatifSonuc.yerlesenOgrenciler.forEach(ogrenci => {
-        const salonIndex = aktifSalonlar.findIndex(s => s.id === ogrenci.salonId);
+        const salonIndex = gercekSalonlar.findIndex(s => s.id === ogrenci.salonId);
         if (salonIndex !== -1) {
-          // Öğrenciyi salon planına ekle
-          sonuclar[salonIndex].ogrenciler.push(ogrenci);
+          // Öğrenci zaten gerçek salon verilerinde (koltukMatrisi.masalar/masalar) güncellenmiş
+          // Sadece sonuclar.ogrenciler listesini güncelle
+          const mevcutOgrenciIndex = sonuclar[salonIndex].ogrenciler.findIndex(o => o.id === ogrenci.id);
           
-          // Plan'a da ekle
-          const planItem = {
-            id: ogrenci.id,
-            ogrenci: ogrenci,
-            satir: ogrenci.satir,
-            sutun: ogrenci.sutun,
-            grup: ogrenci.grup,
-            koltukTipi: ogrenci.koltukTipi,
-            masaNumarasi: ogrenci.masaNumarasi
-          };
-          sonuclar[salonIndex].plan.push(planItem);
+          if (mevcutOgrenciIndex === -1) {
+            sonuclar[salonIndex].ogrenciler.push(ogrenci);
+            logger.debug(`✅ ${ogrenci.ad} ${ogrenci.soyad} sonuclar.ogrenciler listesine eklendi`);
+          } else {
+            logger.debug(`ℹ️ ${ogrenci.ad} ${ogrenci.soyad} zaten sonuclar.ogrenciler listesinde`);
+          }
           
           // Yerleştirilemeyen listesinden çıkar
           sonuclar[salonIndex].yerlesilemeyenOgrenciler = sonuclar[salonIndex].yerlesilemeyenOgrenciler.filter(o => o.id !== ogrenci.id);
@@ -1124,26 +1272,26 @@ export const gelismisYerlestirme = (ogrenciler, salonlar, ayarlar) => {
       }
       
       logger.info(`📊 Salon planları güncellendi: ${alternatifSonuc.yerlesenOgrenciler.length} öğrenci gerçek plana entegre edildi`);
-      
-      // GÜVENLİK KONTROLÜ: Öğrenci sayısı doğrulaması
-      const toplamYerlesen = sonuclar.reduce((toplam, sonuc) => toplam + (sonuc.ogrenciler ? sonuc.ogrenciler.length : 0), 0);
-      const toplamYerlesilemeyen = tumYerlesilemeyen.length;
-      const toplamKontrol = toplamYerlesen + toplamYerlesilemeyen;
-      
-      if (toplamKontrol !== ogrenciler.length) {
-        logger.error(`🚨 KRİTİK HATA: Öğrenci sayısı uyumsuzluğu!`);
-        logger.error(`   Orijinal öğrenci sayısı: ${ogrenciler.length}`);
-        logger.error(`   Toplam yerleşen: ${toplamYerlesen}`);
-        logger.error(`   Toplam yerleştirilemeyen: ${toplamYerlesilemeyen}`);
-        logger.error(`   Toplam kontrol: ${toplamKontrol}`);
-        logger.error(`   Fark: ${ogrenciler.length - toplamKontrol}`);
-      } else {
-        logger.info(`✅ Öğrenci sayısı kontrolü başarılı: ${toplamKontrol}/${ogrenciler.length}`);
-      }
     } else {
       logger.warn(`⚠️ Gelişmiş alternatif yerleştirme başarısız: ${alternatifSonuc.halaYerlesilemeyen.length} öğrenci hala yerleştirilemedi`);
       logger.warn(`💡 Öneriler: Salon kapasitelerini artırın veya kısıtları gevşetin`);
     }
+  }
+  
+  // GÜVENLİK KONTROLÜ: Öğrenci sayısı doğrulaması
+  const toplamYerlesen = sonuclar.reduce((toplam, sonuc) => toplam + (sonuc.ogrenciler ? sonuc.ogrenciler.length : 0), 0);
+  const toplamYerlesilemeyen = tumYerlesilemeyen.length;
+  const toplamKontrol = toplamYerlesen + toplamYerlesilemeyen;
+  
+  if (toplamKontrol !== ogrenciler.length) {
+    logger.error(`🚨 KRİTİK HATA: Öğrenci sayısı uyumsuzluğu!`);
+    logger.error(`   Orijinal öğrenci sayısı: ${ogrenciler.length}`);
+    logger.error(`   Toplam yerleşen: ${toplamYerlesen}`);
+    logger.error(`   Toplam yerleştirilemeyen: ${toplamYerlesilemeyen}`);
+    logger.error(`   Toplam kontrol: ${toplamKontrol}`);
+    logger.error(`   Fark: ${ogrenciler.length - toplamKontrol}`);
+  } else {
+    logger.info(`✅ Öğrenci sayısı kontrolü başarılı: ${toplamKontrol}/${ogrenciler.length}`);
   }
   
   // İstatistikleri hesapla
@@ -1247,6 +1395,30 @@ export const gelismisYerlestirme = (ogrenciler, salonlar, ayarlar) => {
   logger.info(`   Hala yerleşemeyen sayısı: ${halaYerlesemeyenOgrenciIdleri.size}`);
   logger.info(`   Toplam kontrol: ${tumIslemGorenOgrenciIdleri.size}`);
   logger.info(`   Kayıp veya fazla öğrenci: YOK ✅`);
+
+  // SON FINAL KONTROL: Döndürmeden hemen önce tüm salonları benzersiz hale getir
+  logger.info(`\n🔒 SON FINAL KONTROL: Tüm salonları benzersiz hale getiriliyor...`);
+  sonuclar.forEach((sonuc, idx) => {
+    if (!sonuc.ogrenciler || !Array.isArray(sonuc.ogrenciler)) return;
+    
+    const once = sonuc.ogrenciler.length;
+    const uniqueSet = new Set();
+    const uniqueList = [];
+    
+    sonuc.ogrenciler.forEach(ogr => {
+      if (ogr && ogr.id && !uniqueSet.has(ogr.id)) {
+        uniqueList.push(ogr);
+        uniqueSet.add(ogr.id);
+      }
+    });
+    
+    if (once !== uniqueList.length) {
+      logger.error(`   🚨 ${sonuc.salonAdi}: ${once} -> ${uniqueList.length} (${once - uniqueList.length} duplicate temizlendi)`);
+      sonuc.ogrenciler = uniqueList; // DİREKT YENİ DİZİ ATA
+    } else {
+      logger.info(`   ✅ ${sonuc.salonAdi}: ${uniqueList.length} benzersiz öğrenci`);
+    }
+  });
 
   return {
     salonlar: sonuclar,
@@ -1529,8 +1701,63 @@ const salonYerlestirmeYeni = (salon, ogrenciler, ayarlar, seed, weightManager) =
     masaNumarasi: masa.masaNumarasi
   }));
   
+  // KRİTİK: Koltuk önceliklerini yeniden hesapla (güncellenmiş koltuk matrisi ile)
+  motor.calculateKoltukOncelikleri();
+  
   // Motoru çalıştır
   const sonuc = motor.run();
+  
+  // GÜVENLİK: Salon içi duplicate kontrolü
+  const salonOgrenciIdSet = new Set();
+  const duplicatesInSalon = [];
+  
+  sonuc.ogrenciler.forEach((ogrenci, index) => {
+    if (salonOgrenciIdSet.has(ogrenci.id)) {
+      duplicatesInSalon.push({ ogrenci, index });
+    } else {
+      salonOgrenciIdSet.add(ogrenci.id);
+    }
+  });
+  
+  if (duplicatesInSalon.length > 0) {
+    logger.error(`🚨 SALON İÇİ DUPLICATE TESPIT EDİLDİ: ${salon.salonAdi}`);
+    duplicatesInSalon.forEach(dup => {
+      logger.error(`   - ${dup.ogrenci.ad} ${dup.ogrenci.soyad} (ID: ${dup.ogrenci.id}) index: ${dup.index}`);
+    });
+    
+    // Duplicateları temizle
+    const uniqueOgrenciler = [];
+    const seenIds = new Set();
+    sonuc.ogrenciler.forEach(ogrenci => {
+      if (!seenIds.has(ogrenci.id)) {
+        uniqueOgrenciler.push(ogrenci);
+        seenIds.add(ogrenci.id);
+      }
+    });
+    sonuc.ogrenciler = uniqueOgrenciler;
+    
+    logger.info(`   ✅ Temizlendi: ${duplicatesInSalon.length} duplicate kaldırıldı, ${sonuc.ogrenciler.length} benzersiz öğrenci kaldı`);
+  }
+  
+  // KRİTİK: Masalar'ı plan ile senkronize et
+  const masalarWithOgrenciler = masalarWithNumbers.map(masa => {
+    const planItem = sonuc.plan.find(p => p.id === masa.id);
+    return {
+      ...masa,
+      ogrenci: planItem?.ogrenci || null
+    };
+  });
+  
+  // GÜVENLİK: Plan ve ogrenciler senkronizasyonu kontrolü
+  const planOgrenciSayisi = sonuc.plan.filter(p => p.ogrenci).length;
+  const ogrenciSayisi = sonuc.ogrenciler.length;
+  
+  if (planOgrenciSayisi !== ogrenciSayisi) {
+    logger.error(`🚨 SENKRONIZASYON HATASI: ${salon.salonAdi}`);
+    logger.error(`   Plan'daki öğrenci sayısı: ${planOgrenciSayisi}`);
+    logger.error(`   Ogrenciler listesi uzunluğu: ${ogrenciSayisi}`);
+    logger.error(`   Fark: ${Math.abs(planOgrenciSayisi - ogrenciSayisi)}`);
+  }
   
   return {
     salonId: salon.id,
@@ -1539,6 +1766,11 @@ const salonYerlestirmeYeni = (salon, ogrenciler, ayarlar, seed, weightManager) =
     koltukMatrisi: motor.koltukMatrisi,
     yerlesilemeyenOgrenciler: sonuc.yerlesilemeyenOgrenciler,
     plan: sonuc.plan,
+    salon: {
+      ...salon,
+      masalar: masalarWithOgrenciler // Masalar'ı da ekle
+    },
+    masalar: masalarWithOgrenciler, // Backward compatibility için
     deneme: 1,
     basariOrani: sonuc.basariOrani
   };
@@ -2425,16 +2657,56 @@ export const findEnBosSalonlar = (yerlesilemeyenOgrenciler, salonlar, ayarlar) =
     };
   }
   
-  // Her salon için boş koltuk sayısını hesapla
+  // Her salon için boş koltuk sayısını hesapla (mevcut gerçek plana dayanarak)
   const salonBoslukAnalizi = aktifSalonlar.map(salon => {
-    const koltukMatrisi = createSalonKoltukMatrisi(salon);
-    const toplamKoltuk = koltukMatrisi.masalar.length;
+    // DÜZELTME: Doğru öncelik sırası - gerçek veri kaynaklarını önce kontrol et
+    // 1) Öncelik: salon.koltukMatrisi.masalar (gerçek plan)
+    const fromKoltukMatrisi = () => {
+      const masalar = salon.koltukMatrisi?.masalar;
+      if (!Array.isArray(masalar) || masalar.length === 0) return null;
+      const toplam = masalar.length;
+      const dolu = masalar.filter(m => m && m.ogrenci).length;
+      logger.debug(`🔍 ${salon.salonAdi}: koltukMatrisi.masalar - ${dolu}/${toplam} dolu`);
+      return { toplamKoltuk: toplam, mevcutDoluluk: dolu, kaynak: 'koltukMatrisi' };
+    };
     
-    // Salon kapasitesi ve mevcut durumu
+    // 2) Sonra: salon.masalar
+    const fromMasalar = () => {
+      if (!Array.isArray(salon.masalar) || salon.masalar.length === 0) return null;
+      const toplam = salon.masalar.length;
+      const dolu = salon.masalar.filter(m => m && m.ogrenci).length;
+      logger.debug(`🔍 ${salon.salonAdi}: masalar - ${dolu}/${toplam} dolu`);
+      return { toplamKoltuk: toplam, mevcutDoluluk: dolu, kaynak: 'masalar' };
+    };
+    
+    // 3) Sonra: gruplar
+    const fromGruplar = () => {
+      if (!salon.gruplar) return null;
+      let masalar = [];
+      Object.values(salon.gruplar).forEach(grup => { masalar = masalar.concat(grup); });
+      if (masalar.length === 0) return null;
+      const toplam = masalar.length;
+      const dolu = masalar.filter(m => m && m.ogrenci).length;
+      logger.debug(`🔍 ${salon.salonAdi}: gruplar - ${dolu}/${toplam} dolu`);
+      return { toplamKoltuk: toplam, mevcutDoluluk: dolu, kaynak: 'gruplar' };
+    };
+    
+    // 4) En son: oluştur (ASLA kullanma - boş döner!)
+    const fromCreate = () => {
+      logger.warn(`⚠️ ${salon.salonAdi}: createSalonKoltukMatrisi kullanılıyor - bu yanlış!`);
+      const km = createSalonKoltukMatrisi(salon);
+      return { toplamKoltuk: km.masalar.length, mevcutDoluluk: 0, kaynak: 'create' };
+    };
+
+    const kaynak = fromKoltukMatrisi() || fromMasalar() || fromGruplar() || fromCreate();
+    const toplamKoltuk = kaynak.toplamKoltuk;
+    const mevcutDoluluk = kaynak.mevcutDoluluk;
+
     const kapasite = salon.kapasite || toplamKoltuk;
-    const mevcutDoluluk = salon.ogrenciler ? salon.ogrenciler.length : 0;
-    const bosKoltuk = kapasite - mevcutDoluluk;
+    const bosKoltuk = Math.max(0, kapasite - mevcutDoluluk);
     const dolulukOrani = kapasite > 0 ? (mevcutDoluluk / kapasite) * 100 : 0;
+    
+    logger.debug(`📊 ${salon.salonAdi}: ${mevcutDoluluk}/${kapasite} dolu, ${bosKoltuk} boş (kaynak: ${kaynak.kaynak})`);
     
     return {
       salon,
@@ -2443,7 +2715,7 @@ export const findEnBosSalonlar = (yerlesilemeyenOgrenciler, salonlar, ayarlar) =
       mevcutDoluluk,
       bosKoltuk,
       dolulukOrani,
-      boslukSkoru: bosKoltuk / kapasite // 0-1 arası boşluk skoru
+      boslukSkoru: kapasite > 0 ? (bosKoltuk / kapasite) : 0
     };
   });
   
@@ -2474,6 +2746,170 @@ export const findEnBosSalonlar = (yerlesilemeyenOgrenciler, salonlar, ayarlar) =
     oneriler,
     toplamBosKoltuk: enBosSalonlar.reduce((toplam, salon) => toplam + salon.bosKoltuk, 0),
     yerlesilemeyenOgrenciSayisi: yerlesilemeyenOgrenciler.length
+  };
+};
+
+/**
+ * DUPLICATE ÖĞRENCI KONTROLÜ VE TEMİZLEME
+ * Tüm salonlarda aynı öğrencinin birden fazla yerleştirilip yerleştirilmediğini kontrol eder
+ * ve duplicate olanları temizler
+ */
+const checkAndRemoveDuplicateStudents = (sonuclar) => {
+  const ogrenciMap = new Map(); // öğrenci ID -> [salon indeksleri]
+  let duplicateCount = 0;
+  const details = [];
+  
+  // 1. AŞAMA: Tüm öğrencileri tara ve duplicate olanları tespit et
+  sonuclar.forEach((sonuc, salonIndex) => {
+    if (!sonuc.ogrenciler) return;
+    
+    sonuc.ogrenciler.forEach((ogrenci, ogrenciIndex) => {
+      const ogrenciId = ogrenci.id;
+      
+      if (!ogrenciMap.has(ogrenciId)) {
+        // İlk kez görülen öğrenci
+        ogrenciMap.set(ogrenciId, [{
+          salonIndex,
+          ogrenciIndex,
+          salonAdi: sonuc.salon?.salonAdi || sonuc.salonAdi || `Salon ${salonIndex + 1}`,
+          ogrenci
+        }]);
+      } else {
+        // Duplicate öğrenci bulundu!
+        ogrenciMap.get(ogrenciId).push({
+          salonIndex,
+          ogrenciIndex,
+          salonAdi: sonuc.salon?.salonAdi || sonuc.salonAdi || `Salon ${salonIndex + 1}`,
+          ogrenci
+        });
+      }
+    });
+  });
+  
+  // 2. AŞAMA: Duplicate öğrencileri temizle (farklı salonlar arasında)
+  ogrenciMap.forEach((yerlesimler, ogrenciId) => {
+    if (yerlesimler.length > 1) {
+      // Bu öğrenci birden fazla salonda var!
+      duplicateCount += yerlesimler.length - 1; // İlk yerleşimi tut, diğerlerini say
+      
+      const ogrenciAd = `${yerlesimler[0].ogrenci.ad} ${yerlesimler[0].ogrenci.soyad}`;
+      const salonlar = yerlesimler.map(y => y.salonAdi).join(', ');
+      
+      details.push({
+        ogrenciId,
+        ogrenciAd,
+        salonlar,
+        count: yerlesimler.length
+      });
+      
+      logger.warn(`⚠️ DUPLICATE (Farklı Salonlar): ${ogrenciAd} (ID: ${ogrenciId}) ${yerlesimler.length} kez yerleştirilmiş: ${salonlar}`);
+      
+      // İlk yerleşimi tut, diğerlerini kaldır
+      for (let i = 1; i < yerlesimler.length; i++) {
+        const yerlesim = yerlesimler[i];
+        const sonuc = sonuclar[yerlesim.salonIndex];
+        
+        // Öğrenciler listesinden bu ID'yi kaldır (tüm örneklerini)
+        const oncekiUzunluk = sonuc.ogrenciler.length;
+        sonuc.ogrenciler = sonuc.ogrenciler.filter(o => o.id !== ogrenciId);
+        const yeniUzunluk = sonuc.ogrenciler.length;
+        
+        logger.debug(`   ✂️ ${ogrenciAd} ${yerlesim.salonAdi} salonundan kaldırıldı (${oncekiUzunluk} -> ${yeniUzunluk})`);
+        
+        // Plan'dan kaldır (tüm örneklerini)
+        if (sonuc.plan) {
+          sonuc.plan = sonuc.plan.map(planItem => {
+            if (planItem.ogrenci?.id === ogrenciId) {
+              // Bu duplicate bir plan item, öğrenciyi kaldır
+              return {
+                ...planItem,
+                ogrenci: null
+              };
+            }
+            return planItem;
+          });
+        }
+        
+        // Masalardan kaldır (tüm örneklerini)
+        if (sonuc.salon?.masalar) {
+          sonuc.salon.masalar.forEach(masa => {
+            if (masa.ogrenci?.id === ogrenciId) {
+              masa.ogrenci = null;
+            }
+          });
+        }
+      }
+    }
+  });
+  
+  // 3. AŞAMA: Her salonda da duplicate kontrol et (aynı salon içinde) - YENİ YAKLAŞIM
+  sonuclar.forEach((sonuc, salonIndex) => {
+    if (!sonuc.ogrenciler || !Array.isArray(sonuc.ogrenciler)) return;
+    
+    const oncekiUzunluk = sonuc.ogrenciler.length;
+    
+    // Basit ve etkili: Benzersiz liste oluştur
+    const uniqueOgrenciler = [];
+    const seenIds = new Set();
+    
+    sonuc.ogrenciler.forEach(ogrenci => {
+      if (ogrenci && ogrenci.id && !seenIds.has(ogrenci.id)) {
+        uniqueOgrenciler.push(ogrenci);
+        seenIds.add(ogrenci.id);
+      } else if (ogrenci && ogrenci.id) {
+        duplicateCount++;
+        logger.debug(`   ✂️ Aynı salon içi duplicate: ${ogrenci.ad} ${ogrenci.soyad} (${ogrenci.id})`);
+      }
+    });
+    
+    if (uniqueOgrenciler.length !== oncekiUzunluk) {
+      const salonAdi = sonuc.salon?.salonAdi || sonuc.salonAdi || `Salon ${salonIndex + 1}`;
+      const fark = oncekiUzunluk - uniqueOgrenciler.length;
+      logger.warn(`⚠️ DUPLICATE (Aynı Salon İçinde): ${salonAdi} - ${oncekiUzunluk} -> ${uniqueOgrenciler.length} (${fark} duplicate)`);
+      
+      // Diziyi değiştir (referansı değil, içeriği değiştir)
+      sonuc.ogrenciler.length = 0; // Diziyi boşalt
+      uniqueOgrenciler.forEach(o => sonuc.ogrenciler.push(o)); // Benzersizleri ekle
+      
+      logger.info(`   ✅ ${salonAdi} temizlendi: ${uniqueOgrenciler.length} benzersiz öğrenci`);
+    }
+  });
+  
+  // 4. AŞAMA: SON GÜVENLİK - Tüm salonların ogrenciler dizilerini benzersiz hale getir (KESİN)
+  sonuclar.forEach((sonuc, salonIndex) => {
+    if (!sonuc.ogrenciler || !Array.isArray(sonuc.ogrenciler)) return;
+    
+    const oncekiUzunluk = sonuc.ogrenciler.length;
+    
+    // Benzersiz öğrencileri oluştur (ID bazlı)
+    const uniqueOgrenciler = [];
+    const seenIds = new Set();
+    
+    sonuc.ogrenciler.forEach(ogrenci => {
+      if (ogrenci && ogrenci.id && !seenIds.has(ogrenci.id)) {
+        uniqueOgrenciler.push(ogrenci);
+        seenIds.add(ogrenci.id);
+      }
+    });
+    
+    if (uniqueOgrenciler.length !== oncekiUzunluk) {
+      const salonAdi = sonuc.salon?.salonAdi || sonuc.salonAdi || `Salon ${salonIndex + 1}`;
+      const fark = oncekiUzunluk - uniqueOgrenciler.length;
+      logger.warn(`🔧 SON GÜVENLİK: ${salonAdi} - ${oncekiUzunluk} -> ${uniqueOgrenciler.length} (${fark} duplicate kaldırıldı)`);
+      duplicateCount += fark;
+      
+      // KRİTİK: Diziyi tamamen değiştir (içeriği değil, referansı değiştir)
+      sonuc.ogrenciler.length = 0; // Önce boşalt
+      uniqueOgrenciler.forEach(o => sonuc.ogrenciler.push(o)); // Sonra benzersizleri ekle
+      
+      logger.info(`   ✅ ${salonAdi} final temizlik: ${sonuc.ogrenciler.length} öğrenci`);
+    }
+  });
+  
+  return {
+    duplicateCount,
+    details,
+    cleanedSalons: sonuclar
   };
 };
 
@@ -2668,49 +3104,131 @@ const kademeliYerlestirmeAsama1 = (ogrenciler, salonlar, ayarlar, kullanilanOgre
   for (const salon of salonlar) {
     if (ogrenciler.length === 0) break;
     
-    const koltukMatrisi = createSalonKoltukMatrisi(salon);
-    const { masalar } = koltukMatrisi;
-    const masalarWithNumbers = calculateDeskNumbersForMasalar(masalar);
+    // GERÇEK PLAN VERİLERİNİ KULLAN - Yeni boş plan oluşturma!
+    let plan, plan2D, koltukSirasi;
     
-    const plan = masalarWithNumbers.map(masa => ({
-      id: masa.id,
-      ogrenci: null,
-      satir: masa.satir,
-      sutun: masa.sutun,
-      grup: masa.grup,
-      koltukTipi: masa.koltukTipi,
-      masaNumarasi: masa.masaNumarasi
-    }));
+    // 1) Öncelik: salon.koltukMatrisi.masalar (gerçek plan)
+    if (salon.koltukMatrisi?.masalar) {
+      plan = salon.koltukMatrisi.masalar.map(masa => ({
+        id: masa.id,
+        ogrenci: masa.ogrenci || null, // MEVCUT DOLULUK!
+        satir: masa.satir,
+        sutun: masa.sutun,
+        grup: masa.grup,
+        koltukTipi: masa.koltukTipi,
+        masaNumarasi: masa.masaNumarasi
+      }));
+      
+      // 2D planı da gerçek verilerle oluştur
+      const maxSatir = Math.max(...plan.map(p => p.satir)) + 1;
+      const maxSutun = Math.max(...plan.map(p => p.sutun)) + 1;
+      plan2D = Array(maxSatir).fill(null).map(() => Array(maxSutun).fill(null));
+      
+      plan.forEach(planItem => {
+        if (planItem.ogrenci) {
+          plan2D[planItem.satir][planItem.sutun] = { 
+            ogrenci: planItem.ogrenci, 
+            grup: planItem.grup 
+          };
+        }
+      });
+      
+      koltukSirasi = plan.filter(p => !p.ogrenci); // Sadece boş koltuklar
+    } else {
+      // Fallback: salon.masalar
+      if (salon.masalar && Array.isArray(salon.masalar)) {
+        plan = salon.masalar.map(masa => ({
+          id: masa.id,
+          ogrenci: masa.ogrenci || null,
+          satir: masa.satir,
+          sutun: masa.sutun,
+          grup: masa.grup,
+          koltukTipi: masa.koltukTipi,
+          masaNumarasi: masa.masaNumarasi
+        }));
+        
+        const maxSatir = Math.max(...plan.map(p => p.satir)) + 1;
+        const maxSutun = Math.max(...plan.map(p => p.sutun)) + 1;
+        plan2D = Array(maxSatir).fill(null).map(() => Array(maxSutun).fill(null));
+        
+        plan.forEach(planItem => {
+          if (planItem.ogrenci) {
+            plan2D[planItem.satir][planItem.sutun] = { 
+              ogrenci: planItem.ogrenci, 
+              grup: planItem.grup 
+            };
+          }
+        });
+        
+        koltukSirasi = plan.filter(p => !p.ogrenci);
+      } else {
+        // Son çare: yeni plan oluştur (ama bu durumda zaten boş olacak)
+        const koltukMatrisi = createSalonKoltukMatrisi(salon);
+        const { masalar } = koltukMatrisi;
+        const masalarWithNumbers = calculateDeskNumbersForMasalar(masalar);
+        
+        plan = masalarWithNumbers.map(masa => ({
+          id: masa.id,
+          ogrenci: null,
+          satir: masa.satir,
+          sutun: masa.sutun,
+          grup: masa.grup,
+          koltukTipi: masa.koltukTipi,
+          masaNumarasi: masa.masaNumarasi
+        }));
+        
+        plan2D = Array(koltukMatrisi.satirSayisi)
+          .fill(null)
+          .map(() => Array(koltukMatrisi.sutunSayisi).fill(null));
+        
+        koltukSirasi = getKoltukSira(salon, Date.now());
+      }
+    }
     
-    const plan2D = Array(koltukMatrisi.satirSayisi)
-      .fill(null)
-      .map(() => Array(koltukMatrisi.sutunSayisi).fill(null));
-    
-    const koltukSirasi = getKoltukSira(salon, Date.now());
+    logger.debug(`🔍 ${salon.salonAdi}: ${koltukSirasi.length} boş koltuk bulundu`);
     
     for (const koltuk of koltukSirasi) {
-      if (koltuk.ogrenci) continue;
-      
       const uygunOgrenci = akilliOgrenciBul(ogrenciler, koltuk, plan2D, 0, kullanilanOgrenciler);
       
       if (uygunOgrenci) {
         const planItem = plan.find(p => p.id === koltuk.id);
-        planItem.ogrenci = {
-          ...uygunOgrenci,
-          salonId: salon.id,
-          salonAdi: salon.salonAdi,
-          masaNumarasi: koltuk.masaNumarasi || koltuk.id + 1,
-          satir: koltuk.satir,
-          sutun: koltuk.sutun,
-          grup: koltuk.grup,
-          koltukTipi: koltuk.koltukTipi,
-          kademeliYerlestirme: true,
-          asama: 1
-        };
-        
-        plan2D[koltuk.satir][koltuk.sutun] = { ogrenci: planItem.ogrenci, grup: koltuk.grup };
-        yerlesenOgrenciler.push(planItem.ogrenci);
-        kullanilanOgrenciler.add(uygunOgrenci.id);
+        if (planItem && !planItem.ogrenci) { // Güvenlik kontrolü
+          const yerlesenOgrenci = {
+            ...uygunOgrenci,
+            salonId: salon.id,
+            salonAdi: salon.salonAdi,
+            masaNumarasi: koltuk.masaNumarasi || koltuk.id + 1,
+            satir: koltuk.satir,
+            sutun: koltuk.sutun,
+            grup: koltuk.grup,
+            koltukTipi: koltuk.koltukTipi,
+            kademeliYerlestirme: true,
+            asama: 1
+          };
+          
+          // GERÇEK SALON PLANINI GÜNCELLE
+          planItem.ogrenci = yerlesenOgrenci;
+          plan2D[koltuk.satir][koltuk.sutun] = { ogrenci: yerlesenOgrenci, grup: koltuk.grup };
+          
+          // KRİTİK: Gerçek salon verilerini de güncelle
+          if (salon.koltukMatrisi?.masalar) {
+            const gercekMasa = salon.koltukMatrisi.masalar.find(m => m.id === koltuk.id);
+            if (gercekMasa) {
+              gercekMasa.ogrenci = { ...yerlesenOgrenci };
+            }
+          }
+          if (salon.masalar && Array.isArray(salon.masalar)) {
+            const gercekMasa = salon.masalar.find(m => m.id === koltuk.id);
+            if (gercekMasa) {
+              gercekMasa.ogrenci = { ...yerlesenOgrenci };
+            }
+          }
+          
+          yerlesenOgrenciler.push(yerlesenOgrenci);
+          kullanilanOgrenciler.add(uygunOgrenci.id);
+          
+          logger.debug(`✅ ${uygunOgrenci.ad} ${uygunOgrenci.soyad} ${salon.salonAdi} koltuğa yerleştirildi ve gerçek plana entegre edildi`);
+        }
       }
     }
   }
@@ -2729,49 +3247,121 @@ const kademeliYerlestirmeAsama2 = (ogrenciler, salonlar, ayarlar, kullanilanOgre
   for (const salon of salonlar) {
     if (ogrenciler.length === 0) break;
     
-    const koltukMatrisi = createSalonKoltukMatrisi(salon);
-    const { masalar } = koltukMatrisi;
-    const masalarWithNumbers = calculateDeskNumbersForMasalar(masalar);
+    // GERÇEK PLAN VERİLERİNİ KULLAN
+    let plan, plan2D, koltukSirasi;
     
-    const plan = masalarWithNumbers.map(masa => ({
-      id: masa.id,
-      ogrenci: null,
-      satir: masa.satir,
-      sutun: masa.sutun,
-      grup: masa.grup,
-      koltukTipi: masa.koltukTipi,
-      masaNumarasi: masa.masaNumarasi
-    }));
-    
-    const plan2D = Array(koltukMatrisi.satirSayisi)
-      .fill(null)
-      .map(() => Array(koltukMatrisi.sutunSayisi).fill(null));
-    
-    const koltukSirasi = getKoltukSira(salon, Date.now());
+    if (salon.koltukMatrisi?.masalar) {
+      plan = salon.koltukMatrisi.masalar.map(masa => ({
+        id: masa.id,
+        ogrenci: masa.ogrenci || null,
+        satir: masa.satir,
+        sutun: masa.sutun,
+        grup: masa.grup,
+        koltukTipi: masa.koltukTipi,
+        masaNumarasi: masa.masaNumarasi
+      }));
+      
+      const maxSatir = Math.max(...plan.map(p => p.satir)) + 1;
+      const maxSutun = Math.max(...plan.map(p => p.sutun)) + 1;
+      plan2D = Array(maxSatir).fill(null).map(() => Array(maxSutun).fill(null));
+      
+      plan.forEach(planItem => {
+        if (planItem.ogrenci) {
+          plan2D[planItem.satir][planItem.sutun] = { 
+            ogrenci: planItem.ogrenci, 
+            grup: planItem.grup 
+          };
+        }
+      });
+      
+      koltukSirasi = plan.filter(p => !p.ogrenci);
+    } else if (salon.masalar && Array.isArray(salon.masalar)) {
+      plan = salon.masalar.map(masa => ({
+        id: masa.id,
+        ogrenci: masa.ogrenci || null,
+        satir: masa.satir,
+        sutun: masa.sutun,
+        grup: masa.grup,
+        koltukTipi: masa.koltukTipi,
+        masaNumarasi: masa.masaNumarasi
+      }));
+      
+      const maxSatir = Math.max(...plan.map(p => p.satir)) + 1;
+      const maxSutun = Math.max(...plan.map(p => p.sutun)) + 1;
+      plan2D = Array(maxSatir).fill(null).map(() => Array(maxSutun).fill(null));
+      
+      plan.forEach(planItem => {
+        if (planItem.ogrenci) {
+          plan2D[planItem.satir][planItem.sutun] = { 
+            ogrenci: planItem.ogrenci, 
+            grup: planItem.grup 
+          };
+        }
+      });
+      
+      koltukSirasi = plan.filter(p => !p.ogrenci);
+    } else {
+      const koltukMatrisi = createSalonKoltukMatrisi(salon);
+      const { masalar } = koltukMatrisi;
+      const masalarWithNumbers = calculateDeskNumbersForMasalar(masalar);
+      
+      plan = masalarWithNumbers.map(masa => ({
+        id: masa.id,
+        ogrenci: null,
+        satir: masa.satir,
+        sutun: masa.sutun,
+        grup: masa.grup,
+        koltukTipi: masa.koltukTipi,
+        masaNumarasi: masa.masaNumarasi
+      }));
+      
+      plan2D = Array(koltukMatrisi.satirSayisi)
+        .fill(null)
+        .map(() => Array(koltukMatrisi.sutunSayisi).fill(null));
+      
+      koltukSirasi = getKoltukSira(salon, Date.now());
+    }
     
     for (const koltuk of koltukSirasi) {
-      if (koltuk.ogrenci) continue;
-      
       const uygunOgrenci = akilliOgrenciBul(ogrenciler, koltuk, plan2D, 2, kullanilanOgrenciler);
       
       if (uygunOgrenci) {
         const planItem = plan.find(p => p.id === koltuk.id);
-        planItem.ogrenci = {
-          ...uygunOgrenci,
-          salonId: salon.id,
-          salonAdi: salon.salonAdi,
-          masaNumarasi: koltuk.masaNumarasi || koltuk.id + 1,
-          satir: koltuk.satir,
-          sutun: koltuk.sutun,
-          grup: koltuk.grup,
-          koltukTipi: koltuk.koltukTipi,
-          kademeliYerlestirme: true,
-          asama: 2
-        };
-        
-        plan2D[koltuk.satir][koltuk.sutun] = { ogrenci: planItem.ogrenci, grup: koltuk.grup };
-        yerlesenOgrenciler.push(planItem.ogrenci);
-        kullanilanOgrenciler.add(uygunOgrenci.id);
+        if (planItem && !planItem.ogrenci) {
+          const yerlesenOgrenci = {
+            ...uygunOgrenci,
+            salonId: salon.id,
+            salonAdi: salon.salonAdi,
+            masaNumarasi: koltuk.masaNumarasi || koltuk.id + 1,
+            satir: koltuk.satir,
+            sutun: koltuk.sutun,
+            grup: koltuk.grup,
+            koltukTipi: koltuk.koltukTipi,
+            kademeliYerlestirme: true,
+            asama: 2
+          };
+          
+          // GERÇEK SALON PLANINI GÜNCELLE
+          planItem.ogrenci = yerlesenOgrenci;
+          plan2D[koltuk.satir][koltuk.sutun] = { ogrenci: yerlesenOgrenci, grup: koltuk.grup };
+          
+          // KRİTİK: Gerçek salon verilerini de güncelle
+          if (salon.koltukMatrisi?.masalar) {
+            const gercekMasa = salon.koltukMatrisi.masalar.find(m => m.id === koltuk.id);
+            if (gercekMasa) {
+              gercekMasa.ogrenci = { ...yerlesenOgrenci };
+            }
+          }
+          if (salon.masalar && Array.isArray(salon.masalar)) {
+            const gercekMasa = salon.masalar.find(m => m.id === koltuk.id);
+            if (gercekMasa) {
+              gercekMasa.ogrenci = { ...yerlesenOgrenci };
+            }
+          }
+          
+          yerlesenOgrenciler.push(yerlesenOgrenci);
+          kullanilanOgrenciler.add(uygunOgrenci.id);
+        }
       }
     }
   }
@@ -2790,45 +3380,88 @@ const kademeliYerlestirmeAsama3 = (ogrenciler, salonlar, ayarlar, kullanilanOgre
   for (const salon of salonlar) {
     if (ogrenciler.length === 0) break;
     
-    const koltukMatrisi = createSalonKoltukMatrisi(salon);
-    const { masalar } = koltukMatrisi;
-    const masalarWithNumbers = calculateDeskNumbersForMasalar(masalar);
+    // GERÇEK PLAN VERİLERİNİ KULLAN
+    let plan, koltukSirasi;
     
-    const plan = masalarWithNumbers.map(masa => ({
-      id: masa.id,
-      ogrenci: null,
-      satir: masa.satir,
-      sutun: masa.sutun,
-      grup: masa.grup,
-      koltukTipi: masa.koltukTipi,
-      masaNumarasi: masa.masaNumarasi
-    }));
-    
-    const koltukSirasi = getKoltukSira(salon, Date.now());
+    if (salon.koltukMatrisi?.masalar) {
+      plan = salon.koltukMatrisi.masalar.map(masa => ({
+        id: masa.id,
+        ogrenci: masa.ogrenci || null,
+        satir: masa.satir,
+        sutun: masa.sutun,
+        grup: masa.grup,
+        koltukTipi: masa.koltukTipi,
+        masaNumarasi: masa.masaNumarasi
+      }));
+      koltukSirasi = plan.filter(p => !p.ogrenci);
+    } else if (salon.masalar && Array.isArray(salon.masalar)) {
+      plan = salon.masalar.map(masa => ({
+        id: masa.id,
+        ogrenci: masa.ogrenci || null,
+        satir: masa.satir,
+        sutun: masa.sutun,
+        grup: masa.grup,
+        koltukTipi: masa.koltukTipi,
+        masaNumarasi: masa.masaNumarasi
+      }));
+      koltukSirasi = plan.filter(p => !p.ogrenci);
+    } else {
+      const koltukMatrisi = createSalonKoltukMatrisi(salon);
+      const { masalar } = koltukMatrisi;
+      const masalarWithNumbers = calculateDeskNumbersForMasalar(masalar);
+      
+      plan = masalarWithNumbers.map(masa => ({
+        id: masa.id,
+        ogrenci: null,
+        satir: masa.satir,
+        sutun: masa.sutun,
+        grup: masa.grup,
+        koltukTipi: masa.koltukTipi,
+        masaNumarasi: masa.masaNumarasi
+      }));
+      koltukSirasi = getKoltukSira(salon, Date.now());
+    }
     
     for (const koltuk of koltukSirasi) {
-      if (koltuk.ogrenci) continue;
-      
       // İlk uygun öğrenciyi al (kısıt kontrolü olmadan)
       const uygunOgrenci = ogrenciler.find(ogrenci => !kullanilanOgrenciler.has(ogrenci.id));
       
       if (uygunOgrenci) {
         const planItem = plan.find(p => p.id === koltuk.id);
-        planItem.ogrenci = {
-          ...uygunOgrenci,
-          salonId: salon.id,
-          salonAdi: salon.salonAdi,
-          masaNumarasi: koltuk.masaNumarasi || koltuk.id + 1,
-          satir: koltuk.satir,
-          sutun: koltuk.sutun,
-          grup: koltuk.grup,
-          koltukTipi: koltuk.koltukTipi,
-          kademeliYerlestirme: true,
-          asama: 3
-        };
+        if (planItem && !planItem.ogrenci) {
+          const yerlesenOgrenci = {
+            ...uygunOgrenci,
+            salonId: salon.id,
+            salonAdi: salon.salonAdi,
+            masaNumarasi: koltuk.masaNumarasi || koltuk.id + 1,
+            satir: koltuk.satir,
+            sutun: koltuk.sutun,
+            grup: koltuk.grup,
+            koltukTipi: koltuk.koltukTipi,
+            kademeliYerlestirme: true,
+            asama: 3
+          };
+          
+          // GERÇEK SALON PLANINI GÜNCELLE
+          planItem.ogrenci = yerlesenOgrenci;
+          
+          // KRİTİK: Gerçek salon verilerini de güncelle
+          if (salon.koltukMatrisi?.masalar) {
+            const gercekMasa = salon.koltukMatrisi.masalar.find(m => m.id === koltuk.id);
+            if (gercekMasa) {
+              gercekMasa.ogrenci = { ...yerlesenOgrenci };
+            }
+          }
+          if (salon.masalar && Array.isArray(salon.masalar)) {
+            const gercekMasa = salon.masalar.find(m => m.id === koltuk.id);
+            if (gercekMasa) {
+              gercekMasa.ogrenci = { ...yerlesenOgrenci };
+            }
+          }
         
-        yerlesenOgrenciler.push(planItem.ogrenci);
-        kullanilanOgrenciler.add(uygunOgrenci.id);
+          yerlesenOgrenciler.push(yerlesenOgrenci);
+          kullanilanOgrenciler.add(uygunOgrenci.id);
+        }
       }
     }
   }

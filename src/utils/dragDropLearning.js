@@ -4,6 +4,7 @@
  */
 
 import logger from './logger';
+import { findEnBosSalonlar } from '../algorithms/gelismisYerlestirmeAlgoritmasi';
 
 class DragDropLearningSystem {
   constructor() {
@@ -29,6 +30,64 @@ class DragDropLearningSystem {
     };
     
     this.loadLearningData();
+  }
+
+  // En boş salonları doğru veri kaynağından analiz et (koltukMatrisi -> masalar -> gruplar)
+  analyzeEmptiestSalons(yerlesilemeyenOgrenciler, tumSalonlar, ayarlar = {}, yerlestirmeSonucu = null) {
+    try {
+      logger.info('🔍 Yerleşemeyen öğrenciler için en boş salonlar aranıyor...');
+      // KAYNAK DÜZELTME: varsa yerlestirmeSonucu.tumSalonlar kullan
+      const salonKaynak = Array.isArray(yerlestirmeSonucu?.tumSalonlar)
+        ? yerlestirmeSonucu.tumSalonlar
+        : tumSalonlar;
+      const sonuc = findEnBosSalonlar(yerlesilemeyenOgrenciler, salonKaynak, ayarlar);
+
+      logger.info('📊 Salon boşluk analizi tamamlandı:');
+      (sonuc.enBosSalonlar || []).forEach((s, i) => {
+        logger.info(`   ${i + 1}. ${s.salonAdi}: ${s.bosKoltuk} boş koltuk (%${s.dolulukOrani?.toFixed?.(1) ?? 0} dolu)`);
+      });
+
+      return sonuc;
+    } catch (e) {
+      logger.warn('⚠️ En boş salon analizi başarısız, fallback hesap kullanılacak:', e);
+      // Fallback: güvenli, basit bir hesap (yalnızca masalar üzerinden)
+      const kaynaks = Array.isArray(yerlestirmeSonucu?.tumSalonlar) ? yerlestirmeSonucu.tumSalonlar : tumSalonlar;
+      const enBosSalonlar = (Array.isArray(kaynaks) ? kaynaks : []).map(salon => {
+        const masalar = salon?.koltukMatrisi?.masalar || salon?.masalar || [];
+        let kapasite = salon?.kapasite || masalar.length || 0;
+        let mevcutDoluluk = masalar.filter(m => m && m.ogrenci).length;
+        // Ek düzeltme: masalar boş ama ogrenciler listesi doluysa onu kullan
+        if (mevcutDoluluk === 0 && Array.isArray(salon?.ogrenciler) && salon.ogrenciler.length > 0) {
+          mevcutDoluluk = salon.ogrenciler.length;
+          if (kapasite === 0) kapasite = mevcutDoluluk; // kapasite bilgisi yoksa asgari olarak mevcut doluluk kadar varsay
+        }
+        const bosKoltuk = Math.max(0, kapasite - mevcutDoluluk);
+        const dolulukOrani = kapasite > 0 ? (mevcutDoluluk / kapasite) * 100 : 0;
+        return {
+          salonId: salon.id,
+          salonAdi: salon.salonAdi || salon.ad || String(salon.id),
+          bosKoltuk,
+          dolulukOrani,
+          kapasite,
+          mevcutDoluluk,
+          boslukSkoru: kapasite > 0 ? (bosKoltuk / kapasite) : 0
+        };
+      }).sort((a, b) => b.boslukSkoru - a.boslukSkoru);
+
+      // Teşhis logu
+      const ornek = enBosSalonlar[0];
+      if (ornek && ornek.kapasite > 0 && enBosSalonlar.every(s => s.mevcutDoluluk === 0)) {
+        logger.warn('⚠️ Teşhis: tumSalonlar kaynağı muhtemelen eski/stale. yerlestirmeSonucu.tumSalonlar kullanılmalı.');
+      }
+
+      return {
+        enBosSalonlar,
+        yerlesilemeyenOgrenciler,
+        oneriler: [],
+        toplamBosKoltuk: enBosSalonlar.reduce((t, s) => t + s.bosKoltuk, 0),
+        yerlesilemeyenOgrenciSayisi: yerlesilemeyenOgrenciler?.length || 0
+      };
+    }
   }
 
   /**

@@ -541,9 +541,23 @@ const RecommendationsTab = ({ reportData }) => (
 // Helper function to generate report data
 const generateReportData = (yerlestirmeSonucu, ogrenciler, salonlar, ayarlar, performanceData) => {
   const totalStudents = ogrenciler.length;
-  const placedStudents = yerlestirmeSonucu?.tumSalonlar?.reduce((sum, salon) =>
-    sum + (salon.ogrenciler?.length || 0), 0) || 0;
-  const unplacedStudents = totalStudents - placedStudents;
+  const countFilled = (s) => {
+    if (s && s.gruplar) {
+      let c = 0;
+      Object.values(s.gruplar).forEach(grup => {
+        grup.forEach(m => { if (m && m.ogrenci) c++; });
+      });
+      return c;
+    }
+    if (Array.isArray(s?.masalar)) return s.masalar.filter(m => m && m.ogrenci).length;
+    if (Array.isArray(s?.ogrenciler)) {
+      const ids = new Set(s.ogrenciler.filter(o => o && o.id != null).map(o => o.id));
+      return ids.size;
+    }
+    return 0;
+  };
+  const placedStudents = (yerlestirmeSonucu?.tumSalonlar || []).reduce((sum, s) => sum + countFilled(s), 0);
+  const unplacedStudents = Math.max(0, totalStudents - placedStudents);
   const successRate = totalStudents > 0 ? Math.round((placedStudents / totalStudents) * 100) : 0;
 
   const totalCapacity = salonlar.reduce((sum, salon) => sum + salon.kapasite, 0);
@@ -559,7 +573,7 @@ const generateReportData = (yerlestirmeSonucu, ogrenciler, salonlar, ayarlar, pe
       averageOccupancy
     },
     classroomDetails: salonlar.map(salon => {
-      const placed = yerlestirmeSonucu?.tumSalonlar?.find(s => s.salonId === salon.id)?.ogrenciler?.length || 0;
+      const placed = countFilled((yerlestirmeSonucu?.tumSalonlar || []).find(s => s.salonId === salon.id) || {});
       const occupancy = salon.kapasite > 0 ? Math.round((placed / salon.kapasite) * 100) : 0;
 
       let status = 'Düşük';

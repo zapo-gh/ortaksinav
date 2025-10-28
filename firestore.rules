@@ -1,0 +1,35 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Plans collection - kimlik doğrulama kapalı (dev)
+    match /plans/{planId} {
+      allow read, write: if true;
+      
+      // Salon subcollection
+      match /salons/{salonId} {
+        allow read, write: if true;
+      }
+      
+      // Unplaced students subcollection
+      match /unplaced/{chunkId} {
+        allow read, write: if true;
+      }
+    }
+    
+    // Students collection
+    match /students/{studentId} {
+      allow read, write: if true;
+    }
+    
+    // Salons collection
+    match /salons/{salonId} {
+      allow read, write: if true;
+    }
+    
+    // Settings collection
+    match /settings/{settingKey} {
+      allow read, write: if true;
+    }
+  }
+}

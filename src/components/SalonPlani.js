@@ -87,7 +87,7 @@ const DroppableSeat = memo(({ masa, onStudentMove, children }) => {
   );
 });
 
-const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler = [], onOgrenciSec, tumSalonlar, onSalonDegistir, ayarlar = {}, salonlar = [], seciliSalonId, onSeciliSalonDegistir, onStudentTransfer, yerlestirmeSonucu }) => {
+const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler = [], onOgrenciSec, tumSalonlar, onSalonDegistir, ayarlar = {}, salonlar = [], seciliSalonId, onSeciliSalonDegistir, onStudentTransfer, yerlestirmeSonucu, tumOgrenciSayisi }) => {
   const { showConfirm } = useNotifications();
 
   const [modalAcik, setModalAcik] = useState(false);
@@ -894,9 +894,25 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
             {(() => {
               // Yerleştirme sonucu varsa, tüm salonlardaki öğrencileri say
               if (yerlestirmeSonucu && yerlestirmeSonucu.tumSalonlar) {
-                const toplamYerlesen = yerlestirmeSonucu.tumSalonlar.reduce((toplam, salon) => 
-                  toplam + (salon.ogrenciler ? salon.ogrenciler.length : 0), 0
-                );
+                // GÜNCEL: Öncelik gruplar > masalar
+                const countFilled = (s) => {
+                  if (s && s.gruplar) {
+                    let c = 0;
+                    Object.values(s.gruplar).forEach(grup => {
+                      grup.forEach(m => { if (m && m.ogrenci) c++; });
+                    });
+                    return c;
+                  }
+                  if (Array.isArray(s?.masalar)) {
+                    return s.masalar.filter(m => m && m.ogrenci).length;
+                  }
+                  if (Array.isArray(s?.ogrenciler)) {
+                    const ids = new Set(s.ogrenciler.filter(o => o && o.id != null).map(o => o.id));
+                    return ids.size;
+                  }
+                  return 0;
+                };
+                const toplamYerlesen = yerlestirmeSonucu.tumSalonlar.reduce((toplam, s) => toplam + countFilled(s), 0);
                 const toplamYerlesilemeyen = yerlestirmeSonucu.yerlesilemeyenOgrenciler ? yerlestirmeSonucu.yerlesilemeyenOgrenciler.length : 0;
                 const toplamOgrenci = toplamYerlesen + toplamYerlesilemeyen;
                 
@@ -936,8 +952,18 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
               
               // Yerleştirme sonucu yoksa, mevcut öğrenci listesini kullan
               if (ogrenciler && ogrenciler.length > 0) {
-                const yerlesenSayisi = ogrenciler.filter(o => o.salonId).length;
-                const yerlesilemeyenSayisi = ogrenciler.filter(o => !o.salonId).length;
+                // GÜVENLİK: Benzersiz öğrenci sayılarını hesapla
+                const uniqueOgrenciler = [];
+                const seenIds = new Set();
+                ogrenciler.forEach(o => {
+                  if (o && o.id && !seenIds.has(o.id)) {
+                    uniqueOgrenciler.push(o);
+                    seenIds.add(o.id);
+                  }
+                });
+                
+                const yerlesenSayisi = uniqueOgrenciler.filter(o => o.salonId).length;
+                const yerlesilemeyenSayisi = uniqueOgrenciler.filter(o => !o.salonId).length;
                 
                 return (
                   <Box sx={{ 
@@ -949,7 +975,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                     justifyContent: { xs: 'center', sm: 'flex-start' }
                   }}>
                     <Chip 
-                      label={`Toplam: ${ogrenciler.length}`}
+                      label={`Toplam: ${uniqueOgrenciler.length}`}
                       color="primary"
                       variant="outlined"
                       size="small"
@@ -1052,8 +1078,25 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                       {salon.salonAdi}
                     </Typography>
                     <Chip 
-                      label={salon.ogrenciler.length} 
+                      label={(() => {
+                        // En sağlıklı yöntem: masalar üzerinde dolu koltukları say
+                        if (Array.isArray(salon.masalar)) {
+                          // DOLU KOLTUK: ogrenci nesnesi var ise dolu kabul et (id eksik olabilir)
+                          return salon.masalar.filter(m => m && m.ogrenci).length;
+                        }
+                        // Yedek: ogrenciler listesinden benzersiz id sayısı
+                        if (Array.isArray(salon.ogrenciler)) {
+                          const uniqueIds = new Set(
+                            salon.ogrenciler
+                              .filter(o => o && o.id != null)
+                              .map(o => o.id)
+                          );
+                          return uniqueIds.size;
+                        }
+                        return 0;
+                      })()} 
                       size="small" 
+                      title="Bu salonun toplam öğrenci sayısı (tüm sınıflardan)"
                       sx={{ 
                         ml: 1,
                         fontWeight: 'bold',
@@ -1189,19 +1232,15 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                             onTransferClick={handleTransferClick}
                             currentSalon={sinif}
                             allSalons={tumSalonlar || []}
-                                                conflict={(() => {
-                      const plan2D = Array(sinifDuzeni.satirSayisi).fill(null).map(() => Array(sinifDuzeni.sutunSayisi).fill(null));
-                      sinifDuzeni.masalar.forEach(m => {
-                        if (m.ogrenci && m.satir != null && m.sutun != null) {
-                          // Güvenlik kontrolü: satır ve sütun indekslerinin geçerli olduğundan emin ol
-                          if (m.satir >= 0 && m.satir < plan2D.length && 
-                              m.sutun >= 0 && m.sutun < plan2D[m.satir].length) {
-                            plan2D[m.satir][m.sutun] = { ogrenci: m.ogrenci, grup: m.grup };
-                          }
-                        }
-                      });
-                      return hasConstraintConflict(masa, plan2D);
-                    })()}
+                            conflict={(() => {
+                              const plan2D = Array(sinifDuzeni.satirSayisi).fill(null).map(() => Array(sinifDuzeni.sutunSayisi).fill(null));
+                              sinifDuzeni.masalar.forEach(m => {
+                                if (m.ogrenci) {
+                                  plan2D[m.satir][m.sutun] = { ogrenci: m.ogrenci, grup: m.grup };
+                                }
+                              });
+                              return hasConstraintConflict(masa, plan2D);
+                            })()}
                           />
                         </DroppableSeat>
                       </Tooltip>
@@ -1286,19 +1325,15 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                     onTransferClick={handleTransferClick}
                     currentSalon={sinif}
                     allSalons={tumSalonlar || []}
-                                        conflict={(() => {
-                              const plan2D = Array(sinifDuzeni.satirSayisi).fill(null).map(() => Array(sinifDuzeni.sutunSayisi).fill(null));
-                              sinifDuzeni.masalar.forEach(m => {
-                                if (m.ogrenci && m.satir != null && m.sutun != null) {
-                                  // Güvenlik kontrolü: satır ve sütun indekslerinin geçerli olduğundan emin ol
-                                  if (m.satir >= 0 && m.satir < plan2D.length && 
-                                      m.sutun >= 0 && m.sutun < plan2D[m.satir].length) {
-                                    plan2D[m.satir][m.sutun] = { ogrenci: m.ogrenci, grup: m.grup };
-                                  }
-                                }
-                              });
-                              return hasConstraintConflict(masa, plan2D);
-                            })()}
+                    conflict={(() => {
+                      const plan2D = Array(sinifDuzeni.satirSayisi).fill(null).map(() => Array(sinifDuzeni.sutunSayisi).fill(null));
+                      sinifDuzeni.masalar.forEach(m => {
+                        if (m.ogrenci) {
+                          plan2D[m.satir][m.sutun] = { ogrenci: m.ogrenci, grup: m.grup };
+                        }
+                      });
+                      return hasConstraintConflict(masa, plan2D);
+                    })()}
                   />
                 </DroppableSeat>
             </Tooltip>
@@ -1317,7 +1352,12 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
             variant="outlined"
           />
           <Chip 
-            label={`Yerleşen: ${Array.isArray(ogrenciler) ? ogrenciler.length : 0} öğrenci`}
+            label={`Yerleşen: ${(() => {
+              // GÜVENLİK: Benzersiz öğrenci sayısını hesapla
+              if (!Array.isArray(ogrenciler)) return 0;
+              const uniqueIds = new Set(ogrenciler.map(o => o.id));
+              return uniqueIds.size;
+            })()} öğrenci`}
             color="success"
             variant="outlined"
           />
@@ -1325,9 +1365,20 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
             // Tüm öğrencilerden sınıf seviyelerini hesapla (yerleşen + yerleşmeyen)
             const sinifSeviyeleri = {};
             
+            // GÜVENLİK: Önce duplicate öğrencileri temizle
+            const uniqueOgrenciler = [];
+            const seenIds = new Set();
             
             if (Array.isArray(ogrenciler)) {
               ogrenciler.forEach(ogrenci => {
+                if (!seenIds.has(ogrenci.id)) {
+                  uniqueOgrenciler.push(ogrenci);
+                  seenIds.add(ogrenci.id);
+                }
+              });
+              
+              // Benzersiz öğrencilerden sınıf seviyelerini hesapla
+              uniqueOgrenciler.forEach(ogrenci => {
                 // Sınıf bilgisini sinif veya sube'den al
                 const sinifBilgisi = ogrenci.sinif || ogrenci.sube;
                 if (sinifBilgisi) {

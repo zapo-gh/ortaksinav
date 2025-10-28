@@ -29,11 +29,27 @@ class EnhancedStatistics {
   }
 
   getBaseStatistics() {
-    const toplamYerlesen = this.salonlar.reduce((toplam, salon) => toplam + salon.ogrenciler.length, 0);
+    // KRİTİK DÜZELTME: İstatistikleri masalar üzerinden hesapla (gerçek yerleştirme)
+    const toplamYerlesen = this.salonlar.reduce((toplam, salon) => {
+      // Önce masalar üzerinden say (gerçek yerleştirme)
+      if (salon.koltukMatrisi?.masalar) {
+        const masaSayisi = salon.koltukMatrisi.masalar.filter(masa => masa.ogrenci).length;
+        return toplam + masaSayisi;
+      }
+      // Fallback: ogrenciler listesi
+      return toplam + (salon.ogrenciler?.length || 0);
+    }, 0);
 
     const salonBasinaOgrenci = {};
     this.salonlar.forEach(salon => {
-      salonBasinaOgrenci[salon.salonAdi] = salon.ogrenciler.length;
+      // Önce masalar üzerinden say (gerçek yerleştirme)
+      if (salon.koltukMatrisi?.masalar) {
+        const masaSayisi = salon.koltukMatrisi.masalar.filter(masa => masa.ogrenci).length;
+        salonBasinaOgrenci[salon.salonAdi] = masaSayisi;
+      } else {
+        // Fallback: ogrenciler listesi
+        salonBasinaOgrenci[salon.salonAdi] = salon.ogrenciler?.length || 0;
+      }
     });
 
     const sinifDagilimlari = {};
@@ -41,7 +57,10 @@ class EnhancedStatistics {
     let esnekYerlestirilenSayisi = 0;
 
     this.salonlar.forEach(salon => {
-      salon.ogrenciler.forEach(ogrenci => {
+      // Önce masalar üzerinden say (gerçek yerleştirme)
+      const ogrenciler = salon.koltukMatrisi?.masalar?.filter(masa => masa.ogrenci).map(masa => masa.ogrenci) || salon.ogrenciler || [];
+      
+      ogrenciler.forEach(ogrenci => {
         // Sınıf dağılımı
         const seviye = getSinifSeviyesi(ogrenci.sinif);
         if (seviye) {

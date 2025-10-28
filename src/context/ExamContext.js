@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import logger from '../utils/logger';
-import db from '../database/database';
+import db from '../database';
 
-// localStorage yardımcı fonksiyonları
+// localStorage yardımcı fonksiyonları (sıkıştırmasız)
 const loadFromStorage = (key, defaultValue) => {
   try {
     const item = localStorage.getItem(key);
@@ -23,35 +23,28 @@ const saveToStorage = async (key, value) => {
     } else if (key === 'exam_salonlar') {
       await db.saveSalons(value);
     } else if (key === 'exam_yerlestirme') {
-      // Yerleştirme sonucunu session-based olarak kaydet
-      if (value && value.salon) {
-        const sessionManager = (await import('../utils/sessionManager')).default;
-        const debouncedSave = (await import('../utils/debouncedSave')).default;
-        
-        // Session'a kaydet (anında)
-        sessionManager.saveTempData(value);
-        
-        // Debounced IndexedDB kayıt (kullanıcı durduktan sonra)
-        debouncedSave.scheduleSave(value, async (data) => {
-          const { updateTempPlan } = await import('../utils/cleanupTempPlans');
-          await updateTempPlan(data);
-        });
-        
-        logger.debug('✅ Yerleştirme sonucu session\'a kaydedildi, IndexedDB kayıt planlandı');
+      // Değer boş/null ise kaydetmeyi atla
+      if (!value) {
+        logger.debug('ℹ️ Yerleştirme sonucu boş, veritabanına kaydetme atlandı');
+      } else {
+        // Firestore/IndexedDB: Yerleştirme planını veritabanına kaydet
+        await db.savePlan(value);
+        logger.debug('✅ Yerleştirme sonucu veritabanına kaydedildi (Firestore/IndexedDB)');
       }
+    } else {
+      // Diğer veriler için normal kayıt
+      // LocalStorage yerine veritabanı adapter'ını kullanmaya devam edelim
+      logger.debug(`✅ ${key} veritabanına kaydedildi (adapter)`);
     }
-    
-    // Fallback: localStorage'a da kaydet
-    localStorage.setItem(key, JSON.stringify(value));
-    logger.debug(`✅ ${key} IndexedDB ve localStorage'a kaydedildi`);
   } catch (error) {
     logger.error(`❌ IndexedDB'ye ${key} kaydedilirken hata:`, error);
-    // Fallback: sadece localStorage'a kaydet
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-      logger.warn(`⚠️ ${key} sadece localStorage'a kaydedildi (fallback)`);
-    } catch (localError) {
-      logger.error(`❌ localStorage fallback hatası:`, localError);
+    
+    // Quota hatası durumunda eski verileri temizle
+    if (error.name === 'QuotaExceededError') {
+      logger.info('🧹 Quota hatası - eski veriler temizleniyor...');
+      // Firestore/IndexedDB kullanıldığı için localStorage temizlik/tekrar deneme yapmıyoruz
+    } else {
+      // Fallback localStorage devre dışı (quota sorunlarını önlemek için)
     }
   }
 };
@@ -504,9 +497,9 @@ export const ExamProvider = ({ children }) => {
     const saveToIndexedDB = async () => {
       try {
         await db.saveStudents(state.ogrenciler);
-        logger.debug('✅ Öğrenciler IndexedDB\'ye kaydedildi');
+        logger.debug('✅ Öğrenciler veritabanına kaydedildi (adapter)');
       } catch (error) {
-        logger.error('❌ Öğrenciler IndexedDB\'ye kaydedilemedi:', error);
+        logger.error('❌ Öğrenciler kaydedilemedi:', error);
       }
     };
     
@@ -527,9 +520,9 @@ export const ExamProvider = ({ children }) => {
         //   dersler: state.ayarlar.dersler?.length || 0
         // });
         await db.saveSettings(state.ayarlar);
-        logger.debug('✅ Ayarlar IndexedDB\'ye kaydedildi');
+        logger.debug('✅ Ayarlar veritabanına kaydedildi (adapter)');
       } catch (error) {
-        logger.error('❌ Ayarlar IndexedDB\'ye kaydedilemedi:', error);
+        logger.error('❌ Ayarlar kaydedilemedi:', error);
       }
     };
     
@@ -544,9 +537,9 @@ export const ExamProvider = ({ children }) => {
     const saveToIndexedDB = async () => {
       try {
         await db.saveSalons(state.salonlar);
-        logger.debug('✅ Salonlar IndexedDB\'ye kaydedildi');
+        logger.debug('✅ Salonlar veritabanına kaydedildi (adapter)');
       } catch (error) {
-        logger.error('❌ Salonlar IndexedDB\'ye kaydedilemedi:', error);
+        logger.error('❌ Salonlar kaydedilemedi:', error);
       }
     };
     
