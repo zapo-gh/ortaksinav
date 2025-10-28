@@ -1223,6 +1223,7 @@ export const gelismisYerlestirme = (ogrenciler, salonlar, ayarlar) => {
       id: sonuc.salonId,
       salonAdi: sonuc.salonAdi,
       kapasite: sonuc.kapasite,
+      aktif: true, // FIX: aktif property'sini ekle - findEnBosSalonlar için gerekli
       koltukMatrisi: sonuc.koltukMatrisi,
       masalar: sonuc.masalar,
       gruplar: sonuc.gruplar,
