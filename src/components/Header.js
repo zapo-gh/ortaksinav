@@ -23,11 +23,10 @@ import {
 const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
   const [anchorEl, setAnchorEl] = React.useState(null);
   const [showTestDashboard, setShowTestDashboard] = React.useState(false);
+  const [lastKeyPress, setLastKeyPress] = React.useState(0);
 
   // Test Dashboard görünürlüğünü kontrol et
   React.useEffect(() => {
-    console.log('🚀 Header useEffect çalıştı');
-    
     const checkTestDashboardVisibility = () => {
       // URL parametresi kontrolü - basit ?test
       const urlParams = new URLSearchParams(window.location.search);
@@ -39,119 +38,68 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
       // URL parametresi varsa öncelik ver
       const isVisible = showFromUrl || isVisibleFromStorage;
       
-      console.log('📊 Test Dashboard görünürlük durumu:', {
-        fromUrl: showFromUrl,
-        fromStorage: isVisibleFromStorage,
-        final: isVisible,
-        url: window.location.href
-      });
-      
       setShowTestDashboard(isVisible);
     };
 
     checkTestDashboardVisibility();
 
-    // Klavye kısayolu: Ctrl+Alt+T
+    // Klavye kısayolu handler - debounced
     const handleKeyDown = (e) => {
-      console.log('🔍 Header - Klavye tuşu:', e.key, 'Ctrl:', e.ctrlKey, 'Alt:', e.altKey, 'Meta:', e.metaKey);
+      const now = Date.now();
       
-      // Daha basit test: sadece 't' tuşu
-      if (e.key === 't') {
-        console.log('🔤 T tuşu basıldı!');
+      // Debounce: 500ms içinde aynı tuş basılırsa ignore et
+      if (now - lastKeyPress < 500) {
+        return;
       }
       
-      // Türkçe klavye için ₺ sembolü de kontrol et
-      if (e.key === '₺') {
-        console.log('💰 Türk Lirası sembolü basıldı!');
-        console.log('🔍 ₺ sembolü ile Ctrl+Alt kontrolü:', e.ctrlKey, e.altKey);
-      }
+      // Test Dashboard toggle fonksiyonu
+      const toggleTestDashboard = (keyName) => {
+        console.log(`✅ ${keyName} algılandı!`);
+        setLastKeyPress(now);
+        setShowTestDashboard(prev => {
+          const newVisibility = !prev;
+          localStorage.setItem('show_test_dashboard', newVisibility.toString());
+          console.log(`🧪 ${keyName} - Test Dashboard:`, newVisibility ? 'Açık' : 'Kapalı');
+          return newVisibility;
+        });
+      };
       
-      // Detaylı debug: ₺ sembolü için
-      console.log('🔍 Key detayları:', {
-        key: e.key,
-        keyCode: e.keyCode,
-        charCode: e.charCode,
-        which: e.which,
-        keyLength: e.key.length,
-        keyCharCodes: e.key.split('').map(c => c.charCodeAt(0))
-      });
-      
-      // Test Dashboard toggle - sadece bir kez çalışsın
-      let shouldToggle = false;
-      
-      // Geniş kontrol: ₺ sembolü için
-      if (e.key.includes('₺') || e.key === '₺' || e.keyCode === 84) {
-        console.log('🎯 ₺ sembolü algılandı! Key:', e.key, 'KeyCode:', e.keyCode);
-        shouldToggle = true;
-      }
-      
-      // Ctrl+Alt+T kombinasyonu için hem 't' hem '₺' kontrol et
+      // Ctrl+Alt+T kombinasyonu
       if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 't' || e.key === '₺')) {
         e.preventDefault();
-        console.log('✅ Header - Ctrl+Alt+T algılandı!');
-        shouldToggle = true;
+        toggleTestDashboard('Ctrl+Alt+T');
       }
       
-      // Sadece bir kez toggle yap
-      if (shouldToggle) {
-        console.log('🎯 Test Dashboard toggle!');
-        setShowTestDashboard(prev => {
-          const newVisibility = !prev;
-          console.log('🔄 State güncelleniyor:', prev, '→', newVisibility);
-          localStorage.setItem('show_test_dashboard', newVisibility.toString());
-          console.log('🧪 Header - Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
-          return newVisibility;
-        });
-      }
-      
-      // Alternatif: Ctrl+Shift+T kombinasyonu
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'T') {
+      // Ctrl+Shift+T kombinasyonu
+      else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'T') {
         e.preventDefault();
-        console.log('✅ Header - Ctrl+Shift+T algılandı!');
-        setShowTestDashboard(prev => {
-          const newVisibility = !prev;
-          console.log('🔄 State güncelleniyor:', prev, '→', newVisibility);
-          localStorage.setItem('show_test_dashboard', newVisibility.toString());
-          console.log('🧪 Header - Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
-          return newVisibility;
-        });
+        toggleTestDashboard('Ctrl+Shift+T');
       }
       
       // F12 tuşu - preventDefault() olmadan (console açılsın)
-      if (e.key === 'F12' || e.keyCode === 123) {
-        console.log('✅ Header - F12 algılandı! Key:', e.key, 'KeyCode:', e.keyCode);
-        setShowTestDashboard(prev => {
-          const newVisibility = !prev;
-          console.log('🔄 F12 State güncelleniyor:', prev, '→', newVisibility);
-          localStorage.setItem('show_test_dashboard', newVisibility.toString());
-          console.log('🧪 F12 Header - Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
-          return newVisibility;
-        });
+      else if (e.key === 'F12' || e.keyCode === 123) {
+        toggleTestDashboard('F12');
       }
       
-      // Daha basit: Escape tuşu
-      if (e.key === 'Escape') {
-        console.log('✅ Header - Escape algılandı!');
-        setShowTestDashboard(prev => {
-          const newVisibility = !prev;
-          console.log('🔄 Escape State güncelleniyor:', prev, '→', newVisibility);
-          localStorage.setItem('show_test_dashboard', newVisibility.toString());
-          console.log('🧪 Escape Header - Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
-          return newVisibility;
-        });
+      // Escape tuşu
+      else if (e.key === 'Escape') {
+        toggleTestDashboard('Escape');
+      }
+      
+      // Space tuşu (alternatif)
+      else if (e.key === ' ') {
+        e.preventDefault();
+        toggleTestDashboard('Space');
       }
     };
 
-    // Document'a da ekle
+    // Event listener'ları ekle
     document.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keydown', handleKeyDown);
-    
-    console.log('📝 Event listener eklendi');
     
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keydown', handleKeyDown);
-      console.log('🗑️ Event listener kaldırıldı');
     };
   }, []); // Dependency array'i boş bırak
 
@@ -195,7 +143,6 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
               Test Dashboard
             </Button>
           )}
-          {console.log('🎯 Test Dashboard render kontrolü:', showTestDashboard, 'Type:', typeof showTestDashboard)}
         </Box>
 
         {/* Kullanıcı Bölgesi */}
