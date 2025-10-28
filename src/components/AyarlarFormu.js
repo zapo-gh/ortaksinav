@@ -304,7 +304,7 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                     </Box>
 
                     <Grid container spacing={2}>
-                      <Grid size={{ xs: 12, md: 6 }}>
+                      <Grid size={{ xs: 12, md: 6 }} key={`ders-adi-${ders.id}`}>
                         <TextField
                           fullWidth
                           label="Ders Adı"
@@ -315,7 +315,7 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                         />
                       </Grid>
 
-                      <Grid size={{ xs: 12, md: 6 }}>
+                      <Grid size={{ xs: 12, md: 6 }} key={`sinif-secimi-${ders.id}`}>
                         <FormControl fullWidth>
                           <InputLabel>Sınıf Seç (Çoklu)</InputLabel>
                           <Select
@@ -391,7 +391,7 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                         </FormControl>
                       </Grid>
 
-                      <Grid size={{ xs: 12, md: 6 }}>
+                      <Grid size={{ xs: 12, md: 6 }} key={`butonlar-${ders.id}`}>
                         <Button
                           variant="outlined"
                           size="small"
@@ -418,7 +418,7 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                       </Grid>
 
                       {ders.siniflar.length > 0 && (
-                        <Grid size={12}>
+                        <Grid size={12} key={`siniflar-listesi-${ders.id}`}>
                           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                             Bu dersi alan sınıflar:
                           </Typography>
