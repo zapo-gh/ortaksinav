@@ -462,18 +462,22 @@ const AnaSayfaContent = React.memo(() => {
 
     // Klavye kısayolu: Ctrl+Alt+T
     const handleKeyDown = (e) => {
+      console.log('🔍 AnaSayfa - Klavye tuşu:', e.key, 'Ctrl:', e.ctrlKey, 'Alt:', e.altKey, 'Meta:', e.metaKey);
       if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 't') {
         e.preventDefault();
-        const newVisibility = !showTestDashboard;
-        setShowTestDashboard(newVisibility);
-        localStorage.setItem('show_test_dashboard', newVisibility.toString());
-        console.log('🧪 Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
+        console.log('✅ AnaSayfa - Ctrl+Alt+T algılandı!');
+        setShowTestDashboard(prev => {
+          const newVisibility = !prev;
+          localStorage.setItem('show_test_dashboard', newVisibility.toString());
+          console.log('🧪 AnaSayfa - Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
+          return newVisibility;
+        });
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showTestDashboard]);
+  }, []); // Dependency array'i boş bırak
 
   // Giriş sayfasından ana sisteme geçiş
   const handleStartSystem = useCallback(() => {
