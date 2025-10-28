@@ -18,6 +18,7 @@ import {
 import { db } from '../firebase/config';
 import logger from '../utils/logger';
 import { sanitizeForFirestore, sanitizeFromFirestore, checkDataSize, chunkArray } from '../utils/firestoreUtils';
+import { DISABLE_FIREBASE } from '../config/firebaseConfig';
 
 /**
  * Firestore Database Client - Parçalı Model
@@ -32,12 +33,27 @@ import { sanitizeForFirestore, sanitizeFromFirestore, checkDataSize, chunkArray 
 class FirestoreClient {
   constructor() {
     this.db = db;
+    this.isDisabled = DISABLE_FIREBASE || db?.mock;
+  }
+
+  /**
+   * Check if Firebase is disabled and return appropriate response
+   */
+  _handleDisabledFirebase(operation, defaultValue = null) {
+    if (this.isDisabled) {
+      logger.debug(`🔧 Firebase disabled - ${operation} skipped, using localStorage fallback`);
+      return Promise.resolve(defaultValue);
+    }
+    return null;
   }
 
   /**
    * Plan meta bilgilerini kaydet
    */
   async savePlan(planData) {
+    const disabledResult = this._handleDisabledFirebase('savePlan', 'mock-plan-id');
+    if (disabledResult) return disabledResult;
+    
     try {
       logger.debug('💾 Firestore: Plan meta kaydediliyor...');
       
@@ -292,6 +308,9 @@ class FirestoreClient {
    * Tüm öğrencileri getir
    */
   async getAllStudents() {
+    const disabledResult = this._handleDisabledFirebase('getAllStudents', []);
+    if (disabledResult) return disabledResult;
+    
     try {
       logger.debug('📥 Firestore: Öğrenciler yükleniyor...');
       
@@ -341,6 +360,9 @@ class FirestoreClient {
    * Tüm ayarları getir
    */
   async getSettings() {
+    const disabledResult = this._handleDisabledFirebase('getSettings', {});
+    if (disabledResult) return disabledResult;
+    
     try {
       logger.debug('📥 Firestore: Ayarlar yükleniyor...');
       
@@ -394,6 +416,9 @@ class FirestoreClient {
    * Tüm salonları getir
    */
   async getAllSalons() {
+    const disabledResult = this._handleDisabledFirebase('getAllSalons', []);
+    if (disabledResult) return disabledResult;
+    
     try {
       logger.debug('📥 Firestore: Salonlar yükleniyor...');
       
