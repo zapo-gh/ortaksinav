@@ -29,9 +29,9 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
     console.log('🚀 Header useEffect çalıştı');
     
     const checkTestDashboardVisibility = () => {
-      // URL parametresi kontrolü
+      // URL parametresi kontrolü - basit ?test
       const urlParams = new URLSearchParams(window.location.search);
-      const showFromUrl = urlParams.get('showTestDashboard') === 'true';
+      const showFromUrl = urlParams.has('test') || urlParams.get('showTestDashboard') === 'true';
       
       // localStorage kontrolü
       const isVisibleFromStorage = localStorage.getItem('show_test_dashboard') === 'true';
@@ -42,7 +42,8 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
       console.log('📊 Test Dashboard görünürlük durumu:', {
         fromUrl: showFromUrl,
         fromStorage: isVisibleFromStorage,
-        final: isVisible
+        final: isVisible,
+        url: window.location.href
       });
       
       setShowTestDashboard(isVisible);
