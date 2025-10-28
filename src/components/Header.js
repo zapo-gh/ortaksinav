@@ -48,13 +48,25 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
       // Türkçe klavye için ₺ sembolü de kontrol et
       if (e.key === '₺') {
         console.log('💰 Türk Lirası sembolü basıldı!');
+        console.log('🔍 ₺ sembolü ile Ctrl+Alt kontrolü:', e.ctrlKey, e.altKey);
+      }
+      
+      // Basit test: sadece ₺ sembolü ile çalış
+      if (e.key === '₺') {
+        console.log('🎯 ₺ sembolü ile Test Dashboard toggle!');
+        setShowTestDashboard(prev => {
+          const newVisibility = !prev;
+          console.log('🔄 State güncelleniyor:', prev, '→', newVisibility);
+          localStorage.setItem('show_test_dashboard', newVisibility.toString());
+          console.log('🧪 Header - Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
+          return newVisibility;
+        });
       }
       
       // Ctrl+Alt+T kombinasyonu için hem 't' hem '₺' kontrol et
       if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 't' || e.key === '₺')) {
         e.preventDefault();
         console.log('✅ Header - Ctrl+Alt+T algılandı!');
-        console.log('🔍 Mevcut showTestDashboard durumu:', showTestDashboard);
         setShowTestDashboard(prev => {
           const newVisibility = !prev;
           console.log('🔄 State güncelleniyor:', prev, '→', newVisibility);
