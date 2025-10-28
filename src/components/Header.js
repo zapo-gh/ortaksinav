@@ -51,6 +51,16 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
         console.log('🔍 ₺ sembolü ile Ctrl+Alt kontrolü:', e.ctrlKey, e.altKey);
       }
       
+      // Detaylı debug: ₺ sembolü için
+      console.log('🔍 Key detayları:', {
+        key: e.key,
+        keyCode: e.keyCode,
+        charCode: e.charCode,
+        which: e.which,
+        keyLength: e.key.length,
+        keyCharCodes: e.key.split('').map(c => c.charCodeAt(0))
+      });
+      
       // Geniş kontrol: ₺ sembolü için
       if (e.key.includes('₺') || e.key === '₺' || e.keyCode === 84) {
         console.log('🎯 ₺ sembolü algılandı! Key:', e.key, 'KeyCode:', e.keyCode);
