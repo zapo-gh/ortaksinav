@@ -116,19 +116,6 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
         });
       }
       
-      // Basit çözüm: F12 tuşu
-      if (e.key === 'F12') {
-        e.preventDefault();
-        console.log('✅ Header - F12 algılandı!');
-        setShowTestDashboard(prev => {
-          const newVisibility = !prev;
-          console.log('🔄 F12 State güncelleniyor:', prev, '→', newVisibility);
-          localStorage.setItem('show_test_dashboard', newVisibility.toString());
-          console.log('🧪 F12 Header - Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
-          return newVisibility;
-        });
-      }
-      
       // Daha basit: Escape tuşu
       if (e.key === 'Escape') {
         console.log('✅ Header - Escape algılandı!');
@@ -137,6 +124,19 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
           console.log('🔄 Escape State güncelleniyor:', prev, '→', newVisibility);
           localStorage.setItem('show_test_dashboard', newVisibility.toString());
           console.log('🧪 Escape Header - Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
+          return newVisibility;
+        });
+      }
+      
+      // En basit: Space tuşu
+      if (e.key === ' ') {
+        e.preventDefault();
+        console.log('✅ Header - Space algılandı!');
+        setShowTestDashboard(prev => {
+          const newVisibility = !prev;
+          console.log('🔄 Space State güncelleniyor:', prev, '→', newVisibility);
+          localStorage.setItem('show_test_dashboard', newVisibility.toString());
+          console.log('🧪 Space Header - Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
           return newVisibility;
         });
       }
