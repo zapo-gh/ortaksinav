@@ -45,7 +45,13 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
         console.log('🔤 T tuşu basıldı!');
       }
       
-      if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 't') {
+      // Türkçe klavye için ₺ sembolü de kontrol et
+      if (e.key === '₺') {
+        console.log('💰 Türk Lirası sembolü basıldı!');
+      }
+      
+      // Ctrl+Alt+T kombinasyonu için hem 't' hem '₺' kontrol et
+      if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 't' || e.key === '₺')) {
         e.preventDefault();
         console.log('✅ Header - Ctrl+Alt+T algılandı!');
         setShowTestDashboard(prev => {
