@@ -26,8 +26,11 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
 
   // Test Dashboard görünürlüğünü kontrol et
   React.useEffect(() => {
+    console.log('🚀 Header useEffect çalıştı');
+    
     const checkTestDashboardVisibility = () => {
       const isVisible = localStorage.getItem('show_test_dashboard') === 'true';
+      console.log('📊 Test Dashboard görünürlük durumu:', isVisible);
       setShowTestDashboard(isVisible);
     };
 
@@ -35,21 +38,36 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
 
     // Klavye kısayolu: Ctrl+Alt+T
     const handleKeyDown = (e) => {
-      console.log('🔍 Klavye tuşu:', e.key, 'Ctrl:', e.ctrlKey, 'Alt:', e.altKey, 'Meta:', e.metaKey);
+      console.log('🔍 Header - Klavye tuşu:', e.key, 'Ctrl:', e.ctrlKey, 'Alt:', e.altKey, 'Meta:', e.metaKey);
+      
+      // Daha basit test: sadece 't' tuşu
+      if (e.key === 't') {
+        console.log('🔤 T tuşu basıldı!');
+      }
+      
       if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 't') {
         e.preventDefault();
-        console.log('✅ Ctrl+Alt+T algılandı!');
+        console.log('✅ Header - Ctrl+Alt+T algılandı!');
         setShowTestDashboard(prev => {
           const newVisibility = !prev;
           localStorage.setItem('show_test_dashboard', newVisibility.toString());
-          console.log('🧪 Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
+          console.log('🧪 Header - Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
           return newVisibility;
         });
       }
     };
 
+    // Document'a da ekle
+    document.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    
+    console.log('📝 Event listener eklendi');
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keydown', handleKeyDown);
+      console.log('🗑️ Event listener kaldırıldı');
+    };
   }, []); // Dependency array'i boş bırak
 
   const handleMenu = (event) => {

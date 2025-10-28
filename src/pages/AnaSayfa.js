@@ -405,7 +405,6 @@ const DraggableUnplacedStudent = ({ ogrenci }) => {
 const AnaSayfaContent = React.memo(() => {
   const [seciliSalonId, setSeciliSalonId] = useState(null);
   const [showWelcome, setShowWelcome] = useState(false); // Sayfa yenileme için false
-  const [showTestDashboard, setShowTestDashboard] = useState(false);
   const { showSuccess, showError } = useNotifications();
 
   // Exam context state & actions (erken tanımla - aşağıdaki effectler kullanıyor)
@@ -451,33 +450,6 @@ const AnaSayfaContent = React.memo(() => {
     }
   }, []);
 
-  // Test Dashboard görünürlüğünü kontrol et
-  useEffect(() => {
-    const checkTestDashboardVisibility = () => {
-      const isVisible = localStorage.getItem('show_test_dashboard') === 'true';
-      setShowTestDashboard(isVisible);
-    };
-
-    checkTestDashboardVisibility();
-
-    // Klavye kısayolu: Ctrl+Alt+T
-    const handleKeyDown = (e) => {
-      console.log('🔍 AnaSayfa - Klavye tuşu:', e.key, 'Ctrl:', e.ctrlKey, 'Alt:', e.altKey, 'Meta:', e.metaKey);
-      if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 't') {
-        e.preventDefault();
-        console.log('✅ AnaSayfa - Ctrl+Alt+T algılandı!');
-        setShowTestDashboard(prev => {
-          const newVisibility = !prev;
-          localStorage.setItem('show_test_dashboard', newVisibility.toString());
-          console.log('🧪 AnaSayfa - Test Dashboard görünürlüğü:', newVisibility ? 'Açık' : 'Kapalı');
-          return newVisibility;
-        });
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []); // Dependency array'i boş bırak
 
   // Giriş sayfasından ana sisteme geçiş
   const handleStartSystem = useCallback(() => {
