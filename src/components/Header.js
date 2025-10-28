@@ -118,8 +118,8 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
       }
       
       // F12 tuşu - preventDefault() olmadan (console açılsın)
-      if (e.key === 'F12') {
-        console.log('✅ Header - F12 algılandı!');
+      if (e.key === 'F12' || e.keyCode === 123) {
+        console.log('✅ Header - F12 algılandı! Key:', e.key, 'KeyCode:', e.keyCode);
         setShowTestDashboard(prev => {
           const newVisibility = !prev;
           console.log('🔄 F12 State güncelleniyor:', prev, '→', newVisibility);
