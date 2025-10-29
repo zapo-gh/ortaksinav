@@ -57,8 +57,11 @@ class DatabaseAdapter {
    * Aktif veritabanını döndür - SADECE FIRESTORE
    */
   async getActiveDB() {
-    // Sadece Firestore kullan - fallback yok
-    return this.firestore;
+    // Seçili veritabanını döndür
+    if (this.useFirestore) {
+      return this.firestore;
+    }
+    return await this.getIndexedDB();
   }
 
   /**
