@@ -3162,7 +3162,24 @@ const kademeliYerlestirmeAsama1 = (ogrenciler, salonlar, ayarlar, kullanilanOgre
   
   const yerlesenOgrenciler = [];
   
-  for (const salon of salonlar) {
+  // En boş salonları öncele: kapasite - dolu koltuk sayısına göre sırala
+  const sortedSalonlar = [...salonlar].sort((a, b) => {
+    const countOccupied = (s) => {
+      if (s.koltukMatrisi?.masalar) {
+        return s.koltukMatrisi.masalar.filter(m => m && m.ogrenci).length;
+      }
+      if (Array.isArray(s.masalar)) {
+        return s.masalar.filter(m => m && m.ogrenci).length;
+      }
+      return s.ogrenciler?.length || 0;
+    };
+    const cap = (s) => s.kapasite || s.koltukMatrisi?.masalar?.length || s.masalar?.length || 0;
+    const bosA = Math.max(0, cap(a) - countOccupied(a));
+    const bosB = Math.max(0, cap(b) - countOccupied(b));
+    return bosB - bosA; // En çok boş koltuğu olan önce
+  });
+  
+  for (const salon of sortedSalonlar) {
     if (ogrenciler.length === 0) break;
     
     // GERÇEK PLAN VERİLERİNİ KULLAN - Yeni boş plan oluşturma!
@@ -3283,6 +3300,29 @@ const kademeliYerlestirmeAsama1 = (ogrenciler, salonlar, ayarlar, kullanilanOgre
             if (gercekMasa) {
               gercekMasa.ogrenci = { ...yerlesenOgrenci };
             }
+          }
+          // Plan senkronizasyonu: salon.plan mevcutsa güncelle; yoksa oluştur
+          try {
+            if (!Array.isArray(salon.plan) || salon.plan.length === 0) {
+              // Planı koltukMatrisi veya masalardan üret
+              const kaynakMasalar = salon.koltukMatrisi?.masalar || salon.masalar || [];
+              salon.plan = kaynakMasalar.map(m => ({
+                satir: m.satir,
+                sutun: m.sutun,
+                grup: m.grup,
+                ogrenci: m.ogrenci ? { ...m.ogrenci } : null
+              }));
+            } else {
+              const planCell = salon.plan.find(p => p.satir === koltuk.satir && p.sutun === koltuk.sutun && p.grup === koltuk.grup);
+              if (planCell) {
+                planCell.ogrenci = { ...yerlesenOgrenci };
+              } else {
+                // Uyuşan hücre yoksa ekle
+                salon.plan.push({ satir: koltuk.satir, sutun: koltuk.sutun, grup: koltuk.grup, ogrenci: { ...yerlesenOgrenci } });
+              }
+            }
+          } catch (e) {
+            logger.debug('Plan senkronizasyonu atlandı:', e);
           }
           
           yerlesenOgrenciler.push(yerlesenOgrenci);
