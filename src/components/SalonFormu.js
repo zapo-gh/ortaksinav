@@ -377,7 +377,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
       if (onSalonlarDegistir) {
         onSalonlarDegistir([...(salonlar || []), yeniSalon]);
       }
-    } catch (_) {}
+    } catch (e) { console.debug('Salon ekleme persist hatası:', e); }
   };
 
   // Salon formu silme - onay dialogu aç
@@ -455,7 +455,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
       if (onSalonlarDegistir) {
         onSalonlarDegistir([...(salonlar || []), yeniSalon]);
       }
-    } catch (_) {}
+    } catch (e) { console.debug('Salon kopyalama persist hatası:', e); }
     basariliMesajGoster(`✅ "${kopyalanacakForm.salonAdi}" salonu kopyalandı!`);
   };
 
