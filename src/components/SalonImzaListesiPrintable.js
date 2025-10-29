@@ -302,35 +302,62 @@ const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {} 
               </Table>
             </TableContainer>
             
-            {/* Salon Özeti */}
-            <Box sx={{ mt: 2, textAlign: 'center' }}>
-              <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', mb: 1 }}>
-                Toplam Öğrenci: {sortedStudents.length}
-              </Typography>
-              {(() => {
-                // Sınıf seviyesi dağılımını hesapla
-                const sinifSeviyeleri = {};
-                sortedStudents.forEach(ogrenci => {
-                  const sinifBilgisi = ogrenci.sinif || ogrenci.sube;
-                  if (sinifBilgisi) {
-                    // Sınıf seviyesini çıkar (9, 10, 11, 12)
-                    const seviye = sinifBilgisi.match(/\d+/)?.[0];
-                    if (seviye && ['9', '10', '11', '12'].includes(seviye)) {
-                      sinifSeviyeleri[seviye] = (sinifSeviyeleri[seviye] || 0) + 1;
+            {/* Salon Özeti ve Öğretmen İmza Bloğu */}
+            <Box sx={{
+              mt: 2,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              width: '100%',
+              px: { xs: 1, print: 0 }
+            }}>
+              {/* Sol: Özet - sola hizalı */}
+              <Box sx={{ textAlign: 'left' }}>
+                <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', mb: 1 }}>
+                  Toplam Öğrenci: {sortedStudents.length}
+                </Typography>
+                {(() => {
+                  // Sınıf seviyesi dağılımını hesapla
+                  const sinifSeviyeleri = {};
+                  sortedStudents.forEach(ogrenci => {
+                    const sinifBilgisi = ogrenci.sinif || ogrenci.sube;
+                    if (sinifBilgisi) {
+                      const seviye = sinifBilgisi.match(/\d+/)?.[0];
+                      if (seviye && ['9', '10', '11', '12'].includes(seviye)) {
+                        sinifSeviyeleri[seviye] = (sinifSeviyeleri[seviye] || 0) + 1;
+                      }
                     }
-                  }
-                });
-                
-                // Sınıf seviyesi dağılımını alt alta göster
-                const sinifDagilimi = Object.entries(sinifSeviyeleri)
-                  .sort(([a], [b]) => parseInt(a) - parseInt(b));
-                
-                return sinifDagilimi.map(([seviye, sayi]) => (
-                  <Typography key={seviye} variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}>
-                    {seviye}. sınıf: {sayi} öğrenci
-                  </Typography>
-                ));
-              })()}
+                  });
+                  const sinifDagilimi = Object.entries(sinifSeviyeleri)
+                    .sort(([a], [b]) => parseInt(a) - parseInt(b));
+                  return sinifDagilimi.map(([seviye, sayi]) => (
+                    <Typography key={seviye} variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}>
+                      {seviye}. sınıf: {sayi} öğrenci
+                    </Typography>
+                  ));
+                })()}
+              </Box>
+
+              {/* Sağ: Öğretmen Adı Soyadı / İmza */}
+              <Box sx={{ textAlign: 'right', minWidth: { xs: '180px', sm: '220px' } }}>
+                <Typography variant="body2" sx={{ fontSize: '0.85rem', fontWeight: 'bold', mb: 1 }}>
+                  Öğretmen
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+                  <Box>
+                    <Typography variant="body2" sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>
+                      Adı Soyadı:
+                    </Typography>
+                    <Box sx={{ width: { xs: 140, sm: 160 }, height: 1, borderBottom: '1px solid #999', mt: 1 }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>
+                      İmza:
+                    </Typography>
+                    <Box sx={{ width: { xs: 100, sm: 120 }, height: 1, borderBottom: '1px solid #999', mt: 1 }} />
+                  </Box>
+                </Box>
+              </Box>
             </Box>
           </Box>
         );
