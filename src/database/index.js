@@ -306,7 +306,9 @@ class DatabaseAdapter {
           if (Array.isArray(localSalons) && localSalons.length > 0) {
             return localSalons;
           }
-        } catch (_) {}
+        } catch (fallbackError) {
+          logger.debug('IndexedDB fallback for salons failed:', fallbackError);
+        }
       }
       return salons;
     } catch (error) {
