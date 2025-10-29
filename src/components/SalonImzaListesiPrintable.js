@@ -303,16 +303,21 @@ const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {} 
             </TableContainer>
             
             {/* Salon Özeti ve Öğretmen İmza Bloğu */}
-            <Box sx={{
-              mt: 2,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              width: '100%',
-              px: { xs: 1, print: 0 }
-            }}>
-              {/* Sol: Özet - sola hizalı */}
-              <Box sx={{ textAlign: 'left' }}>
+            <Box sx={{ mt: 2 }}>
+              <Box sx={{
+                width: '100%',
+                maxWidth: '600px',
+                mx: 'auto',
+                '@media print': { width: '80%', maxWidth: '600px', mx: 'auto' }
+              }}>
+              <Box sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                gap: 2
+              }}>
+              {/* Sol: Özet - tablo ile aynı genişlikte sola hizalı */}
+              <Box sx={{ textAlign: 'left', flex: 1 }}>
                 <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', mb: 1 }}>
                   Toplam Öğrenci: {sortedStudents.length}
                 </Typography>
@@ -338,25 +343,23 @@ const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {} 
                 })()}
               </Box>
 
-              {/* Sağ: Öğretmen Adı Soyadı / İmza */}
-              <Box sx={{ textAlign: 'right', minWidth: { xs: '180px', sm: '220px' } }}>
-                <Typography variant="body2" sx={{ fontSize: '0.85rem', fontWeight: 'bold', mb: 1 }}>
+              {/* Sağ: Öğretmen Adı Soyadı / İmza - tabloya hizalı */}
+              <Box sx={{ textAlign: 'right', minWidth: { xs: '220px', sm: '260px' } }}>
+                <Typography variant="body2" sx={{ fontSize: '0.85rem', fontWeight: 'bold', mb: 1, pr: 0.5 }}>
                   Öğretmen
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-                  <Box>
-                    <Typography variant="body2" sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>
-                      Adı Soyadı:
-                    </Typography>
-                    <Box sx={{ width: { xs: 140, sm: 160 }, height: 1, borderBottom: '1px solid #999', mt: 1 }} />
-                  </Box>
-                  <Box>
-                    <Typography variant="body2" sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>
-                      İmza:
-                    </Typography>
-                    <Box sx={{ width: { xs: 100, sm: 120 }, height: 1, borderBottom: '1px solid #999', mt: 1 }} />
-                  </Box>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
+                  <Typography variant="body2" sx={{ fontSize: '0.8rem', color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    Adı Soyadı:
+                    <Box sx={{ width: { xs: 180, sm: 200 }, height: 0, borderBottom: '1px solid #999' }} />
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontSize: '0.8rem', color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    İmza:
+                    <Box sx={{ width: { xs: 120, sm: 140 }, height: 0, borderBottom: '1px solid #999' }} />
+                  </Typography>
                 </Box>
+              </Box>
+              </Box>
               </Box>
             </Box>
           </Box>
