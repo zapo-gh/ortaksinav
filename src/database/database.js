@@ -456,10 +456,16 @@ class KelebekDatabase extends Dexie {
       await this.salons.clear();
       
       // Yeni salonları ekle
-      await this.salons.bulkAdd(salons.map((salon, index) => ({
-        ...salon,
-        id: salon.id || index + 1
-      })));
+      // Dexie şemasında 'id' auto-increment. Kullanıcı salon kimliğini 'salonId' alanında saklayalım.
+      const records = salons.map((salon) => {
+        const { id: userSalonId, ...rest } = salon || {};
+        return {
+          ...rest,
+          salonId: salon.salonId || userSalonId || String(Date.now())
+          // 'id' alanını vermiyoruz; Dexie otomatik atayacak
+        };
+      });
+      await this.salons.bulkAdd(records);
       
       console.log('✅ Salonlar kaydedildi:', salons.length);
     } catch (error) {
@@ -475,7 +481,11 @@ class KelebekDatabase extends Dexie {
     try {
       const salons = await this.salons.toArray();
       console.log('✅ Salonlar yüklendi:', salons.length);
-      return salons;
+      // Kullanım kolaylığı için 'id' alanını geri eşle
+      return salons.map((s) => ({
+        id: s.salonId || s.id,
+        ...s
+      }));
     } catch (error) {
       console.error('❌ Salon yükleme hatası:', error);
       return [];
