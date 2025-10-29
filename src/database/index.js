@@ -46,8 +46,11 @@ class DatabaseAdapter {
    * IndexedDB'yi lazy load et - DEVRE DIŞI
    */
   async getIndexedDB() {
-    // IndexedDB tamamen devre dışı - sadece Firestore kullan
-    throw new Error('IndexedDB devre dışı - sadece Firestore kullanılıyor');
+    // IndexedDB'yi lazy import et ve adapter olarak kullan
+    if (this.indexedDB) return this.indexedDB;
+    const { default: dexieDb } = await import('./database');
+    this.indexedDB = dexieDb;
+    return this.indexedDB;
   }
 
   /**
@@ -172,7 +175,20 @@ class DatabaseAdapter {
   async getAllStudents() {
     try {
       const db = await this.getActiveDB();
-      return await db.getAllStudents();
+      const students = await db.getAllStudents();
+      // Firestore boş dönerse IndexedDB'den de kontrol et (offline/local persist için)
+      if (this.useFirestore && Array.isArray(students) && students.length === 0) {
+        try {
+          const indexedDB = await this.getIndexedDB();
+          const localStudents = await indexedDB.getAllStudents();
+          if (Array.isArray(localStudents) && localStudents.length > 0) {
+            return localStudents;
+          }
+        } catch (_) {
+          // IndexedDB erişimi başarısızsa sessizce devam et
+        }
+      }
+      return students;
     } catch (error) {
       logger.error('❌ Öğrenci yükleme hatası:', error);
       
