@@ -329,6 +329,8 @@ const examReducer = (state, action) => {
       };
       // SADECE VERİ VARSA IndexedDB'ye kaydet
       if (action.payload && action.payload.length > 0) {
+        // Anında localStorage'a yaz
+        try { localStorage.setItem('exam_salonlar', JSON.stringify(newState.salonlar)); } catch (e) { logger.debug('localStorage immediate write failed (exam_salonlar):', e); }
         saveToStorage('exam_salonlar', newState.salonlar);
       }
       return newState;
@@ -338,6 +340,7 @@ const examReducer = (state, action) => {
         ...state,
         salonlar: [...state.salonlar, action.payload]
       };
+      try { localStorage.setItem('exam_salonlar', JSON.stringify(newState.salonlar)); } catch (e) { logger.debug('localStorage immediate write failed (exam_salonlar):', e); }
       saveToStorage('exam_salonlar', newState.salonlar);
       return newState;
       
@@ -346,6 +349,7 @@ const examReducer = (state, action) => {
         ...state,
         salonlar: state.salonlar.filter(salon => salon.id !== action.payload)
       };
+      try { localStorage.setItem('exam_salonlar', JSON.stringify(newState.salonlar)); } catch (e) { logger.debug('localStorage immediate write failed (exam_salonlar):', e); }
       saveToStorage('exam_salonlar', newState.salonlar);
       return newState;
       

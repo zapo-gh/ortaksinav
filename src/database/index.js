@@ -298,7 +298,17 @@ class DatabaseAdapter {
   async getAllSalons() {
     try {
       const db = await this.getActiveDB();
-      return await db.getAllSalons();
+      const salons = await db.getAllSalons();
+      if (this.useFirestore && Array.isArray(salons) && salons.length === 0) {
+        try {
+          const indexedDB = await this.getIndexedDB();
+          const localSalons = await indexedDB.getAllSalons();
+          if (Array.isArray(localSalons) && localSalons.length > 0) {
+            return localSalons;
+          }
+        } catch (_) {}
+      }
+      return salons;
     } catch (error) {
       logger.error('❌ Salon yükleme hatası:', error);
       
