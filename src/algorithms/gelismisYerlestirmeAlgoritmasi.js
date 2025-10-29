@@ -3136,6 +3136,13 @@ export const yerlesilemeyenOgrencileriYerlestir = (yerlesilemeyenOgrenciler, sal
   logger.info(`   Yerleşen: ${yerlesenOgrenciler.length} öğrenci`);
   logger.info(`   Hala yerleşemeyen: ${halaYerlesilemeyen.length} öğrenci`);
   logger.info(`   Başarı: ${basarili ? '✅ TAM BAŞARI' : '❌ KISMİ BAŞARI'}`);
+  if (yerlesenOgrenciler.length > 0) {
+    logger.info(`\n📌 Yerleştirilen öğrenciler ve hedef koltuklar:`);
+    yerlesenOgrenciler.forEach(o => {
+      const masa = o.masaNumarasi || o.masaNo || '-';
+      logger.info(`   • ${o.ad} ${o.soyad} → ${o.salonAdi || o.salon?.salonAdi || '-'} | Masa: ${masa}`);
+    });
+  }
   
   return {
     basarili,
@@ -3281,7 +3288,7 @@ const kademeliYerlestirmeAsama1 = (ogrenciler, salonlar, ayarlar, kullanilanOgre
           yerlesenOgrenciler.push(yerlesenOgrenci);
           kullanilanOgrenciler.add(uygunOgrenci.id);
           
-          logger.debug(`✅ ${uygunOgrenci.ad} ${uygunOgrenci.soyad} ${salon.salonAdi} koltuğa yerleştirildi ve gerçek plana entegre edildi`);
+          logger.info(`✅ ${uygunOgrenci.ad} ${uygunOgrenci.soyad} → ${salon.salonAdi} | Masa: ${yerlesenOgrenci.masaNumarasi} (grup ${koltuk.grup}, satır ${koltuk.satir}, sütun ${koltuk.sutun})`);
         }
       }
     }
