@@ -1492,21 +1492,12 @@ const AnaSayfaContent = React.memo(() => {
         flexDirection: 'column'
       }}>
         <Header 
-          baslik="" 
+          baslik="Ortak Sınav Yerleştirme Sistemi" 
           onHomeClick={() => setShowWelcome(true)}
           onTestDashboardClick={() => tabDegistir('test-dashboard')}
         />
       
       <Container maxWidth="xl" sx={{ py: 2, px: 0, pb: 1, flex: 1 }}>
-        {/* Sayfa Başlığı */}
-        <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
-            Ortak Sınav Yerleştirme Sistemi
-          </Typography>
-          <Typography variant="h6" color="text.secondary">
-            
-          </Typography>
-        </Box>
 
         {/* Hata Mesajı */}
         {hata && (

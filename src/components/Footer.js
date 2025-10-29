@@ -13,7 +13,6 @@ import {
 import {
   School as SchoolIcon,
   Code as CodeIcon,
-  GitHub as GitHubIcon,
   Email as EmailIcon,
   Info as InfoIcon
 } from '@mui/icons-material';
@@ -85,7 +84,7 @@ const Footer = () => {
                     fontSize: '0.85rem'
                   }}
                 >
-                  Ortak Sınav Dağıtım Programı
+                  Ortak Sınav Yerleştirme Sistemi
                 </Typography>
               </Box>
             </Box>
@@ -100,21 +99,7 @@ const Footer = () => {
                 sx={{ fontSize: '0.75rem' }}
               />
               <Divider orientation="vertical" flexItem />
-              <Tooltip title="GitHub Repository">
-                <IconButton 
-                  size="small" 
-                  color="inherit"
-                  component={Link}
-                  href="https://github.com"
-                  target="_blank"
-                  sx={{ 
-                    color: 'text.secondary',
-                    '&:hover': { color: 'primary.main' }
-                  }}
-                >
-                  <GitHubIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
+             
               <Tooltip title="İletişim">
                 <IconButton 
                   size="small" 

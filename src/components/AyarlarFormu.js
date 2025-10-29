@@ -276,7 +276,7 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
           <Grid container spacing={3}>
 
             {/* Ders Bilgileri */}
-            <Grid size={12}>
+            <Grid size={12} key="ders-bilgileri-section">
               <Divider sx={{ my: 2 }} />
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -418,7 +418,7 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                         </Box>
                       </Grid>
 
-                      {ders.siniflar.length > 0 && (
+                      {ders.siniflar.length > 0 ? (
                         <Grid size={12} key={`siniflar-listesi-${ders.id}`}>
                           <Typography variant="body2" color="text.secondary" sx={{ mb: 1, textAlign: 'left' }}>
                             Bu dersi alan sınıflar:
@@ -436,7 +436,7 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                             ))}
                           </Box>
                         </Grid>
-                      )}
+                      ) : null}
                     </Grid>
                   </CardContent>
                 </Card>

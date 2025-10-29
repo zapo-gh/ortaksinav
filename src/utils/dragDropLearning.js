@@ -29,6 +29,10 @@ class DragDropLearningSystem {
       weightUpdates: []
     };
     
+    // Debounce için timer
+    this.saveTimer = null;
+    this.SAVE_DELAY = 2000; // 2 saniye bekle
+    
     this.loadLearningData();
   }
 
@@ -124,8 +128,8 @@ class DragDropLearningSystem {
     // Ağırlıkları güncelle
     this.updateWeights(moveData);
     
-    // Veriyi kaydet
-    this.saveLearningData();
+    // Veriyi debounce ile kaydet (her hareketten sonra değil, belli aralıklarla)
+    this.debouncedSave();
     
     logger.info('🎓 Drag & Drop öğrenme kaydedildi:', {
       student: student.ad,
@@ -478,6 +482,30 @@ class DragDropLearningSystem {
   // Veri yönetimi - HİBRİT SİSTEM
   saveLearningData() {
     try {
+      // Veri boyutunu kontrol et ve temizle
+      this.cleanupOldData();
+      
+      // Veriyi serialize et
+      const jsonData = JSON.stringify(this.learningData);
+      const dataSize = new Blob([jsonData]).size;
+      
+      // localStorage limit kontrolü (yaklaşık 5MB)
+      const maxSize = 4 * 1024 * 1024; // 4MB güvenli limit
+      
+      if (dataSize > maxSize) {
+        logger.warn(`⚠️ Drag & Drop verisi çok büyük (${(dataSize / 1024).toFixed(2)} KB), agresif temizlik yapılıyor...`);
+        this.aggressiveCleanup();
+        
+        // Tekrar dene - temizlik sonrası
+        const cleanedData = JSON.stringify(this.learningData);
+        const cleanedSize = new Blob([cleanedData]).size;
+        
+        if (cleanedSize > maxSize) {
+          logger.error('❌ Veri hala çok büyük, öğrenme verisi sıfırlanıyor...');
+          this.resetLearningData();
+        }
+      }
+      
       // 1. Local Storage'a kaydet
       localStorage.setItem('dragDropLearning', JSON.stringify(this.learningData));
       
@@ -486,8 +514,117 @@ class DragDropLearningSystem {
         this.syncToServer();
       }
     } catch (error) {
-      logger.error('Drag & Drop öğrenme verisi kaydedilemedi:', error);
+      if (error.name === 'QuotaExceededError') {
+        logger.error('❌ localStorage quota aşıldı, veriler temizleniyor...');
+        // Agresif temizlik yap
+        this.aggressiveCleanup();
+        try {
+          // Tekrar dene
+          localStorage.setItem('dragDropLearning', JSON.stringify(this.learningData));
+          logger.info('✅ Veriler temizlendikten sonra kaydedildi');
+        } catch (retryError) {
+          // Hala sığmıyorsa öğrenme verilerini sıfırla
+          logger.error('❌ Temizlikten sonra da kaydedilemedi, öğrenme verisi sıfırlanıyor...');
+          this.resetLearningData();
+          try {
+            localStorage.setItem('dragDropLearning', JSON.stringify(this.learningData));
+          } catch (finalError) {
+            logger.error('❌ Kritik hata: localStorage tamamen dolu, kayıt yapılamıyor');
+          }
+        }
+      } else {
+        logger.error('Drag & Drop öğrenme verisi kaydedilemedi:', error);
+      }
     }
+  }
+  
+  // Eski verileri temizle
+  cleanupOldData() {
+    const MAX_MOVES = 1000; // Maksimum hareket kaydı
+    const MAX_PREFERENCES = 500; // Maksimum tercih kaydı
+    
+    // Eski hareket kayıtlarını temizle (eğer varsa)
+    if (this.learningData.userPreferences?.genderPlacements?.length > MAX_PREFERENCES) {
+      this.learningData.userPreferences.genderPlacements = 
+        this.learningData.userPreferences.genderPlacements.slice(-MAX_PREFERENCES);
+    }
+    
+    if (this.learningData.userPreferences?.classPlacements?.length > MAX_PREFERENCES) {
+      this.learningData.userPreferences.classPlacements = 
+        this.learningData.userPreferences.classPlacements.slice(-MAX_PREFERENCES);
+    }
+    
+    if (this.learningData.userPreferences?.neighborPreferences?.length > MAX_PREFERENCES) {
+      this.learningData.userPreferences.neighborPreferences = 
+        this.learningData.userPreferences.neighborPreferences.slice(-MAX_PREFERENCES);
+    }
+    
+    if (this.learningData.userPreferences?.riskAvoidance?.length > MAX_PREFERENCES) {
+      this.learningData.userPreferences.riskAvoidance = 
+        this.learningData.userPreferences.riskAvoidance.slice(-MAX_PREFERENCES);
+    }
+    
+    // Weight updates listesini temizle
+    if (this.learningData.weightUpdates?.length > MAX_MOVES) {
+      this.learningData.weightUpdates = 
+        this.learningData.weightUpdates.slice(-MAX_MOVES);
+    }
+  }
+  
+  // Agresif temizlik (daha fazla veri sil)
+  aggressiveCleanup() {
+    const AGGRESSIVE_MAX = 100; // Çok daha az kayıt tut
+    
+    if (this.learningData.userPreferences?.genderPlacements) {
+      this.learningData.userPreferences.genderPlacements = 
+        this.learningData.userPreferences.genderPlacements.slice(-AGGRESSIVE_MAX);
+    }
+    
+    if (this.learningData.userPreferences?.classPlacements) {
+      this.learningData.userPreferences.classPlacements = 
+        this.learningData.userPreferences.classPlacements.slice(-AGGRESSIVE_MAX);
+    }
+    
+    if (this.learningData.userPreferences?.neighborPreferences) {
+      this.learningData.userPreferences.neighborPreferences = 
+        this.learningData.userPreferences.neighborPreferences.slice(-AGGRESSIVE_MAX);
+    }
+    
+    if (this.learningData.userPreferences?.riskAvoidance) {
+      this.learningData.userPreferences.riskAvoidance = 
+        this.learningData.userPreferences.riskAvoidance.slice(-AGGRESSIVE_MAX);
+    }
+    
+    if (this.learningData.weightUpdates) {
+      this.learningData.weightUpdates = 
+        this.learningData.weightUpdates.slice(-AGGRESSIVE_MAX);
+    }
+    
+    logger.info('🧹 Agresif temizlik tamamlandı, veriler %90 azaltıldı');
+  }
+  
+  // Öğrenme verilerini sıfırla
+  resetLearningData() {
+    // Sadece istatistikleri koru, tüm detaylı verileri temizle
+    const stats = this.learningData.learningStats || {
+      totalMoves: 0,
+      successfulMoves: 0,
+      failedMoves: 0,
+      learningRate: 0.1
+    };
+    
+    this.learningData = {
+      userPreferences: {
+        genderPlacements: [],
+        classPlacements: [],
+        neighborPreferences: [],
+        riskAvoidance: []
+      },
+      learningStats: stats,
+      weightUpdates: []
+    };
+    
+    logger.warn('⚠️ Öğrenme verileri sıfırlandı (localStorage quota aşıldı)');
   }
 
   loadLearningData() {
@@ -496,6 +633,26 @@ class DragDropLearningSystem {
       const saved = localStorage.getItem('dragDropLearning');
       if (saved) {
         this.learningData = { ...this.learningData, ...JSON.parse(saved) };
+        
+        // Yüklerken veri temizliği yap
+        this.cleanupOldData();
+        
+        // Temizlenmiş veriyi kaydet (eğer değişiklik varsa)
+        try {
+          localStorage.setItem('dragDropLearning', JSON.stringify(this.learningData));
+        } catch (error) {
+          // Kaydedilemezse temizlik yap
+          if (error.name === 'QuotaExceededError') {
+            logger.warn('⚠️ Yükleme sırasında quota aşıldı, agresif temizlik yapılıyor...');
+            this.aggressiveCleanup();
+            try {
+              localStorage.setItem('dragDropLearning', JSON.stringify(this.learningData));
+            } catch (retryError) {
+              logger.error('❌ Temizlikten sonra da kaydedilemedi, veri sıfırlanıyor...');
+              this.resetLearningData();
+            }
+          }
+        }
       }
       
       // 2. Production'da sunucudan da senkronize et
@@ -504,7 +661,23 @@ class DragDropLearningSystem {
       }
     } catch (error) {
       logger.error('Drag & Drop öğrenme verisi yüklenemedi:', error);
+      // Hata durumunda veriyi sıfırla
+      this.resetLearningData();
     }
+  }
+  
+  // Debounced save - performans için
+  debouncedSave() {
+    // Önceki timer'ı iptal et
+    if (this.saveTimer) {
+      clearTimeout(this.saveTimer);
+    }
+    
+    // Yeni timer başlat
+    this.saveTimer = setTimeout(() => {
+      this.saveLearningData();
+      this.saveTimer = null;
+    }, this.SAVE_DELAY);
   }
 
   // YENİ: Sunucu senkronizasyonu

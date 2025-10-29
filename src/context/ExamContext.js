@@ -59,19 +59,29 @@ const loadFromFirestore = async () => {
     // Lazy import db
     const { default: db } = await import('../database');
     
-    const [ogrenciler, ayarlar, salonlar] = await Promise.all([
+    const [ogrenciler, ayarlar, salonlar, latestPlan] = await Promise.all([
       db.getAllStudents().catch(() => []),
       db.getSettings().catch(() => null),
-      db.getAllSalons().catch(() => [])
+      db.getAllSalons().catch(() => []),
+      db.getLatestPlan().catch(() => null)
     ]);
     
     console.log('🔍 Firestore\'dan yüklenen salonlar:', salonlar?.map(s => s.ad || s.salonAdi || 'İsimsiz') || []);
+    console.log('🔍 Firestore\'dan yüklenen en son plan:', latestPlan ? latestPlan.name : 'Yok');
     
     // console.log('✅ IndexedDB\'den veriler yüklendi:', {
     //   ogrenciler: ogrenciler?.length || 0,
     //   ayarlar: ayarlar ? Object.keys(ayarlar).length : 0,
     //   salonlar: salonlar?.length || 0
     // });
+    
+    // Yerleştirme sonucunu en son plandan çıkar
+    let yerlestirmeSonucu = null;
+    if (latestPlan && latestPlan.data) {
+      // Plan verisini yerleştirme sonucu formatına dönüştür
+      yerlestirmeSonucu = latestPlan.data;
+      console.log('✅ Yerleştirme sonucu en son plandan yüklendi');
+    }
     
     // IndexedDB'de veri varsa onu kullan
     if (ogrenciler && ogrenciler.length > 0) {
@@ -84,7 +94,8 @@ const loadFromFirestore = async () => {
           sinavSaati: '',
           dersler: []
         },
-        salonlar: salonlar?.length > 0 ? salonlar : []
+        salonlar: salonlar?.length > 0 ? salonlar : [],
+        yerlestirmeSonucu: yerlestirmeSonucu
       };
     }
     
@@ -98,7 +109,8 @@ const loadFromFirestore = async () => {
           sinavSaati: '',
           dersler: []
         },
-        salonlar: salonlar?.length > 0 ? salonlar : []
+        salonlar: salonlar?.length > 0 ? salonlar : [],
+        yerlestirmeSonucu: yerlestirmeSonucu
       };
     }
     
@@ -135,10 +147,14 @@ const loadFromFirestore = async () => {
       };
     }
     
+    // localStorage'dan yerleştirme sonucu yoksa IndexedDB'den kontrol et
+    const localStorageYerlestirme = loadFromStorage('exam_yerlestirme', null);
+    
     return {
       ogrenciler: localStorageOgrenciler,
       ayarlar: localStorageAyarlar,
-      salonlar: localStorageSalonlar
+      salonlar: localStorageSalonlar,
+      yerlestirmeSonucu: localStorageYerlestirme || yerlestirmeSonucu
     };
     
   } catch (error) {
@@ -152,7 +168,8 @@ const loadFromFirestore = async () => {
         sinavSaati: '',
         dersler: []
       }),
-      salonlar: loadFromStorage('exam_salonlar', [])
+      salonlar: loadFromStorage('exam_salonlar', []),
+      yerlestirmeSonucu: loadFromStorage('exam_yerlestirme', null)
     };
   }
 };
@@ -421,9 +438,18 @@ export const ExamProvider = ({ children }) => {
 
   // IndexedDB'den veri yükleme (sadece bir kez)
   useEffect(() => {
-        // console.log('🚀 ExamProvider useEffect başladı!');
+    console.log('🚀 ExamProvider useEffect başladı!');
+    
+    let timeoutId;
     
     const initializeData = async () => {
+      // Timeout - maksimum 10 saniye sonra yükleme durumunu sonlandır
+      timeoutId = setTimeout(() => {
+        console.warn('⚠️ Veri yükleme timeout (10 saniye), yükleme durumu zorla sonlandırılıyor');
+        dispatch({ type: ACTIONS.YUKLEME_BITIR });
+        setIsInitialized(true);
+      }, 10000);
+      
       // TEMİZLEME İŞLEMİ KALDIRILDI - Kullanıcı salonları korunuyor
       console.log('✅ Salon temizleme işlemi kaldırıldı, tüm salonlar korunuyor');
       try {
@@ -466,94 +492,212 @@ export const ExamProvider = ({ children }) => {
         
         // console.log('✅ State\'e veriler yüklendi');
         
-        // Yerleştirme sonucunu localStorage'dan yükle (otomatik yükleme)
+        // Yerleştirme sonucunu yükle - önce IndexedDB'den, yoksa localStorage'dan
         try {
-          const yerlestirmeSonucu = loadFromStorage('exam_yerlestirme', null);
-          if (yerlestirmeSonucu) {
-            dispatch({ type: ACTIONS.YERLESTIRME_YAP, payload: yerlestirmeSonucu });
-            // console.log('✅ Yerleştirme sonucu localStorage\'dan yüklendi');
+          // IndexedDB'den yüklendi mi kontrol et
+          if (data.yerlestirmeSonucu) {
+            dispatch({ type: ACTIONS.YERLESTIRME_YAP, payload: data.yerlestirmeSonucu });
+            console.log('✅ Yerleştirme sonucu IndexedDB\'den yüklendi');
           } else {
-            // console.log('ℹ️ localStorage\'da yerleştirme sonucu bulunamadı');
+            // Fallback: localStorage'dan yükle
+            const yerlestirmeSonucu = loadFromStorage('exam_yerlestirme', null);
+            if (yerlestirmeSonucu) {
+              dispatch({ type: ACTIONS.YERLESTIRME_YAP, payload: yerlestirmeSonucu });
+              console.log('✅ Yerleştirme sonucu localStorage\'dan yüklendi');
+            } else {
+              console.log('ℹ️ Yerleştirme sonucu bulunamadı');
+            }
           }
         } catch (error) {
-          // console.error('❌ localStorage\'dan yerleştirme sonucu yüklenirken hata:', error);
+          console.error('❌ Yerleştirme sonucu yükleme hatası:', error);
         }
         
         // Aktif tab'ı localStorage'dan yükle
         const aktifTab = loadFromStorage('exam_aktif_tab', 'ayarlar');
         dispatch({ type: ACTIONS.TAB_DEGISTIR, payload: aktifTab });
         
+        // Yükleme durumunu bitir
+        dispatch({ type: ACTIONS.YUKLEME_BITIR });
+        
+        // Timeout'u temizle
+        clearTimeout(timeoutId);
+        
         setIsInitialized(true);
-        // console.log('✅ ExamProvider: Tüm veriler yüklendi!');
+        console.log('✅ ExamProvider: Tüm veriler yüklendi ve yükleme durumu sonlandı!');
         
       } catch (error) {
-        // console.error('❌ ExamProvider: Veri yükleme hatası:', error);
+        console.error('❌ ExamProvider: Veri yükleme hatası:', error);
+        console.error('❌ Hata detayları:', error.message, error.stack);
+        
+        // Timeout'u temizle
+        clearTimeout(timeoutId);
+        
+        // Yükleme durumunu bitir (hata olsa bile)
+        dispatch({ type: ACTIONS.YUKLEME_BITIR });
         setIsInitialized(true); // Hata olsa bile devam et
       }
     };
     
     initializeData();
+    
+    // Cleanup function
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, []); // Sadece component mount olduğunda çalış
 
-  // Firestore'a otomatik kaydetme
+  // Firestore'a otomatik kaydetme - DEBOUNCED (Firestore quota koruması için)
+  // Ref'ler component içinde tanımlanmalı
+  const saveStudentsTimerRef = React.useRef(null);
+  const saveSettingsTimerRef = React.useRef(null);
+  const saveSalonsTimerRef = React.useRef(null);
+  const isQuotaExceededRef = React.useRef(false); // Firestore quota hatası durumunda kayıt yapma
+  
+  // Öğrenciler için debounced save
   useEffect(() => {
     if (!isInitialized) return; // İlk yükleme tamamlanana kadar bekle
+    // Boş veri ise kaydetme (sayfa yenileme sırasında verileri silme!)
+    if (!state.ogrenciler || state.ogrenciler.length === 0) {
+      return;
+    }
+    // Quota hatası varsa kaydetmeyi atla
+    if (isQuotaExceededRef.current) {
+      logger.warn('⚠️ Firestore quota aşıldı, kayıt yapılmıyor (IndexedDB kullanılıyor)');
+      return;
+    }
     
-    const saveToFirestore = async () => {
+    // Önceki timer'ı temizle
+    if (saveStudentsTimerRef.current) {
+      clearTimeout(saveStudentsTimerRef.current);
+    }
+    
+    // Debounced save - 3 saniye bekle
+    saveStudentsTimerRef.current = setTimeout(async () => {
       try {
         const { default: db } = await import('../database');
         await db.saveStudents(state.ogrenciler);
-        logger.debug('✅ Öğrenciler Firestore\'a kaydedildi');
+        logger.debug('✅ Öğrenciler Firestore\'a kaydedildi (debounced)');
+        isQuotaExceededRef.current = false; // Başarılıysa flag'i sıfırla
       } catch (error) {
-        logger.error('❌ Öğrenciler kaydedilemedi:', error);
+        // Firestore quota hatası kontrolü
+        if (error.code === 'resource-exhausted' || error.message?.includes('Quota exceeded')) {
+          logger.error('❌ Firestore quota aşıldı, gelecekteki kayıtlar atlanacak');
+          isQuotaExceededRef.current = true;
+          // IndexedDB'ye kaydet (Firestore olmadan)
+          try {
+            const { default: db } = await import('../database');
+            await db.saveStudents(state.ogrenciler);
+            logger.info('✅ Öğrenciler IndexedDB\'ye kaydedildi (Firestore quota aşıldı)');
+          } catch (indexedDBError) {
+            logger.error('❌ IndexedDB\'ye de kaydedilemedi:', indexedDBError);
+          }
+        } else {
+          logger.error('❌ Öğrenciler kaydedilemedi:', error);
+        }
+      }
+    }, 3000); // 3 saniye debounce
+    
+    return () => {
+      if (saveStudentsTimerRef.current) {
+        clearTimeout(saveStudentsTimerRef.current);
       }
     };
-    
-    if (state.ogrenciler.length > 0) {
-      saveToFirestore();
-    }
   }, [state.ogrenciler, isInitialized]);
 
+  // Ayarlar için debounced save
   useEffect(() => {
     if (!isInitialized) return; // İlk yükleme tamamlanana kadar bekle
+    // Quota hatası varsa kaydetmeyi atla
+    if (isQuotaExceededRef.current) {
+      return;
+    }
     
-    const saveToFirestore = async () => {
+    // Önceki timer'ı temizle
+    if (saveSettingsTimerRef.current) {
+      clearTimeout(saveSettingsTimerRef.current);
+    }
+    
+    // Debounced save - 3 saniye bekle
+    saveSettingsTimerRef.current = setTimeout(async () => {
       try {
         const { default: db } = await import('../database');
-        // console.log('💾 Ayarlar kaydediliyor:', {
-        //   sinavAdi: state.ayarlar.sinavAdi,
-        //   sinavTarihi: state.ayarlar.sinavTarihi,
-        //   sinavSaati: state.ayarlar.sinavSaati,
-        //   dersler: state.ayarlar.dersler?.length || 0
-        // });
         await db.saveSettings(state.ayarlar);
-        logger.debug('✅ Ayarlar Firestore\'a kaydedildi');
+        logger.debug('✅ Ayarlar Firestore\'a kaydedildi (debounced)');
+        isQuotaExceededRef.current = false; // Başarılıysa flag'i sıfırla
       } catch (error) {
-        logger.error('❌ Ayarlar kaydedilemedi:', error);
+        // Firestore quota hatası kontrolü
+        if (error.code === 'resource-exhausted' || error.message?.includes('Quota exceeded')) {
+          logger.error('❌ Firestore quota aşıldı, gelecekteki kayıtlar atlanacak');
+          isQuotaExceededRef.current = true;
+          // IndexedDB'ye kaydet (Firestore olmadan)
+          try {
+            const { default: db } = await import('../database');
+            await db.saveSettings(state.ayarlar);
+            logger.info('✅ Ayarlar IndexedDB\'ye kaydedildi (Firestore quota aşıldı)');
+          } catch (indexedDBError) {
+            logger.error('❌ IndexedDB\'ye de kaydedilemedi:', indexedDBError);
+          }
+        } else {
+          logger.error('❌ Ayarlar kaydedilemedi:', error);
+        }
+      }
+    }, 3000); // 3 saniye debounce
+    
+    return () => {
+      if (saveSettingsTimerRef.current) {
+        clearTimeout(saveSettingsTimerRef.current);
       }
     };
-    
-    if (state.ayarlar && Object.keys(state.ayarlar).length > 0) {
-      saveToFirestore();
-    }
   }, [state.ayarlar, isInitialized]);
 
+  // Salonlar için debounced save
   useEffect(() => {
     if (!isInitialized) return; // İlk yükleme tamamlanana kadar bekle
+    // Boş veri ise kaydetme (sayfa yenileme sırasında verileri silme!)
+    if (!state.salonlar || state.salonlar.length === 0) {
+      return;
+    }
+    // Quota hatası varsa kaydetmeyi atla
+    if (isQuotaExceededRef.current) {
+      return;
+    }
     
-    const saveToFirestore = async () => {
+    // Önceki timer'ı temizle
+    if (saveSalonsTimerRef.current) {
+      clearTimeout(saveSalonsTimerRef.current);
+    }
+    
+    // Debounced save - 3 saniye bekle
+    saveSalonsTimerRef.current = setTimeout(async () => {
       try {
         const { default: db } = await import('../database');
         await db.saveSalons(state.salonlar);
-        logger.debug('✅ Salonlar Firestore\'a kaydedildi');
+        logger.debug('✅ Salonlar Firestore\'a kaydedildi (debounced)');
+        isQuotaExceededRef.current = false; // Başarılıysa flag'i sıfırla
       } catch (error) {
-        logger.error('❌ Salonlar kaydedilemedi:', error);
+        // Firestore quota hatası kontrolü
+        if (error.code === 'resource-exhausted' || error.message?.includes('Quota exceeded')) {
+          logger.error('❌ Firestore quota aşıldı, gelecekteki kayıtlar atlanacak');
+          isQuotaExceededRef.current = true;
+          // IndexedDB'ye kaydet (Firestore olmadan)
+          try {
+            const { default: db } = await import('../database');
+            await db.saveSalons(state.salonlar);
+            logger.info('✅ Salonlar IndexedDB\'ye kaydedildi (Firestore quota aşıldı)');
+          } catch (indexedDBError) {
+            logger.error('❌ IndexedDB\'ye de kaydedilemedi:', indexedDBError);
+          }
+        } else {
+          logger.error('❌ Salonlar kaydedilemedi:', error);
+        }
+      }
+    }, 3000); // 3 saniye debounce
+    
+    return () => {
+      if (saveSalonsTimerRef.current) {
+        clearTimeout(saveSalonsTimerRef.current);
       }
     };
-    
-    if (state.salonlar.length > 0) {
-      saveToFirestore();
-    }
   }, [state.salonlar, isInitialized]);
 
   // Action Creators

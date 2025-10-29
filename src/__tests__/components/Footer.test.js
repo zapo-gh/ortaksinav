@@ -7,7 +7,7 @@ describe('Footer Component', () => {
     render(<Footer />);
     
     expect(screen.getByText(/Akhisar Farabi Mesleki ve Teknik Anadolu Lisesi/)).toBeInTheDocument();
-    expect(screen.getByText(/Ortak Sınav Dağıtım Programı/)).toBeInTheDocument();
+    expect(screen.getByText(/Ortak Sınav Yerleştirme Sistemi/)).toBeInTheDocument();
   });
 
   it('should have correct footer structure', () => {

@@ -118,7 +118,7 @@ const WelcomePage = ({ onStart }) => {
                     mb: 2
                   }}
                 >
-                  Kelebek Sınav Sistemi
+                  Ortak Sınav Yerleştirme Sistemi
                 </Typography>
                 
                 

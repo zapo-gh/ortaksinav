@@ -157,6 +157,30 @@ class KelebekDatabase extends Dexie {
       throw error;
     }
   }
+
+  /**
+   * En son kaydedilen planı getir (yerleştirme sonucu için)
+   */
+  async getLatestPlan() {
+    try {
+      const plans = await this.plans.orderBy('updatedAt').reverse().limit(1).toArray();
+      if (plans.length === 0) {
+        console.log('⚠️ Hiç plan bulunamadı');
+        return null;
+      }
+      
+      const latestPlan = plans[0];
+      console.log('✅ En son plan yüklendi:', latestPlan.name, latestPlan.updatedAt);
+      
+      return {
+        ...latestPlan,
+        data: latestPlan.data
+      };
+    } catch (error) {
+      console.error('❌ En son plan yükleme hatası:', error);
+      return null;
+    }
+  }
   
   /**
    * Plan silme
@@ -335,18 +359,22 @@ class KelebekDatabase extends Dexie {
    */
   async saveStudents(students) {
     try {
+      // Boş array veya null/undefined ise hiçbir şey yapma (verileri silme!)
+      if (!students || students.length === 0) {
+        console.log('⚠️ Öğrenci verisi boş, kaydetme atlanıyor (mevcut veriler korunuyor)');
+        return; // Mevcut verileri koru, silme!
+      }
+      
       // Mevcut öğrencileri temizle
       await this.students.clear();
       
       // Yeni öğrencileri ekle
-      if (students && students.length > 0) {
-        await this.students.bulkAdd(students.map((student, index) => ({
-          ...student,
-          id: student.id || index + 1
-        })));
-      }
+      await this.students.bulkAdd(students.map((student, index) => ({
+        ...student,
+        id: student.id || index + 1
+      })));
       
-      console.log('✅ Öğrenciler kaydedildi:', students?.length || 0);
+      console.log('✅ Öğrenciler kaydedildi:', students.length);
     } catch (error) {
       console.error('❌ Öğrenci kaydetme hatası:', error);
       throw error;
@@ -418,18 +446,22 @@ class KelebekDatabase extends Dexie {
    */
   async saveSalons(salons) {
     try {
+      // Boş array veya null/undefined ise hiçbir şey yapma (verileri silme!)
+      if (!salons || salons.length === 0) {
+        console.log('⚠️ Salon verisi boş, kaydetme atlanıyor (mevcut veriler korunuyor)');
+        return; // Mevcut verileri koru, silme!
+      }
+      
       // Mevcut salonları temizle
       await this.salons.clear();
       
       // Yeni salonları ekle
-      if (salons && salons.length > 0) {
-        await this.salons.bulkAdd(salons.map((salon, index) => ({
-          ...salon,
-          id: salon.id || index + 1
-        })));
-      }
+      await this.salons.bulkAdd(salons.map((salon, index) => ({
+        ...salon,
+        id: salon.id || index + 1
+      })));
       
-      console.log('✅ Salonlar kaydedildi:', salons?.length || 0);
+      console.log('✅ Salonlar kaydedildi:', salons.length);
     } catch (error) {
       console.error('❌ Salon kaydetme hatası:', error);
       throw error;
