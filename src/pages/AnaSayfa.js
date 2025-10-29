@@ -644,7 +644,8 @@ const AnaSayfaContent = React.memo(() => {
     
     // LocalStorage'a kaydet
     try {
-      localStorage.setItem('salonlar', JSON.stringify(yeniSalonlar));
+      // ExamContext'in beklediği anahtar ile kaydet
+      localStorage.setItem('exam_salonlar', JSON.stringify(yeniSalonlar));
     } catch (error) {
       console.error('❌ Salonlar LocalStorage\'a kaydedilemedi:', error);
     }
