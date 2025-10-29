@@ -159,8 +159,8 @@ class DatabaseAdapter {
       try {
         const indexedDB = await this.getIndexedDB();
         await indexedDB.saveStudents(students);
-      } catch (_) {
-        // ignore mirror errors
+      } catch (mirrorError) {
+        logger.debug('IndexedDB mirror failed for students:', mirrorError);
       }
       return result;
     } catch (error) {
@@ -223,7 +223,9 @@ class DatabaseAdapter {
       try {
         const indexedDB = await this.getIndexedDB();
         await indexedDB.saveSettings(settings);
-      } catch (_) {}
+      } catch (mirrorError) {
+        logger.debug('IndexedDB mirror failed for settings:', mirrorError);
+      }
       return result;
     } catch (error) {
       logger.error('❌ Ayar kaydetme hatası:', error);
@@ -272,7 +274,9 @@ class DatabaseAdapter {
       try {
         const indexedDB = await this.getIndexedDB();
         await indexedDB.saveSalons(salons);
-      } catch (_) {}
+      } catch (mirrorError) {
+        logger.debug('IndexedDB mirror failed for salons:', mirrorError);
+      }
       return result;
     } catch (error) {
       logger.error('❌ Salon kaydetme hatası:', error);
