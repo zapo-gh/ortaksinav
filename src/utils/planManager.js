@@ -19,6 +19,12 @@ class PlanManager {
       
       // Plan verisini temizle ve standardize et
       const cleanPlanData = this.cleanPlanData(planData);
+      // Kaydetme koruması: boş planları kaydetme
+      const isEmpty = (cleanPlanData.totalStudents || 0) === 0 && (cleanPlanData.tumSalonlar?.length || 0) === 0;
+      if (isEmpty) {
+        console.warn('⚠️ Boş plan kaydetme atlandı (0 öğrenci, 0 salon).');
+        return null;
+      }
       
       // Veritabanına kaydet
       const savedPlan = await db.savePlan({
@@ -89,10 +95,19 @@ class PlanManager {
     try {
       console.log('📋 Tüm planlar yükleniyor...');
       const plans = await db.getAllPlans();
+      // Temizlik: tamamen boş kayıtları ayıkla
+      const emptyPlans = plans.filter(p => (p.totalStudents || 0) === 0 && (p.salonCount || 0) === 0);
+      if (emptyPlans.length > 0) {
+        console.warn(`🧹 ${emptyPlans.length} boş plan bulundu, siliniyor...`);
+        for (const p of emptyPlans) {
+          try { await db.deletePlan(p.id); } catch (e) { console.warn('Plan silme hatası:', p.id, e); }
+        }
+      }
+      const nonEmptyPlans = plans.filter(p => (p.totalStudents || 0) > 0 || (p.salonCount || 0) > 0);
       console.log('✅ Tüm planlar yüklendi:', plans.length, 'plan');
       console.log('📋 Plan detayları:', plans.map(p => ({ id: p.id, name: p.name, date: p.date })));
       
-      const mappedPlans = plans.map(plan => ({
+      const mappedPlans = nonEmptyPlans.map(plan => ({
         id: plan.id,
         name: plan.name,
         date: plan.date,
