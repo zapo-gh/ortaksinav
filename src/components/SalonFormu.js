@@ -359,6 +359,25 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
       aktif: true
     };
     setAktifSalonFormlari(prev => [...prev, yeniForm]);
+    // Global state'e de ekle (boş adla geçici olarak eklenir, kullanıcı düzenler)
+    try {
+      const kapasite = yeniForm.gruplar.reduce((t, g) => t + (g.siraSayisi * (yeniForm.siraTipi === 'tekli' ? 1 : 2)), 0);
+      const yeniSalon = {
+        id: yeniForm.id,
+        salonAdi: yeniForm.salonAdi,
+        siraTipi: yeniForm.siraTipi,
+        grupSayisi: yeniForm.grupSayisi,
+        gruplar: yeniForm.gruplar,
+        kapasite,
+        aktif: true,
+        ad: yeniForm.salonAdi,
+        satir: Math.ceil(Math.sqrt(kapasite)),
+        sutun: Math.ceil(kapasite / Math.ceil(Math.sqrt(kapasite)))
+      };
+      if (onSalonlarDegistir) {
+        onSalonlarDegistir([...(salonlar || []), yeniSalon]);
+      }
+    } catch (_) {}
   };
 
   // Salon formu silme - onay dialogu aç
@@ -418,6 +437,25 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
     };
 
     setAktifSalonFormlari(prev => [...prev, kopyaForm]);
+    // Global state'e de ekle (hemen persist)
+    try {
+      const kapasite = kopyaForm.gruplar.reduce((t, g) => t + (g.siraSayisi * (kopyaForm.siraTipi === 'tekli' ? 1 : 2)), 0);
+      const yeniSalon = {
+        id: kopyaForm.id,
+        salonAdi: kopyaForm.salonAdi,
+        siraTipi: kopyaForm.siraTipi,
+        grupSayisi: kopyaForm.grupSayisi,
+        gruplar: kopyaForm.gruplar,
+        kapasite,
+        aktif: true,
+        ad: kopyaForm.salonAdi,
+        satir: Math.ceil(Math.sqrt(kapasite)),
+        sutun: Math.ceil(kapasite / Math.ceil(Math.sqrt(kapasite)))
+      };
+      if (onSalonlarDegistir) {
+        onSalonlarDegistir([...(salonlar || []), yeniSalon]);
+      }
+    } catch (_) {}
     basariliMesajGoster(`✅ "${kopyalanacakForm.salonAdi}" salonu kopyalandı!`);
   };
 

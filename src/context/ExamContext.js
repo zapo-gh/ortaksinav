@@ -38,6 +38,8 @@ const saveToStorage = async (key, value) => {
         logger.debug('✅ Yerleştirme sonucu veritabanına kaydedildi (Firestore/IndexedDB)');
       }
       try { localStorage.setItem('exam_yerlestirme', JSON.stringify(value)); } catch (e) { logger.debug('localStorage mirror failed (exam_yerlestirme):', e); }
+    } else if (key === 'exam_aktif_tab') {
+      try { localStorage.setItem('exam_aktif_tab', JSON.stringify(value)); } catch (e) { logger.debug('localStorage mirror failed (exam_aktif_tab):', e); }
     } else {
       // Diğer veriler için normal kayıt
       // LocalStorage yerine veritabanı adapter'ını kullanmaya devam edelim
