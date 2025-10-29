@@ -1,70 +1,64 @@
-# Getting Started with Create React App
+# Kelebek Sınav Sistemi – Üretim Hazırlığı ve Kurulum
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Bu belge, sistemi gerçek kullanıma almadan önce gereken tüm adımları ve pratikleri içerir.
 
-## Available Scripts
+## 1) Hızlı Başlangıç
 
-In the project directory, you can run:
+```bash
+# Gerekli sürümler: Node 18+
+npm ci
+npm run build
+npm start # geliştirme
+```
 
-### `npm start`
+## 2) Ortam Değişkenleri (.env)
+`.env.example` içeriğini `.env` olarak kopyalayın ve doldurun:
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- REACT_APP_FIREBASE_API_KEY
+- REACT_APP_FIREBASE_AUTH_DOMAIN
+- REACT_APP_FIREBASE_PROJECT_ID
+- REACT_APP_FIREBASE_STORAGE_BUCKET
+- REACT_APP_FIREBASE_MESSAGING_SENDER_ID
+- REACT_APP_FIREBASE_APP_ID
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Not: Üretimde `REACT_APP_USE_FIRESTORE_EMULATOR=false` olmalı.
 
-### `npm test`
+## 3) Veri Kalıcılığı
+- IndexedDB (Dexie) birincil kalıcı depolama.
+- Firestore varsa otomatik senkronizasyon yapılır; kota aşımlarında IndexedDB’ye düşer.
+- Otomatik temizlik: Uygulama açılışında boş/geçici planlar temizlenir.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## 4) Yayın (Deploy)
+1. `npm run build`
+2. Çıktıyı (`build/`) static host’a (Firebase Hosting, Netlify, Vercel, Nginx) yükleyin.
+3. CDN/Proxy’de `Cache-Control: public, max-age=31536000, immutable` (hash’li dosyalar) önerilir.
 
-### `npm run build`
+## 5) Baskı/Çıktı İpuçları
+- Salon İmza Listesi, Sınıf Listeleri ve Salon Planı yazdırma için sayfa kenar boşlukları “None”/“Minimum” seçilmelidir.
+- A4 portre/landscape seçimleri bileşen içinde ayarlıdır.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## 6) Bakım ve Yedekleme
+- Planlar IndexedDB’de saklanır; “Kayıtlı Planlar” bölümünden manuel yedekleme/temizlik yapın.
+- Geçici/boş planlar açılışta otomatik temizlenir.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 7) Sorun Giderme
+- Firestore kota hatası: Sistem IndexedDB’ye otomatik düşer. İnternet geri geldiğinde planlar yüklenebilir.
+- Sayfa yenileyince veri kaybı: `localStorage exam_*` anahtarları ve IndexedDB erişimi kontrol edin. Gizli modu kapatın.
+- Loglar: Konsolda yerleştirme adımları, hedef salon/masa bilgileri detaylı yazdırılır.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## 8) Kalite Kontrolleri
+- npm ci / build hatasız
+- “Yerleşemeyen öğrenciler” için ek yerleştirme sonrası UI senkronu (plan/masalar) doğrulanır
+- Kayıtlı Planlar’da boş kayıt yok
+- İmza bölümü hizalamaları (metin-alt çizgi) gözle kontrol
 
-### `npm run eject`
+## 9) Sürümleme
+- `package.json` → version: 1.0.0
+- Değişiklik özeti: IndexedDB fallback’leri; plan senkronizasyonu; imza listesi düzenleri; boş plan temizliği; log iyileştirmeleri.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## 10) Güvenlik Notları
+- Firebase anahtarları `.env` ile aktarılır; depo içinde **tutmayın**.
+- Tarayıcıda saklanan veriler yereldir; çok kullanıcılı cihazlarda planları dışa aktarın ve local verileri temizleyin.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+---
+Sorular için: repo Issues veya proje iletişim kanalı.

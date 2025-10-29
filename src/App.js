@@ -1,4 +1,5 @@
 import React from 'react';
+import { cleanupTempPlans } from './utils/cleanupTempPlans';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { ExamProvider } from './context/ExamContext';
@@ -56,6 +57,10 @@ const theme = createTheme({
 });
 
 function App() {
+  React.useEffect(() => {
+    // Production hygiene: purge empty temporary plans once
+    cleanupTempPlans().catch(() => {});
+  }, []);
   return (
     <ErrorBoundary>
       <ThemeProvider theme={theme}>
