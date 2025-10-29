@@ -154,7 +154,15 @@ class DatabaseAdapter {
     try {
       const payload = this.sanitizeForFirestore(students);
       const db = await this.getActiveDB();
-      return await db.saveStudents(payload);
+      const result = await db.saveStudents(payload);
+      // Mirror to IndexedDB to guarantee offline persistence and refresh restore
+      try {
+        const indexedDB = await this.getIndexedDB();
+        await indexedDB.saveStudents(students);
+      } catch (_) {
+        // ignore mirror errors
+      }
+      return result;
     } catch (error) {
       logger.error('❌ Öğrenci kaydetme hatası:', error);
       
@@ -210,7 +218,13 @@ class DatabaseAdapter {
     try {
       const payload = this.sanitizeForFirestore(settings);
       const db = await this.getActiveDB();
-      return await db.saveSettings(payload);
+      const result = await db.saveSettings(payload);
+      // Mirror to IndexedDB
+      try {
+        const indexedDB = await this.getIndexedDB();
+        await indexedDB.saveSettings(settings);
+      } catch (_) {}
+      return result;
     } catch (error) {
       logger.error('❌ Ayar kaydetme hatası:', error);
       
@@ -253,7 +267,13 @@ class DatabaseAdapter {
     try {
       const payload = this.sanitizeForFirestore(salons);
       const db = await this.getActiveDB();
-      return await db.saveSalons(payload);
+      const result = await db.saveSalons(payload);
+      // Mirror to IndexedDB
+      try {
+        const indexedDB = await this.getIndexedDB();
+        await indexedDB.saveSalons(salons);
+      } catch (_) {}
+      return result;
     } catch (error) {
       logger.error('❌ Salon kaydetme hatası:', error);
       
