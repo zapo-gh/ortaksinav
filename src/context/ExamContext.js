@@ -21,13 +21,13 @@ const saveToStorage = async (key, value) => {
     if (key === 'exam_ogrenciler') {
       await db.saveStudents(value);
       // localStorage yedeği
-      try { localStorage.setItem('exam_ogrenciler', JSON.stringify(value)); } catch (_) {}
+      try { localStorage.setItem('exam_ogrenciler', JSON.stringify(value)); } catch (e) { logger.debug('localStorage mirror failed (exam_ogrenciler):', e); }
     } else if (key === 'exam_ayarlar') {
       await db.saveSettings(value);
-      try { localStorage.setItem('exam_ayarlar', JSON.stringify(value)); } catch (_) {}
+      try { localStorage.setItem('exam_ayarlar', JSON.stringify(value)); } catch (e) { logger.debug('localStorage mirror failed (exam_ayarlar):', e); }
     } else if (key === 'exam_salonlar') {
       await db.saveSalons(value);
-      try { localStorage.setItem('exam_salonlar', JSON.stringify(value)); } catch (_) {}
+      try { localStorage.setItem('exam_salonlar', JSON.stringify(value)); } catch (e) { logger.debug('localStorage mirror failed (exam_salonlar):', e); }
     } else if (key === 'exam_yerlestirme') {
       // Değer boş/null ise kaydetmeyi atla
       if (!value) {
@@ -37,7 +37,7 @@ const saveToStorage = async (key, value) => {
         await db.savePlan(value);
         logger.debug('✅ Yerleştirme sonucu veritabanına kaydedildi (Firestore/IndexedDB)');
       }
-      try { localStorage.setItem('exam_yerlestirme', JSON.stringify(value)); } catch (_) {}
+      try { localStorage.setItem('exam_yerlestirme', JSON.stringify(value)); } catch (e) { logger.debug('localStorage mirror failed (exam_yerlestirme):', e); }
     } else {
       // Diğer veriler için normal kayıt
       // LocalStorage yerine veritabanı adapter'ını kullanmaya devam edelim
