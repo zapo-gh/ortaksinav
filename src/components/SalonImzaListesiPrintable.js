@@ -349,13 +349,13 @@ const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {} 
                   Öğretmen
                 </Typography>
                 {/* Alt alta, aynı soldan hizalı satırlar */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: { xs: 260, sm: 300 }, justifyContent: 'flex-start' }}>
-                    <Typography variant="body2" sx={{ fontSize: '0.8rem', color: 'text.secondary', minWidth: 90, textAlign: 'left' }}>Adı Soyadı:</Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.75 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, width: { xs: 260, sm: 300 }, justifyContent: 'flex-start' }}>
+                    <Typography variant="body2" sx={{ fontSize: '0.8rem', color: 'text.secondary', minWidth: 80, textAlign: 'left' }}>Adı Soyadı:</Typography>
                     <Box sx={{ flex: 1, height: 0, borderBottom: '1px solid #999' }} />
                   </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: { xs: 260, sm: 300 }, justifyContent: 'flex-start' }}>
-                    <Typography variant="body2" sx={{ fontSize: '0.8rem', color: 'text.secondary', minWidth: 90, textAlign: 'left' }}>İmza:</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, width: { xs: 260, sm: 300 }, justifyContent: 'flex-start' }}>
+                    <Typography variant="body2" sx={{ fontSize: '0.8rem', color: 'text.secondary', minWidth: 80, textAlign: 'left' }}>İmza:</Typography>
                     <Box sx={{ flex: 1, height: 0, borderBottom: '1px solid #999' }} />
                   </Box>
                 </Box>
