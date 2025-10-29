@@ -20,10 +20,14 @@ const saveToStorage = async (key, value) => {
     // IndexedDB'ye kaydet
     if (key === 'exam_ogrenciler') {
       await db.saveStudents(value);
+      // localStorage yedeği
+      try { localStorage.setItem('exam_ogrenciler', JSON.stringify(value)); } catch (_) {}
     } else if (key === 'exam_ayarlar') {
       await db.saveSettings(value);
+      try { localStorage.setItem('exam_ayarlar', JSON.stringify(value)); } catch (_) {}
     } else if (key === 'exam_salonlar') {
       await db.saveSalons(value);
+      try { localStorage.setItem('exam_salonlar', JSON.stringify(value)); } catch (_) {}
     } else if (key === 'exam_yerlestirme') {
       // Değer boş/null ise kaydetmeyi atla
       if (!value) {
@@ -33,6 +37,7 @@ const saveToStorage = async (key, value) => {
         await db.savePlan(value);
         logger.debug('✅ Yerleştirme sonucu veritabanına kaydedildi (Firestore/IndexedDB)');
       }
+      try { localStorage.setItem('exam_yerlestirme', JSON.stringify(value)); } catch (_) {}
     } else {
       // Diğer veriler için normal kayıt
       // LocalStorage yerine veritabanı adapter'ını kullanmaya devam edelim
