@@ -257,6 +257,8 @@ const examReducer = (state, action) => {
       };
       // SADECE VERİ VARSA IndexedDB'ye kaydet
       if (action.payload && action.payload.length > 0) {
+        // Anında localStorage'a yaz (sayfa yenileme için senkron yedek)
+        try { localStorage.setItem('exam_ogrenciler', JSON.stringify(newState.ogrenciler)); } catch (e) { logger.debug('localStorage immediate write failed (exam_ogrenciler):', e); }
         saveToStorage('exam_ogrenciler', newState.ogrenciler);
       }
       return newState;
@@ -267,6 +269,8 @@ const examReducer = (state, action) => {
         ogrenciler: [...state.ogrenciler, ...action.payload],
         yukleme: false
       };
+      // Anında localStorage'a yaz
+      try { localStorage.setItem('exam_ogrenciler', JSON.stringify(newState.ogrenciler)); } catch (e) { logger.debug('localStorage immediate write failed (exam_ogrenciler):', e); }
       saveToStorage('exam_ogrenciler', newState.ogrenciler);
       return newState;
       
@@ -292,6 +296,7 @@ const examReducer = (state, action) => {
         ...state,
         ogrenciler: state.ogrenciler.filter(o => o.id !== action.payload)
       };
+      try { localStorage.setItem('exam_ogrenciler', JSON.stringify(newState.ogrenciler)); } catch (e) { logger.debug('localStorage immediate write failed (exam_ogrenciler):', e); }
       saveToStorage('exam_ogrenciler', newState.ogrenciler);
       return newState;
       
@@ -300,6 +305,7 @@ const examReducer = (state, action) => {
         ...state,
         ogrenciler: []
       };
+      try { localStorage.setItem('exam_ogrenciler', JSON.stringify(newState.ogrenciler)); } catch (e) { logger.debug('localStorage immediate write failed (exam_ogrenciler):', e); }
       saveToStorage('exam_ogrenciler', newState.ogrenciler);
       return newState;
       
@@ -458,6 +464,15 @@ export const ExamProvider = ({ children }) => {
       // TEMİZLEME İŞLEMİ KALDIRILDI - Kullanıcı salonları korunuyor
       console.log('✅ Salon temizleme işlemi kaldırıldı, tüm salonlar korunuyor');
       try {
+        // Offline-first: IndexedDB'yi öncelikli yap
+        try {
+          const { default: db } = await import('../database');
+          if (db?.setDatabaseType) {
+            db.setDatabaseType(false);
+          }
+        } catch (e) {
+          console.warn('⚠️ Database type set failed:', e);
+        }
         // console.log('🔄 ExamProvider: Veriler Firestore\'dan yükleniyor...');
         const data = await loadFromFirestore();
         
