@@ -66,7 +66,10 @@ const QuickSearchModal = ({ open, onClose }) => {
                   } else {
                     tabDegistir('salon-plani');
                   }
-                } catch (e) {}
+                } catch (e) {
+                  // eslint-disable-next-line no-console
+                  console.debug('QuickSearch navigate error:', e);
+                }
                 onClose();
               }}>
                 <ListItemText
