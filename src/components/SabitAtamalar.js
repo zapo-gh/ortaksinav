@@ -62,7 +62,7 @@ const SabitAtamalar = () => {
               sx={{ minWidth: 220 }}
             >
               {salonlar.map(s => (
-                <MenuItem key={s.id} value={s.id}>{s.salonAdi || s.ad || s.id}</MenuItem>
+                <MenuItem key={s.id} value={String(s.id)}>{s.salonAdi || s.ad || s.id}</MenuItem>
               ))}
             </TextField>
             <Button variant="contained" onClick={handlePin}>Sabit Ata</Button>

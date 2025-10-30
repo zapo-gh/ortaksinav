@@ -3267,8 +3267,13 @@ const kademeliYerlestirmeAsama1 = (ogrenciler, salonlar, ayarlar, kullanilanOgre
 
     // AŞAMA 0: Sabit öğrencileri önce yerleştir (sadece pinnedSalonId düzeyi)
     try {
-      // ID tip tutarlılığı için string karşılaştırma yap
-      const pinnedForSalon = ogrenciler.filter(o => o.pinned && String(o.pinnedSalonId) === String(salon.id));
+      // ID/isim farklılıklarına karşı esnek eşleşme
+      const matchesSalon = (pinnedSalonId, salonObj) => {
+        const candidates = [salonObj.id, salonObj.salonId, salonObj.ad, salonObj.salonAdi];
+        const target = String(pinnedSalonId);
+        return candidates.some(v => v != null && String(v) === target);
+      };
+      const pinnedForSalon = ogrenciler.filter(o => o.pinned && matchesSalon(o.pinnedSalonId, salon));
       if (pinnedForSalon.length > 0) {
         for (const p of pinnedForSalon) {
           // Eğer plan/masalarda zaten yerleştirilmişse atla
