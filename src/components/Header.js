@@ -163,6 +163,7 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
   };
 
   return (
+    <>
     <AppBar position="static" sx={{ bgcolor: 'primary.main', boxShadow: 2 }}>
       <Toolbar sx={{ position: 'relative', minHeight: '64px !important' }}>
         {/* Sol taraf - Logo */}
@@ -306,6 +307,7 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
       </Toolbar>
     </AppBar>
     <QuickSearchModal open={openSearch} onClose={() => setOpenSearch(false)} />
+    </>
   );
 };
 
