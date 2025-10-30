@@ -3,7 +3,7 @@ import { Dialog, DialogTitle, DialogContent, TextField, List, ListItemButton, Li
 import { useExam } from '../context/ExamContext';
 
 const QuickSearchModal = ({ open, onClose }) => {
-  const { ogrenciler, placementIndex, yerlestirmeSonucu } = useExam();
+  const { ogrenciler, placementIndex, yerlestirmeSonucu, yerlestirmeGuncelle, tabDegistir } = useExam();
   const [query, setQuery] = React.useState('');
 
   React.useEffect(() => {
@@ -56,7 +56,19 @@ const QuickSearchModal = ({ open, onClose }) => {
                 <Typography variant="body2" color="text.secondary">Sonuç yok</Typography>
               </Box>
             ) : results.map(r => (
-              <ListItemButton key={r.id} onClick={onClose}>
+              <ListItemButton key={r.id} onClick={() => {
+                try {
+                  const tumSalonlar = yerlestirmeSonucu?.tumSalonlar || [];
+                  const hedefSalon = tumSalonlar.find(s => String(s.id || s.salonId) === String(r.salonId) || (s.salonAdi || s.ad) === r.salonAdi);
+                  if (hedefSalon) {
+                    yerlestirmeGuncelle({ salon: hedefSalon });
+                    tabDegistir('salon-plani');
+                  } else {
+                    tabDegistir('salon-plani');
+                  }
+                } catch (e) {}
+                onClose();
+              }}>
                 <ListItemText
                   primary={`${r.ad} ${r.soyad} ${r.numara ? `• ${r.numara}` : ''}`}
                   secondary={`${r.sinif || '-'} • ${r.salonAdi || 'Salon yok'} • Masa ${r.masaNo != null ? r.masaNo : '-'}`}
