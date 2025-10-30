@@ -54,6 +54,7 @@ import GenelAyarlarFormu from '../components/GenelAyarlarFormu';
 import OgrenciListesi from '../components/OgrenciListesi';
 import AyarlarFormu from '../components/AyarlarFormu';
 import SalonFormu from '../components/SalonFormu';
+import SabitAtamalar from '../components/SabitAtamalar';
 import PlanlamaYap from '../components/PlanlamaYap';
 import { useExam } from '../context/ExamContext';
 import { useNotifications, NotificationProvider } from '../components/NotificationSystem';
@@ -1193,6 +1194,11 @@ const AnaSayfaContent = React.memo(() => {
           />
         );
       
+      case 'sabit-atamalar':
+        return (
+          <SabitAtamalar />
+        );
+      
       case 'planlama':
         return (
           <PlanlamaYap 
@@ -1542,6 +1548,11 @@ const AnaSayfaContent = React.memo(() => {
               label="Dersler" 
               value="ayarlar"
             />
+          <Tab 
+            icon={<AssignmentIcon />} 
+            label="Sabit Atamalar" 
+            value="sabit-atamalar"
+          />
             <Tab 
               icon={<MeetingRoomIcon />} 
               label="Sınav Salonları" 

@@ -220,6 +220,9 @@ export const ACTIONS = {
   OGRENCI_SECIMI_TEMIZLE: 'OGRENCI_SECIMI_TEMIZLE',
   OGRENCI_SIL: 'OGRENCI_SIL',
   OGRENCILER_TEMIZLE: 'OGRENCILER_TEMIZLE',
+  // Sabitleme işlemleri
+  OGRENCI_PIN: 'OGRENCI_PIN',
+  OGRENCI_UNPIN: 'OGRENCI_UNPIN',
   
   // Sınıf işlemleri
   SINIFLAR_YUKLE: 'SINIFLAR_YUKLE',
@@ -310,6 +313,37 @@ const examReducer = (state, action) => {
       try { localStorage.setItem('exam_ogrenciler', JSON.stringify(newState.ogrenciler)); } catch (e) { logger.debug('localStorage immediate write failed (exam_ogrenciler):', e); }
       saveToStorage('exam_ogrenciler', newState.ogrenciler);
       return newState;
+    
+    case ACTIONS.OGRENCI_PIN: {
+      const { ogrenciId, pinnedSalonId, pinnedMasaId } = action.payload || {};
+      newState = {
+        ...state,
+        ogrenciler: state.ogrenciler.map(o => o.id === ogrenciId ? {
+          ...o,
+          pinned: true,
+          pinnedSalonId,
+          pinnedMasaId: pinnedMasaId ?? null
+        } : o)
+      };
+      try { localStorage.setItem('exam_ogrenciler', JSON.stringify(newState.ogrenciler)); } catch (e) { logger.debug('localStorage immediate write failed (exam_ogrenciler):', e); }
+      saveToStorage('exam_ogrenciler', newState.ogrenciler);
+      return newState;
+    }
+    case ACTIONS.OGRENCI_UNPIN: {
+      const ogrenciId = action.payload;
+      newState = {
+        ...state,
+        ogrenciler: state.ogrenciler.map(o => o.id === ogrenciId ? {
+          ...o,
+          pinned: false,
+          pinnedSalonId: null,
+          pinnedMasaId: null
+        } : o)
+      };
+      try { localStorage.setItem('exam_ogrenciler', JSON.stringify(newState.ogrenciler)); } catch (e) { logger.debug('localStorage immediate write failed (exam_ogrenciler):', e); }
+      saveToStorage('exam_ogrenciler', newState.ogrenciler);
+      return newState;
+    }
       
     case ACTIONS.SINIFLAR_YUKLE:
       return {
@@ -806,6 +840,12 @@ export const ExamProvider = ({ children }) => {
     
     hataTemizle: () => {
       dispatch({ type: ACTIONS.HATA_TEMIZLE });
+    },
+    ogrenciPin: (ogrenciId, pinnedSalonId, pinnedMasaId = null) => {
+      dispatch({ type: ACTIONS.OGRENCI_PIN, payload: { ogrenciId, pinnedSalonId, pinnedMasaId } });
+    },
+    ogrenciUnpin: (ogrenciId) => {
+      dispatch({ type: ACTIONS.OGRENCI_UNPIN, payload: ogrenciId });
     }
   };
 
