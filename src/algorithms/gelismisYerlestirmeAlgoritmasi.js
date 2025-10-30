@@ -1131,9 +1131,10 @@ export const gelismisYerlestirme = (ogrenciler, salonlar, ayarlar) => {
     throw new Error('Aktif salon bulunamadı');
   }
   
-  // AŞAMA 1: Akıllı salon havuzu optimizasyonu kullan
+  // AŞAMA 1: Akıllı salon havuzu optimizasyonu kullan (pinned HARİÇ)
   const seed = Date.now();
-  const salonHavuzlari = createAkilliSalonHavuzu(ogrenciler, aktifSalonlar, seed);
+  const nonPinnedStudents = ogrenciler.filter(o => !o.pinned);
+  const salonHavuzlari = createAkilliSalonHavuzu(nonPinnedStudents, aktifSalonlar, seed);
   
   // YENİ: Dinamik ağırlık yöneticisi (ana algoritma seviyesinde)
   const weightManager = new DynamicWeightManager();
