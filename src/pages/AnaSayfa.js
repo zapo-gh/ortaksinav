@@ -1548,16 +1548,16 @@ const AnaSayfaContent = React.memo(() => {
               label="Dersler" 
               value="ayarlar"
             />
-          <Tab 
-            icon={<AssignmentIcon />} 
-            label="Sabit Atamalar" 
-            value="sabit-atamalar"
-          />
             <Tab 
               icon={<MeetingRoomIcon />} 
               label="Sınav Salonları" 
               value="salonlar"
             />
+          <Tab 
+            icon={<AssignmentIcon />} 
+            label="Sabit Atamalar" 
+            value="sabit-atamalar"
+          />
             <Tab 
               icon={<AssessmentIcon />} 
               label="Planlama Yap" 
