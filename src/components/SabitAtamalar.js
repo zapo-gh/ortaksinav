@@ -3,16 +3,32 @@ import { Box, Card, CardContent, Typography, TextField, MenuItem, Button, Chip }
 import { useExam } from '../context/ExamContext';
 
 const SabitAtamalar = () => {
-  const { ogrenciler, salonlar, ogrenciPin, ogrenciUnpin } = useExam();
+  const { ogrenciler, salonlar, ayarlar, ogrenciPin, ogrenciUnpin } = useExam();
   const [query, setQuery] = React.useState('');
   const [selectedStudentId, setSelectedStudentId] = React.useState('');
   const [selectedSalonId, setSelectedSalonId] = React.useState('');
 
+  const selectedClasses = React.useMemo(() => {
+    try {
+      const dersler = Array.isArray(ayarlar?.dersler) ? ayarlar.dersler : [];
+      const siniflar = [];
+      dersler.forEach(d => {
+        if (Array.isArray(d.siniflar)) siniflar.push(...d.siniflar);
+      });
+      return Array.from(new Set(siniflar));
+    } catch (_) {
+      return [];
+    }
+  }, [ayarlar]);
+
   const filteredStudents = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return ogrenciler;
-    return ogrenciler.filter(o => `${o.ad} ${o.soyad}`.toLowerCase().includes(q) || String(o.numara || '').includes(q));
-  }, [ogrenciler, query]);
+    const base = (!selectedClasses || selectedClasses.length === 0)
+      ? ogrenciler
+      : ogrenciler.filter(o => selectedClasses.includes(o.sinif));
+    if (!q) return base;
+    return base.filter(o => `${o.ad} ${o.soyad}`.toLowerCase().includes(q) || String(o.numara || '').includes(q));
+  }, [ogrenciler, query, selectedClasses]);
 
   const handlePin = () => {
     if (!selectedStudentId || !selectedSalonId) return;
@@ -90,7 +106,7 @@ const SabitAtamalar = () => {
           <Box sx={{ mt: 3 }}>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>Sabitlenen Öğrenciler</Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {ogrenciler.filter(o => o.pinned).map(o => (
+              {ogrenciler.filter(o => o.pinned && (selectedClasses.length === 0 || selectedClasses.includes(o.sinif))).map(o => (
                 <Chip key={o.id} label={`${o.ad} ${o.soyad} • ${getSalonAdi(o.pinnedSalonId)}`} onDelete={() => ogrenciUnpin(o.id)} />
               ))}
               {ogrenciler.filter(o => o.pinned).length === 0 && (
