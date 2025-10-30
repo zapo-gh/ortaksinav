@@ -366,6 +366,65 @@ const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {} 
           </Box>
         );
       })}
+
+      {(() => {
+        // Pinned öğrencileri topla
+        let pinned = [];
+        try {
+          const raw = localStorage.getItem('exam_ogrenciler');
+          if (raw) pinned = (JSON.parse(raw) || []).filter(o => o && o.pinned);
+        } catch (e) {}
+        if (!pinned || pinned.length === 0) return null;
+        const salonAdiBul = (sid) => {
+          if (!sid) return '-';
+          const s = tumSalonlar.find(x => String(x.id) === String(sid) || String(x.salonId) === String(sid) || String(x.ad) === String(sid) || String(x.salonAdi) === String(sid));
+          return s ? (s.salonAdi || s.ad || String(sid)) : String(sid);
+        };
+        return (
+          <Box sx={{
+            pageBreakBefore: 'always',
+            '@media print': { pageBreakBefore: 'always', breakBefore: 'page' }
+          }}>
+            <Box sx={{ height: '40px', '@media print': { height: '60px' } }} />
+            <Box sx={{ textAlign: 'center', mb: 2 }}>
+              <Typography variant="body1" component="h2" sx={{ fontWeight: 'bold' }}>
+                Sabit Öğrenciler Listesi
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                Toplam: {pinned.length}
+              </Typography>
+            </Box>
+            <TableContainer component={Paper} sx={{ mb: 1, width: '100%', maxWidth: '700px', margin: '0 auto', '@media print': { width: '85%', maxWidth: '700px' } }}>
+              <Table size="small" sx={{
+                border: '1px solid #ddd',
+                '& .MuiTableCell-root': { padding: '2px 6px', fontSize: '0.7rem', border: '1px solid #ddd', textAlign: 'center' },
+                '& .MuiTableCell-root:nth-of-type(2)': { textAlign: 'left !important' }
+              }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell><strong>#</strong></TableCell>
+                    <TableCell><strong>Ad Soyad</strong></TableCell>
+                    <TableCell><strong>Sınıf</strong></TableCell>
+                    <TableCell><strong>Salon</strong></TableCell>
+                    <TableCell><strong>Masa</strong></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {pinned.map((o, i) => (
+                    <TableRow key={o.id || i}>
+                      <TableCell>{i + 1}</TableCell>
+                      <TableCell sx={{ textAlign: 'left !important' }}>{o.ad} {o.soyad}</TableCell>
+                      <TableCell>{o.sinif || o.sube || '-'}</TableCell>
+                      <TableCell>{salonAdiBul(o.pinnedSalonId)}</TableCell>
+                      <TableCell>{o.pinnedMasaId ? String(o.pinnedMasaId) : '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        );
+      })()}
     </Box>
   );
 });
