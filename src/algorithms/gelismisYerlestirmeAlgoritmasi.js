@@ -1197,43 +1197,41 @@ export const gelismisYerlestirme = (ogrenciler, salonlar, ayarlar) => {
     });
 
     // 3) Fazla öğrencileri (pinned olmayan) diğer salonlara kaydır
-    // Önce alt hedefte olan salonların listesi
-    const needsMore = () => adjustedTargets.map((t, i) => t - salonHavuzlari[i].length);
-
     let moved = 0;
-    // En fazla birkaç tur yeterli olur; güvenlik için üst sınır
-    for (let round = 0; round < 5; round++) {
+    let safetyCounter = 0;
+    const MAX_MOVES = 10000; // güvenlik sınırı
+    for (let round = 0; round < 4; round++) {
       let anyMove = false;
       for (let i = 0; i < salonHavuzlari.length; i++) {
+        // Güvenlik: veriler mevcut mu
+        if (!Array.isArray(salonHavuzlari[i])) continue;
         while (salonHavuzlari[i].length > adjustedTargets[i]) {
-          // Taşınacak aday: pinned olmayan son öğrenciyi seç
+          if (safetyCounter++ > MAX_MOVES) { anyMove = false; break; }
           const idx = salonHavuzlari[i].findIndex(o => !o.pinned);
           const candidate = idx !== -1 ? salonHavuzlari[i].splice(idx, 1)[0] : null;
-          if (!candidate) break; // sadece pinned kalmışsa dur
-
-          // Hedef salona koy: hedefinin altında olan en fazla ihtiyacı olana
-          const deficits = needsMore();
+          if (!candidate) break;
+          // Hedef: en fazla açığı olan salon
           let targetIndex = -1;
-          let maxDef = 0;
-          for (let j = 0; j < deficits.length; j++) {
-            if (deficits[j] > maxDef) { maxDef = deficits[j]; targetIndex = j; }
+          let maxDeficit = 0;
+          for (let j = 0; j < salonHavuzlari.length; j++) {
+            const deficit = adjustedTargets[j] - (salonHavuzlari[j]?.length || 0);
+            if (deficit > maxDeficit) { maxDeficit = deficit; targetIndex = j; }
           }
           if (targetIndex === -1) {
             // Herkes hedefe ulaştıysa en az dolu olana koy
             targetIndex = salonHavuzlari
-              .map((h, idx2) => ({ idx2, len: h.length }))
+              .map((h, idx2) => ({ idx2, len: h?.length || 0 }))
               .sort((a, b) => a.len - b.len)[0].idx2;
           }
           salonHavuzlari[targetIndex].push(candidate);
           moved++;
           anyMove = true;
         }
+        if (safetyCounter > MAX_MOVES) break;
       }
-      if (!anyMove) break;
+      if (!anyMove || safetyCounter > MAX_MOVES) break;
     }
-    if (moved > 0) {
-      logger.info(`🔄 Pinned sonrası havuz dengesi güncellendi, taşınan öğrenci: ${moved}`);
-    }
+    if (moved > 0) logger.info(`🔄 Pinned sonrası havuz dengesi güncellendi, taşınan: ${moved}`);
   } catch (e) {
     logger.warn('Pinned sonrası hedef güncelleme/dengeleme hatası:', e);
   }
