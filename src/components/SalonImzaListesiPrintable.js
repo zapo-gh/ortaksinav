@@ -380,17 +380,40 @@ const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {} 
           const s = tumSalonlar.find(x => String(x.id) === String(sid) || String(x.salonId) === String(sid) || String(x.ad) === String(sid) || String(x.salonAdi) === String(sid));
           return s ? (s.salonAdi || s.ad || String(sid)) : String(sid);
         };
+        // Yerleşimden masa no ve salon adı bul
+        const findPlacement = (ogr) => {
+          for (const salon of tumSalonlar) {
+            const masalar = Array.isArray(salon.masalar) ? salon.masalar : [];
+            const masa = masalar.find(m => m?.ogrenci && m.ogrenci.id === ogr.id);
+            if (masa) {
+              return {
+                salonAdi: salon.salonAdi || salon.ad,
+                masaNo: masa.masaNumarasi || calculateDeskNumberForMasa(masa)
+              };
+            }
+          }
+          return { salonAdi: null, masaNo: null };
+        };
         return (
           <Box sx={{
             pageBreakBefore: 'always',
             '@media print': { pageBreakBefore: 'always', breakBefore: 'page' }
           }}>
-            <Box sx={{ height: '40px', '@media print': { height: '60px' } }} />
-            <Box sx={{ textAlign: 'center', mb: 2 }}>
-              <Typography variant="body1" component="h2" sx={{ fontWeight: 'bold' }}>
+            {/* Başlık: diğer sayfalar ile aynı */}
+            <Box sx={{ textAlign: 'center', mb: 2, '@media print': { mt: 0, mb: 1, pt: 0, pb: 0 } }}>
+              <Typography variant="body1" component="h2" sx={{ fontWeight: 'bold', mb: 0.2, lineHeight: 1.3, fontSize: '1.1rem' }}>
+                {ayarlar.okulAdi || 'Akhisar Farabi Mesleki ve Teknik Anadolu Lisesi'}
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 0.2, lineHeight: 1.3, fontSize: '1.0rem' }}>
+                {ayarlar.egitimYili || '2025-2026'} Eğitim Öğretim Yılı
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 0.2, lineHeight: 1.3, fontSize: '1.0rem' }}>
+                {ayarlar.donem || '1'}. Dönem {ayarlar.sinavDonemi || '1'}. Ortak Sınavı
+              </Typography>
+              <Typography variant="body1" component="h3" sx={{ fontWeight: 'bold', color: 'primary.main', lineHeight: 1.3, fontSize: '1.1rem' }}>
                 Sabit Öğrenciler Listesi
               </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              <Typography variant="body2" sx={{ mb: 0.2, lineHeight: 1.3, fontSize: '0.9rem', color: 'text.secondary' }}>
                 Toplam: {pinned.length}
               </Typography>
             </Box>
@@ -410,15 +433,20 @@ const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {} 
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {pinned.map((o, i) => (
-                    <TableRow key={o.id || i}>
-                      <TableCell>{i + 1}</TableCell>
-                      <TableCell sx={{ textAlign: 'left !important' }}>{o.ad} {o.soyad}</TableCell>
-                      <TableCell>{o.sinif || o.sube || '-'}</TableCell>
-                      <TableCell>{salonAdiBul(o.pinnedSalonId)}</TableCell>
-                      <TableCell>{o.pinnedMasaId ? String(o.pinnedMasaId) : '-'}</TableCell>
-                    </TableRow>
-                  ))}
+                  {pinned.map((o, i) => {
+                    const plc = findPlacement(o);
+                    const masaStr = plc.masaNo != null ? plc.masaNo : (o.pinnedMasaId ? String(o.pinnedMasaId) : '-');
+                    const salonStr = plc.salonAdi || salonAdiBul(o.pinnedSalonId);
+                    return (
+                      <TableRow key={o.id || i}>
+                        <TableCell>{i + 1}</TableCell>
+                        <TableCell sx={{ textAlign: 'left !important' }}>{o.ad} {o.soyad}</TableCell>
+                        <TableCell>{o.sinif || o.sube || '-'}</TableCell>
+                        <TableCell>{salonStr}</TableCell>
+                        <TableCell>{masaStr}</TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </TableContainer>
