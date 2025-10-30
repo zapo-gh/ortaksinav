@@ -25,6 +25,11 @@ const SabitAtamalar = () => {
   };
 
   const selectedStudent = ogrenciler.find(o => o.id === selectedStudentId);
+  const getSalonAdi = (salonId) => {
+    if (!salonId) return '-';
+    const s = salonlar.find(x => String(x.id) === String(salonId) || String(x.salonId) === String(salonId));
+    return s ? (s.salonAdi || s.ad || String(salonId)) : String(salonId);
+  };
 
   return (
     <Box sx={{ maxWidth: 900, mx: 'auto', mt: 2 }}>
@@ -76,7 +81,7 @@ const SabitAtamalar = () => {
               </Typography>
               {selectedStudent.pinned && (
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  Hedef salon: {selectedStudent.pinnedSalonId || '-'}
+                  Hedef salon: {getSalonAdi(selectedStudent.pinnedSalonId)}
                 </Typography>
               )}
             </Box>
@@ -86,7 +91,7 @@ const SabitAtamalar = () => {
             <Typography variant="subtitle2" sx={{ mb: 1 }}>Sabitlenen Öğrenciler</Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
               {ogrenciler.filter(o => o.pinned).map(o => (
-                <Chip key={o.id} label={`${o.ad} ${o.soyad} • ${o.pinnedSalonId || '-'}`} onDelete={() => ogrenciUnpin(o.id)} />
+                <Chip key={o.id} label={`${o.ad} ${o.soyad} • ${getSalonAdi(o.pinnedSalonId)}`} onDelete={() => ogrenciUnpin(o.id)} />
               ))}
               {ogrenciler.filter(o => o.pinned).length === 0 && (
                 <Typography variant="body2" color="text.secondary">Henüz sabit atama yok.</Typography>
