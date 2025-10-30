@@ -17,8 +17,11 @@ import {
   AccountCircle,
   ExitToApp,
   Login,
-  Home as HomeIcon
+  Home as HomeIcon,
+  Search as SearchIcon
 } from '@mui/icons-material';
+
+import QuickSearchModal from './QuickSearchModal';
 
 const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
   const [anchorEl, setAnchorEl] = React.useState(null);
@@ -26,6 +29,7 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
   const [lastKeyPress, setLastKeyPress] = React.useState(0);
   const [lastKeyCode, setLastKeyCode] = React.useState(null);
   const [logoError, setLogoError] = React.useState(false);
+  const [openSearch, setOpenSearch] = React.useState(false);
 
   // Test Dashboard görünürlüğünü kontrol et
   React.useEffect(() => {
@@ -122,6 +126,13 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
         }
       };
       
+      // Ctrl+K: Hızlı arama aç
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        setOpenSearch(true);
+        return;
+      }
+      
       // Sadece Ctrl+Alt+T kombinasyonu ile toggle
       if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 't' || e.key === '₺')) {
         e.preventDefault();
@@ -204,6 +215,9 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
 
         {/* Sağ taraf - Tüm Butonlar Birlikte */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 1.5 }, position: 'absolute', right: { xs: 80, md: 16 }, top: '50%', transform: 'translateY(-50%)' }}>
+          <IconButton color="inherit" size="large" onClick={() => setOpenSearch(true)} title="Öğrenci Ara (Ctrl+K)">
+            <SearchIcon />
+          </IconButton>
           {/* Ana Sayfa Butonu */}
           <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
             <Button 
@@ -291,6 +305,7 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
         </IconButton>
       </Toolbar>
     </AppBar>
+    <QuickSearchModal open={openSearch} onClose={() => setOpenSearch(false)} />
   );
 };
 

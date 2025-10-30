@@ -204,6 +204,8 @@ const initialState = {
   
   // Yerleştirme sonuçları
   yerlestirmeSonucu: null,
+  // Hızlı arama için index { [studentId]: { salonId, salonAdi, masaNo } }
+  placementIndex: {},
   
   // UI durumu
   aktifTab: 'ayarlar',
@@ -254,6 +256,10 @@ const examReducer = (state, action) => {
   let newState;
   
   switch (action.type) {
+    // Helper: index builder (scoped for reducer)
+    case '__BUILD_INDEX_INTERNAL__': {
+      return state;
+    }
     case ACTIONS.OGRENCILER_YUKLE:
       newState = {
         ...state,
@@ -405,9 +411,31 @@ const examReducer = (state, action) => {
       newState = {
         ...state,
         yerlestirmeSonucu: action.payload,
+        placementIndex: (() => {
+          const index = {};
+          try {
+            const tumSalonlar = action.payload?.tumSalonlar;
+            if (Array.isArray(tumSalonlar)) {
+              tumSalonlar.forEach(salon => {
+                const salonAdi = salon.salonAdi || salon.ad || String(salon.id || salon.salonId || '');
+                const masalar = Array.isArray(salon.masalar) ? salon.masalar : [];
+                masalar.forEach(m => {
+                  if (m?.ogrenci?.id) {
+                    const masaNo = m.masaNumarasi != null ? m.masaNumarasi : (typeof m.id === 'number' ? m.id + 1 : null);
+                    index[m.ogrenci.id] = { salonId: salon.id || salon.salonId, salonAdi, masaNo };
+                  }
+                });
+              });
+            }
+          } catch (e) {
+            logger.debug('build index (YERLESTIRME_YAP) error:', e);
+          }
+          return index;
+        })(),
         yukleme: false
       };
       saveToStorage('exam_yerlestirme', newState.yerlestirmeSonucu);
+      try { localStorage.setItem('exam_placement_index', JSON.stringify(newState.placementIndex)); } catch (e) { logger.debug('localStorage mirror failed (exam_placement_index):', e); }
       return newState;
       
     case ACTIONS.YERLESTIRME_GUNCELLE:
@@ -421,11 +449,33 @@ const examReducer = (state, action) => {
             ...action.payload.salon,
             masalar: action.payload.salon.masalar ? [...action.payload.salon.masalar] : []
           } : state.yerlestirmeSonucu?.salon
-        }
+        },
+        placementIndex: (() => {
+          const index = {};
+          try {
+            const tumSalonlar = (action.payload?.tumSalonlar) || state.yerlestirmeSonucu?.tumSalonlar;
+            if (Array.isArray(tumSalonlar)) {
+              tumSalonlar.forEach(salon => {
+                const salonAdi = salon.salonAdi || salon.ad || String(salon.id || salon.salonId || '');
+                const masalar = Array.isArray(salon.masalar) ? salon.masalar : [];
+                masalar.forEach(m => {
+                  if (m?.ogrenci?.id) {
+                    const masaNo = m.masaNumarasi != null ? m.masaNumarasi : (typeof m.id === 'number' ? m.id + 1 : null);
+                    index[m.ogrenci.id] = { salonId: salon.id || salon.salonId, salonAdi, masaNo };
+                  }
+                });
+              });
+            }
+          } catch (e) {
+            logger.debug('build index (YERLESTIRME_GUNCELLE) error:', e);
+          }
+          return index;
+        })()
       };
       
       // CRITICAL: Hem localStorage hem IndexedDB'ye kaydet
       saveToStorage('exam_yerlestirme', newState.yerlestirmeSonucu);
+      try { localStorage.setItem('exam_placement_index', JSON.stringify(newState.placementIndex)); } catch (e) { logger.debug('localStorage mirror failed (exam_placement_index):', e); }
       
       logger.debug('🔄 Context: State güncellendi, salon:', !!newState.yerlestirmeSonucu?.salon);
       logger.debug('🔄 Context: Masalar sayısı:', newState.yerlestirmeSonucu?.salon?.masalar?.length);
