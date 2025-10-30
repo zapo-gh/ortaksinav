@@ -124,12 +124,7 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
       else if (e.key === 'Escape') {
         toggleTestDashboard('Escape');
       }
-      
-      // Space tuşu (alternatif)
-      else if (e.key === ' ') {
-        e.preventDefault();
-        toggleTestDashboard('Space');
-      }
+      // Space tuşu ile toggle DEVRE DISI
     };
 
     // Event listener'ı sadece document'a ekle (window'a gerek yok)
