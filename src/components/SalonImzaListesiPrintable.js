@@ -399,6 +399,13 @@ const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {} 
             pageBreakBefore: 'always',
             '@media print': { pageBreakBefore: 'always', breakBefore: 'page' }
           }}>
+            {/* Üst Boşluk - diğer sayfalarla aynı */}
+            <Box sx={{ 
+              height: '30px',
+              '@media print': { 
+                height: '50px'
+              } 
+            }} />
             {/* Başlık: diğer sayfalar ile aynı */}
             <Box sx={{ textAlign: 'center', mb: 2, '@media print': { mt: 0, mb: 1, pt: 0, pb: 0 } }}>
               <Typography variant="body1" component="h2" sx={{ fontWeight: 'bold', mb: 0.2, lineHeight: 1.3, fontSize: '1.1rem' }}>
