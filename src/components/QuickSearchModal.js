@@ -30,12 +30,12 @@ const QuickSearchModal = ({ open, onClose }) => {
   };
 
   const results = React.useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = query.trim().toLocaleLowerCase('tr-TR');
     if (!q) return [];
     const base = ogrenciler || [];
     return base
       .filter(o => (
-        `${o.ad} ${o.soyad}`.toLowerCase().includes(q) || String(o.numara || '').includes(q)
+        `${o.ad} ${o.soyad}`.toLocaleLowerCase('tr-TR').includes(q) || String(o.numara || '').includes(q)
       ))
       .slice(0, 30)
       .map(o => {
