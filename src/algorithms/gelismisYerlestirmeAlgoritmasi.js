@@ -3267,7 +3267,8 @@ const kademeliYerlestirmeAsama1 = (ogrenciler, salonlar, ayarlar, kullanilanOgre
 
     // AŞAMA 0: Sabit öğrencileri önce yerleştir (sadece pinnedSalonId düzeyi)
     try {
-      const pinnedForSalon = ogrenciler.filter(o => o.pinned && o.pinnedSalonId === salon.id);
+      // ID tip tutarlılığı için string karşılaştırma yap
+      const pinnedForSalon = ogrenciler.filter(o => o.pinned && String(o.pinnedSalonId) === String(salon.id));
       if (pinnedForSalon.length > 0) {
         for (const p of pinnedForSalon) {
           // Eğer plan/masalarda zaten yerleştirilmişse atla

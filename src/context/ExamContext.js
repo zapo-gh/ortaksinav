@@ -842,7 +842,10 @@ export const ExamProvider = ({ children }) => {
       dispatch({ type: ACTIONS.HATA_TEMIZLE });
     },
     ogrenciPin: (ogrenciId, pinnedSalonId, pinnedMasaId = null) => {
-      dispatch({ type: ACTIONS.OGRENCI_PIN, payload: { ogrenciId, pinnedSalonId, pinnedMasaId } });
+      // ID tiplerini normalize et (string)
+      const normalizedSalonId = pinnedSalonId != null ? String(pinnedSalonId) : null;
+      const normalizedMasaId = pinnedMasaId != null ? String(pinnedMasaId) : null;
+      dispatch({ type: ACTIONS.OGRENCI_PIN, payload: { ogrenciId, pinnedSalonId: normalizedSalonId, pinnedMasaId: normalizedMasaId } });
     },
     ogrenciUnpin: (ogrenciId) => {
       dispatch({ type: ACTIONS.OGRENCI_UNPIN, payload: ogrenciId });
