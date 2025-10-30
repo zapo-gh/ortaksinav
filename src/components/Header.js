@@ -63,9 +63,28 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
     // URL değişikliklerini manuel olarak kontrol et (her 500ms)
     const urlCheckInterval = setInterval(checkTestDashboardVisibility, 500);
 
+    // Space tuşunu globalde (form alanları hariç) engelle
+    const preventSpaceToggle = (e) => {
+      const isEditable = (el) => {
+        if (!el) return false;
+        const tag = (el.tagName || '').toLowerCase();
+        const editableTags = ['input', 'textarea', 'select'];
+        const isContentEditable = el.isContentEditable === true;
+        return editableTags.includes(tag) || isContentEditable;
+      };
+      if ((e.key === ' ' || e.code === 'Space' || e.keyCode === 32) && !isEditable(e.target)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
     // Klavye kısayolu handler - debounced
     const handleKeyDown = (e) => {
       const now = Date.now();
+      // Space tuşunu tamamen görmezden gel
+      if (e.key === ' ' || e.code === 'Space' || e.keyCode === 32) {
+        return;
+      }
       
       // Debounce: 1000ms içinde aynı tuş basılırsa ignore et
       if (now - lastKeyPress < 1000 && e.keyCode === lastKeyCode) {
@@ -103,35 +122,22 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
         }
       };
       
-      // Ctrl+Alt+T kombinasyonu
+      // Sadece Ctrl+Alt+T kombinasyonu ile toggle
       if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 't' || e.key === '₺')) {
         e.preventDefault();
         toggleTestDashboard('Ctrl+Alt+T');
       }
-      
-      // Ctrl+Shift+T kombinasyonu
-      else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'T') {
-        e.preventDefault();
-        toggleTestDashboard('Ctrl+Shift+T');
-      }
-      
-      // F12 tuşu - DEVRE DIŞI (sadece tarayıcı konsolunu açsın, test dashboard açmasın)
-      // else if (e.key === 'F12' || e.keyCode === 123) {
-      //   toggleTestDashboard('F12');
-      // }
-      
-      // Escape tuşu
-      else if (e.key === 'Escape') {
-        toggleTestDashboard('Escape');
-      }
-      // Space tuşu ile toggle DEVRE DISI
+      // Diğer tüm tuşlar DEVRE DIŞI
     };
 
     // Event listener'ı sadece document'a ekle (window'a gerek yok)
     document.addEventListener('keydown', handleKeyDown);
+    // Capture aşamasında space'i engelle
+    document.addEventListener('keydown', preventSpaceToggle, true);
     
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keydown', preventSpaceToggle, true);
       window.removeEventListener('popstate', handleUrlChange);
       clearInterval(urlCheckInterval);
     };
