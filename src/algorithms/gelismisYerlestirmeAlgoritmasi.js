@@ -3270,26 +3270,24 @@ const kademeliYerlestirmeAsama1 = (ogrenciler, salonlar, ayarlar, kullanilanOgre
       const pinnedForSalon = ogrenciler.filter(o => o.pinned && o.pinnedSalonId === salon.id);
       if (pinnedForSalon.length > 0) {
         for (const p of pinnedForSalon) {
-          // Eğer koltukMatrisi/masalarda zaten yerleştirilmişse atla
-          const already = (salon.koltukMatrisi?.masalar || salon.masalar || []).some(m => m.ogrenci && m.ogrenci.id === p.id);
+          // Eğer plan/masalarda zaten yerleştirilmişse atla
+          const already = (Array.isArray(plan) ? plan : []).some(cell => cell.ogrenci && cell.ogrenci.id === p.id);
           if (already) continue;
-          // Boş koltuk bul
-          const emptySeat = (salon.koltukMatrisi?.masalar || salon.masalar || []).find(m => !m.ogrenci);
-          if (emptySeat) {
-            const yerlesenOgrenci = { ...p, salonId: salon.id, salonAdi: salon.salonAdi, masaNumarasi: emptySeat.masaNumarasi || emptySeat.id + 1 };
-            // Gerçek veriyi doldur
-            emptySeat.ogrenci = { ...yerlesenOgrenci };
-            // Plan2D ve planı da senkronize et
-            const planItem = plan.find(pl => pl.id === emptySeat.id);
-            if (planItem) planItem.ogrenci = { ...yerlesenOgrenci };
-            if (Array.isArray(plan2D) && plan2D[emptySeat.satir] && plan2D[emptySeat.satir][emptySeat.sutun]) {
-              plan2D[emptySeat.satir][emptySeat.sutun] = { ogrenci: yerlesenOgrenci, grup: emptySeat.grup };
+          // Boş koltuk bul (plan üzerinden)
+          const emptyCell = Array.isArray(plan) ? plan.find(pl => !pl.ogrenci) : null;
+          if (emptyCell) {
+            const yerlesenOgrenci = { ...p, salonId: salon.id, salonAdi: salon.salonAdi, masaNumarasi: emptyCell.masaNumarasi || (emptyCell.id != null ? emptyCell.id + 1 : undefined) };
+            // Plan'ı doldur
+            emptyCell.ogrenci = { ...yerlesenOgrenci };
+            // Plan2D'yi de senkronize et (varsa)
+            if (Array.isArray(plan2D) && plan2D[emptyCell.satir] && plan2D[emptyCell.satir][emptyCell.sutun] !== undefined) {
+              plan2D[emptyCell.satir][emptyCell.sutun] = { ogrenci: yerlesenOgrenci, grup: emptyCell.grup };
             }
+            // Salon.plan dizisini de güncel tut
             if (!Array.isArray(salon.plan) || salon.plan.length === 0) {
-              const kaynakMasalar = salon.koltukMatrisi?.masalar || salon.masalar || [];
-              salon.plan = kaynakMasalar.map(m => ({ satir: m.satir, sutun: m.sutun, grup: m.grup, ogrenci: m.ogrenci ? { ...m.ogrenci } : null }));
+              salon.plan = plan.map(c => ({ satir: c.satir, sutun: c.sutun, grup: c.grup, ogrenci: c.ogrenci ? { ...c.ogrenci } : null }));
             } else {
-              const cell = salon.plan.find(c => c.satir === emptySeat.satir && c.sutun === emptySeat.sutun && c.grup === emptySeat.grup);
+              const cell = salon.plan.find(c => c.satir === emptyCell.satir && c.sutun === emptyCell.sutun && c.grup === emptyCell.grup);
               if (cell) cell.ogrenci = { ...yerlesenOgrenci };
             }
             // Yerleşen listesi ve havuzdan çıkarma
@@ -3299,7 +3297,7 @@ const kademeliYerlestirmeAsama1 = (ogrenciler, salonlar, ayarlar, kullanilanOgre
             const idx = ogrenciler.findIndex(o => o.id === p.id);
             if (idx !== -1) ogrenciler.splice(idx, 1);
           } else {
-            logger.warn(`⚠️ Sabit öğrenci için ${salon.salonAdi} salonunda boş koltuk bulunamadı: ${p.ad} ${p.soyad}`);
+            logger.warn(`⚠️ Sabit öğrenci için ${salon.salonAdi} salonunda boş koltuk (plan) bulunamadı: ${p.ad} ${p.soyad}`);
           }
         }
       }
