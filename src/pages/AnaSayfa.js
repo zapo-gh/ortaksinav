@@ -1537,36 +1537,43 @@ const AnaSayfaContent = React.memo(() => {
               icon={<SettingsIcon />} 
               label="Ayarlar" 
               value="genel-ayarlar"
+              sx={{ textTransform: 'none' }}
             />
             <Tab 
               icon={<PeopleIcon />} 
               label="Öğrenciler" 
               value="ogrenciler"
+              sx={{ textTransform: 'none' }}
             />
             <Tab 
               icon={<BookIcon />} 
               label="Dersler" 
               value="ayarlar"
+              sx={{ textTransform: 'none' }}
             />
             <Tab 
               icon={<MeetingRoomIcon />} 
               label="Sınav Salonları" 
               value="salonlar"
+              sx={{ textTransform: 'none' }}
             />
           <Tab 
             icon={<AssignmentIcon />} 
             label="Sabit Atamalar" 
             value="sabit-atamalar"
+            sx={{ textTransform: 'none' }}
           />
             <Tab 
               icon={<AssessmentIcon />} 
               label="Planlama Yap" 
               value="planlama"
+              sx={{ textTransform: 'none' }}
             />
             <Tab 
               icon={<ChairIcon />} 
               label="Salon Planı" 
               value="salon-plani"
+              sx={{ textTransform: 'none' }}
             />
             <Tab 
               icon={<SaveIcon />} 
@@ -1585,6 +1592,7 @@ const AnaSayfaContent = React.memo(() => {
                       icon={<BugReportIcon />} 
                       label="Veritabanı Test" 
                       value="database-test"
+                      sx={{ textTransform: 'none' }}
                     />
                   );
                 }
