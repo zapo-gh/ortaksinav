@@ -373,7 +373,7 @@ const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {} 
         try {
           const raw = localStorage.getItem('exam_ogrenciler');
           if (raw) pinned = (JSON.parse(raw) || []).filter(o => o && o.pinned);
-        } catch (e) {}
+        } catch (e) { console.debug('Pinned listesi okunamadı:', e); }
         if (!pinned || pinned.length === 0) return null;
         const salonAdiBul = (sid) => {
           if (!sid) return '-';
