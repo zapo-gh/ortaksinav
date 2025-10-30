@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dialog, DialogTitle, DialogContent, TextField, List, ListItemButton, ListItemText, Box, Typography } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, TextField, List, ListItemButton, ListItemText, Box, Typography, Alert } from '@mui/material';
 import { useExam } from '../context/ExamContext';
 
 const QuickSearchModal = ({ open, onClose }) => {
@@ -48,6 +48,11 @@ const QuickSearchModal = ({ open, onClose }) => {
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>Öğrenci Ara (Ctrl+K)</DialogTitle>
       <DialogContent>
+        {!yerlestirmeSonucu && (
+          <Alert severity="info" sx={{ mb: 1 }}>
+            Henüz yerleştirme yapılmadı. Öğrencilerin salon/masa bilgisi bu nedenle boş olabilir.
+          </Alert>
+        )}
         <TextField autoFocus fullWidth placeholder="Ad, Soyad veya Numara" value={query} onChange={e => setQuery(e.target.value)} size="small" />
         {query && (
           <List dense>

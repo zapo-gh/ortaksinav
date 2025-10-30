@@ -485,9 +485,11 @@ const examReducer = (state, action) => {
     case ACTIONS.YERLESTIRME_TEMIZLE:
       newState = {
         ...state,
-        yerlestirmeSonucu: null
+        yerlestirmeSonucu: null,
+        placementIndex: {}
       };
       saveToStorage('exam_yerlestirme', newState.yerlestirmeSonucu);
+      try { localStorage.removeItem('exam_placement_index'); } catch (e) { logger.debug('localStorage remove failed (exam_placement_index):', e); }
       return newState;
       
     case ACTIONS.TAB_DEGISTIR:
