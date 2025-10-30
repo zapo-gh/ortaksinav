@@ -1535,49 +1535,49 @@ const AnaSayfaContent = React.memo(() => {
           >
             <Tab 
               icon={<SettingsIcon />} 
-              label="Ayarlar" 
+              label={("Ayarlar").toLocaleUpperCase('tr-TR')} 
               value="genel-ayarlar"
               sx={{ textTransform: 'none' }}
             />
             <Tab 
               icon={<PeopleIcon />} 
-              label="Öğrenciler" 
+              label={("Öğrenciler").toLocaleUpperCase('tr-TR')} 
               value="ogrenciler"
               sx={{ textTransform: 'none' }}
             />
             <Tab 
               icon={<BookIcon />} 
-              label="Dersler" 
+              label={("Dersler").toLocaleUpperCase('tr-TR')} 
               value="ayarlar"
               sx={{ textTransform: 'none' }}
             />
             <Tab 
               icon={<MeetingRoomIcon />} 
-              label="Sınav Salonları" 
+              label={("Sınav Salonları").toLocaleUpperCase('tr-TR')} 
               value="salonlar"
               sx={{ textTransform: 'none' }}
             />
           <Tab 
             icon={<AssignmentIcon />} 
-            label="Sabit Atamalar" 
+            label={("Sabit Atamalar").toLocaleUpperCase('tr-TR')} 
             value="sabit-atamalar"
             sx={{ textTransform: 'none' }}
           />
             <Tab 
               icon={<AssessmentIcon />} 
-              label="Planlama Yap" 
+              label={("Planlama Yap").toLocaleUpperCase('tr-TR')} 
               value="planlama"
               sx={{ textTransform: 'none' }}
             />
             <Tab 
               icon={<ChairIcon />} 
-              label="Salon Planı" 
+              label={("Salon Planı").toLocaleUpperCase('tr-TR')} 
               value="salon-plani"
               sx={{ textTransform: 'none' }}
             />
             <Tab 
               icon={<SaveIcon />} 
-              label="Kayıtlı Planlar" 
+              label={("Kayıtlı Planlar").toLocaleUpperCase('tr-TR')} 
               value="kayitli-planlar"
             />
             {(() => {
@@ -1590,7 +1590,7 @@ const AnaSayfaContent = React.memo(() => {
                   return (
                     <Tab 
                       icon={<BugReportIcon />} 
-                      label="Veritabanı Test" 
+                      label={("Veritabanı Test").toLocaleUpperCase('tr-TR')} 
                       value="database-test"
                       sx={{ textTransform: 'none' }}
                     />
