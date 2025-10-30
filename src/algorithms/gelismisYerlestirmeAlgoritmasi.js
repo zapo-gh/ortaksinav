@@ -1149,6 +1149,36 @@ export const gelismisYerlestirme = (ogrenciler, salonlar, ayarlar) => {
   let toplamDeneme = 0;
   let toplamMukemmel = 0;
   
+  // AŞAMA 1.5: Pinned öğrencileri hedef salon havuzuna zorla taşı
+  try {
+    const matchSalon = (target, salonObj) => {
+      const candidates = [salonObj.id, salonObj.salonId, salonObj.ad, salonObj.salonAdi];
+      const t = String(target);
+      return candidates.some(v => v != null && String(v) === t);
+    };
+    const pinnedStudents = ogrenciler.filter(o => o.pinned && (o.pinnedSalonId != null));
+    if (pinnedStudents.length > 0) {
+      pinnedStudents.forEach(p => {
+        // Hedef salon indexini bul
+        const hedefIndex = aktifSalonlar.findIndex(s => matchSalon(p.pinnedSalonId, s));
+        if (hedefIndex === -1) return; // salon bulunamazsa geç
+        // Tüm havuzlardan bu öğrenciyi çıkar
+        salonHavuzlari.forEach(havuz => {
+          const idx = havuz.findIndex(o => o.id === p.id);
+          if (idx !== -1) havuz.splice(idx, 1);
+        });
+        // Hedef havuza ekle (en başa koy ki önce işlensin)
+        const alreadyInTarget = salonHavuzlari[hedefIndex].some(o => o.id === p.id);
+        if (!alreadyInTarget) {
+          salonHavuzlari[hedefIndex].unshift(p);
+        }
+      });
+      logger.info(`📌 ${pinnedStudents.length} sabit öğrenci hedef salon havuzlarına taşındı`);
+    }
+  } catch (e) {
+    logger.warn('Sabit öğrencileri havuzlara taşıma sırasında hata:', e);
+  }
+
   aktifSalonlar.forEach((salon, index) => {
     const salonOgrencileri = salonHavuzlari[index];
     
