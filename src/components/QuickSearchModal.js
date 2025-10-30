@@ -3,12 +3,31 @@ import { Dialog, DialogTitle, DialogContent, TextField, List, ListItemButton, Li
 import { useExam } from '../context/ExamContext';
 
 const QuickSearchModal = ({ open, onClose }) => {
-  const { ogrenciler, placementIndex } = useExam();
+  const { ogrenciler, placementIndex, yerlestirmeSonucu } = useExam();
   const [query, setQuery] = React.useState('');
 
   React.useEffect(() => {
     if (!open) setQuery('');
   }, [open]);
+
+  const getPlacementFallback = (studentId) => {
+    try {
+      const tumSalonlar = yerlestirmeSonucu?.tumSalonlar;
+      if (!Array.isArray(tumSalonlar)) return {};
+      for (const salon of tumSalonlar) {
+        const masalar = Array.isArray(salon.masalar) ? salon.masalar : [];
+        const masa = masalar.find(m => m?.ogrenci?.id === studentId);
+        if (masa) {
+          return {
+            salonId: salon.id || salon.salonId,
+            salonAdi: salon.salonAdi || salon.ad,
+            masaNo: masa.masaNumarasi != null ? masa.masaNumarasi : (typeof masa.id === 'number' ? masa.id + 1 : null)
+          };
+        }
+      }
+      return {};
+    } catch (e) { return {}; }
+  };
 
   const results = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -20,10 +39,10 @@ const QuickSearchModal = ({ open, onClose }) => {
       ))
       .slice(0, 30)
       .map(o => {
-        const plc = placementIndex?.[o.id] || {};
+        const plc = placementIndex?.[o.id] && placementIndex[o.id].salonAdi ? placementIndex[o.id] : getPlacementFallback(o.id);
         return { id: o.id, ad: o.ad, soyad: o.soyad, numara: o.numara, sinif: o.sinif || o.sube, ...plc };
       });
-  }, [query, ogrenciler, placementIndex]);
+  }, [query, ogrenciler, placementIndex, yerlestirmeSonucu]);
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
