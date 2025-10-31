@@ -275,9 +275,47 @@ const examReducer = (state, action) => {
       return newState;
       
     case ACTIONS.OGRENCILER_EKLE:
+      // Öğrencileri sınıf ve numaraya göre sıralama fonksiyonu
+      const sortOgrencilerBySinifVeNumara = (a, b) => {
+        // Sınıf karşılaştırması: önce sınıf numarası, sonra şube harfi
+        const parseSinif = (sinif) => {
+          if (!sinif) return { numara: 0, sube: '' };
+          const match = sinif.toString().match(/^(\d+)[-/]?([A-Za-z]+)?/);
+          if (match) {
+            return {
+              numara: parseInt(match[1]) || 0,
+              sube: (match[2] || '').toUpperCase()
+            };
+          }
+          return { numara: 0, sube: sinif.toString().toUpperCase() };
+        };
+        
+        const sinifA = parseSinif(a.sinif);
+        const sinifB = parseSinif(b.sinif);
+        
+        // Önce sınıf numarasına göre
+        if (sinifA.numara !== sinifB.numara) {
+          return sinifA.numara - sinifB.numara;
+        }
+        
+        // Sonra şube harfine göre
+        if (sinifA.sube !== sinifB.sube) {
+          return sinifA.sube.localeCompare(sinifB.sube, 'tr-TR');
+        }
+        
+        // Aynı sınıfta ise numaraya göre
+        const numaraA = parseInt(a.numara) || 0;
+        const numaraB = parseInt(b.numara) || 0;
+        return numaraA - numaraB;
+      };
+      
+      // Mevcut öğrencilerle yeni öğrencileri birleştir ve sırala
+      const tumOgrenciler = [...state.ogrenciler, ...action.payload];
+      const siraliOgrenciler = tumOgrenciler.sort(sortOgrencilerBySinifVeNumara);
+      
       newState = {
         ...state,
-        ogrenciler: [...state.ogrenciler, ...action.payload],
+        ogrenciler: siraliOgrenciler,
         yukleme: false
       };
       // Anında localStorage'a yaz
