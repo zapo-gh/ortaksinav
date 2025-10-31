@@ -35,11 +35,6 @@ const SabitAtamalar = () => {
     ogrenciPin(selectedStudentId, selectedSalonId, null);
   };
 
-  const handleUnpin = () => {
-    if (!selectedStudentId) return;
-    ogrenciUnpin(selectedStudentId);
-  };
-
   const selectedStudent = ogrenciler.find(o => o.id === selectedStudentId);
   const getSalonAdi = (salonId) => {
     if (!salonId) return '-';
@@ -87,7 +82,6 @@ const SabitAtamalar = () => {
               ))}
             </TextField>
             <Button variant="contained" onClick={handlePin}>Sabit Ata</Button>
-            <Button variant="outlined" color="error" onClick={handleUnpin}>Sabitlemeyi Kaldır</Button>
           </Box>
 
           {selectedStudent && (
