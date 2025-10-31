@@ -55,14 +55,14 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
   const [aramaAcik, setAramaAcik] = useState(false);
   const aramaRef = useRef(null);
 
-  // Yerleştirme planı kontrolü
-  const yerlesimPlaniVarMi = () => {
+  // Yerleştirme planı kontrolü - memoize edildi
+  const yerlesimPlaniVarMi = React.useMemo(() => {
     return yerlestirmeSonucu && (
       (yerlestirmeSonucu.salonlar && yerlestirmeSonucu.salonlar.length > 0) ||
       (yerlestirmeSonucu.tumSalonlar && yerlestirmeSonucu.tumSalonlar.length > 0) ||
       (yerlestirmeSonucu.salon && yerlestirmeSonucu.salon.ogrenciler && yerlestirmeSonucu.salon.ogrenciler.length > 0)
     );
-  };
+  }, [yerlestirmeSonucu]);
 
   // Dışarı tıklama kontrolü
   useEffect(() => {
@@ -95,8 +95,9 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
       .replace(/ç/g, 'c');
   }, []);
 
-  // Filtrelenmiş öğrenci listesi
+  // Filtrelenmiş öğrenci listesi - sadece arama terimi varsa hesapla
   const filtrelenmisOgrenciler = React.useMemo(() => {
+    // Manuel ekleme dialog'u açıkken ve arama yoksa direkt döndür
     if (!aramaTerimi.trim()) return ogrenciler;
     
     // Sayı kontrolü (numara araması)
@@ -171,7 +172,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
 
   const handleOgrenciSilOnay = () => {
     // Yerleştirme planı kontrolü
-    if (yerlesimPlaniVarMi()) {
+    if (yerlesimPlaniVarMi) {
       showError('Mevcut bir yerleştirme planı bulunduğu için öğrenci silinemez. Önce mevcut planı temizleyin.');
       setSilmeDialogAcik(false);
       setSilinecekOgrenciId(null);
@@ -199,7 +200,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
 
   const handleTumunuSilOnay = () => {
     // Yerleştirme planı kontrolü
-    if (yerlesimPlaniVarMi()) {
+    if (yerlesimPlaniVarMi) {
       showError('Mevcut bir yerleştirme planı bulunduğu için öğrenci listesi temizlenemez. Önce mevcut planı temizleyin.');
       setTumunuSilDialogAcik(false);
       return;
@@ -228,13 +229,34 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
     setTumunuSilDialogAcik(false);
   };
 
-  // Manuel öğrenci ekleme fonksiyonları
+  // Manuel öğrenci ekleme fonksiyonları - her alan için ayrı handler
   const handleManuelOgrenciChange = useCallback((field, value) => {
     setManuelOgrenci(prev => ({
       ...prev,
       [field]: value
     }));
   }, []);
+
+  // Her alan için optimize edilmiş handler'lar
+  const handleAdChange = useCallback((e) => {
+    handleManuelOgrenciChange('ad', e.target.value);
+  }, [handleManuelOgrenciChange]);
+
+  const handleSoyadChange = useCallback((e) => {
+    handleManuelOgrenciChange('soyad', e.target.value);
+  }, [handleManuelOgrenciChange]);
+
+  const handleNumaraChange = useCallback((e) => {
+    handleManuelOgrenciChange('numara', e.target.value);
+  }, [handleManuelOgrenciChange]);
+
+  const handleSinifChange = useCallback((e) => {
+    handleManuelOgrenciChange('sinif', e.target.value);
+  }, [handleManuelOgrenciChange]);
+
+  const handleCinsiyetChange = useCallback((e) => {
+    handleManuelOgrenciChange('cinsiyet', e.target.value);
+  }, [handleManuelOgrenciChange]);
 
   const handleManuelOgrenciEkle = () => {
     // Validasyon
@@ -262,7 +284,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
     };
 
     // Yerleştirme planı kontrolü
-    if (yerlesimPlaniVarMi()) {
+    if (yerlesimPlaniVarMi) {
       showError('Mevcut bir yerleştirme planı bulunduğu için öğrenci eklenemez. Önce mevcut planı temizleyin.');
       return;
     }
@@ -295,7 +317,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
   // 12. sınıf dialog handler'ları
   const handleOnikinciSinifKabul = () => {
     // Yerleştirme planı kontrolü
-    if (yerlesimPlaniVarMi()) {
+    if (yerlesimPlaniVarMi) {
       showError('Mevcut bir yerleştirme planı bulunduğu için öğrenci eklenemez. Önce mevcut planı temizleyin.');
       return;
     }
@@ -308,7 +330,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
 
   const handleOnikinciSinifRed = () => {
     // Yerleştirme planı kontrolü
-    if (yerlesimPlaniVarMi()) {
+    if (yerlesimPlaniVarMi) {
       showError('Mevcut bir yerleştirme planı bulunduğu için öğrenci eklenemez. Önce mevcut planı temizleyin.');
       return;
     }
@@ -823,7 +845,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
         } else {
           // 12. sınıf yok, direkt yükle
           // Yerleştirme planı kontrolü
-          if (yerlesimPlaniVarMi()) {
+          if (yerlesimPlaniVarMi) {
             showError('Mevcut bir yerleştirme planı bulunduğu için öğrenci eklenemez. Önce mevcut planı temizleyin.');
             setYukleme(false);
             return;
@@ -856,7 +878,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
         </Box>
 
         {/* Yerleştirme Planı Uyarısı */}
-        {yerlesimPlaniVarMi() && (
+        {yerlesimPlaniVarMi && (
           <Alert 
             severity="warning" 
             sx={{ mb: 3 }}
@@ -1370,7 +1392,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
               fullWidth
               label="Ad"
               value={manuelOgrenci.ad}
-              onChange={(e) => handleManuelOgrenciChange('ad', e.target.value)}
+              onChange={handleAdChange}
               required
               variant="outlined"
               size="small"
@@ -1381,7 +1403,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
               fullWidth
               label="Soyad"
               value={manuelOgrenci.soyad}
-              onChange={(e) => handleManuelOgrenciChange('soyad', e.target.value)}
+              onChange={handleSoyadChange}
               required
               variant="outlined"
               size="small"
@@ -1392,7 +1414,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
               fullWidth
               label="Öğrenci No"
               value={manuelOgrenci.numara}
-              onChange={(e) => handleManuelOgrenciChange('numara', e.target.value)}
+              onChange={handleNumaraChange}
               required
               variant="outlined"
               size="small"
@@ -1403,7 +1425,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
               fullWidth
               label="Sınıf"
               value={manuelOgrenci.sinif}
-              onChange={(e) => handleManuelOgrenciChange('sinif', e.target.value)}
+              onChange={handleSinifChange}
               required
               variant="outlined"
               size="small"
@@ -1415,7 +1437,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
               <InputLabel>Cinsiyet</InputLabel>
               <Select
                 value={manuelOgrenci.cinsiyet}
-                onChange={(e) => handleManuelOgrenciChange('cinsiyet', e.target.value)}
+                onChange={handleCinsiyetChange}
                 label="Cinsiyet"
               >
                 <MenuItem value="E">Erkek</MenuItem>
