@@ -94,6 +94,15 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
       .replace(/ö/g, 'o')
       .replace(/ç/g, 'c');
   }, []);
+  
+  const [basarili, setBasarili] = useState(null);
+  const [dialogAcik, setDialogAcik] = useState(false);
+  const [bekleyenOgrenciler, setBekleyenOgrenciler] = useState([]);
+  const [silmeDialogAcik, setSilmeDialogAcik] = useState(false);
+  const [silinecekOgrenciId, setSilinecekOgrenciId] = useState(null);
+  const [silinecekOgrenciAdi, setSilinecekOgrenciAdi] = useState('');
+  const [tumunuSilDialogAcik, setTumunuSilDialogAcik] = useState(false);
+  const [manualEklemeAcik, setManualEklemeAcik] = useState(false);
 
   // Filtrelenmiş öğrenci listesi - sadece arama terimi varsa hesapla
   const filtrelenmisOgrenciler = React.useMemo(() => {
@@ -129,14 +138,6 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
              numara.includes(aramaTerimi);
     });
   }, [ogrenciler, aramaTerimi, normalizeText, manualEklemeAcik]);
-  const [basarili, setBasarili] = useState(null);
-  const [dialogAcik, setDialogAcik] = useState(false);
-  const [bekleyenOgrenciler, setBekleyenOgrenciler] = useState([]);
-  const [silmeDialogAcik, setSilmeDialogAcik] = useState(false);
-  const [silinecekOgrenciId, setSilinecekOgrenciId] = useState(null);
-  const [silinecekOgrenciAdi, setSilinecekOgrenciAdi] = useState('');
-  const [tumunuSilDialogAcik, setTumunuSilDialogAcik] = useState(false);
-  const [manualEklemeAcik, setManualEklemeAcik] = useState(false);
   const [manuelOgrenci, setManuelOgrenci] = useState({
     ad: '',
     soyad: '',
