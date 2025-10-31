@@ -46,6 +46,7 @@ import { useReactToPrint } from 'react-to-print';
 
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import ErrorBoundary from '../components/ErrorBoundary';
 import SalonPlani from '../components/SalonPlani';
 import { SalonPlaniPrintable } from '../components/SalonPlaniPrintable';
 import { SalonOgrenciListesiPrintable } from '../components/SalonOgrenciListesiPrintable';
@@ -1196,18 +1197,22 @@ const AnaSayfaContent = React.memo(() => {
       
       case 'sabit-atamalar':
         return (
-          <SabitAtamalar />
+          <ErrorBoundary componentName="SabitAtamalar">
+            <SabitAtamalar />
+          </ErrorBoundary>
         );
       
       case 'planlama':
         return (
-          <PlanlamaYap 
-            ogrenciler={ogrenciler}
-            ayarlar={ayarlar}
-            salonlar={salonlar}
-            onYerlestirmeYap={handleYerlestirmeYap}
-            yukleme={yukleme}
-          />
+          <ErrorBoundary componentName="PlanlamaYap">
+            <PlanlamaYap 
+              ogrenciler={ogrenciler}
+              ayarlar={ayarlar}
+              salonlar={salonlar}
+              onYerlestirmeYap={handleYerlestirmeYap}
+              yukleme={yukleme}
+            />
+          </ErrorBoundary>
         );
       
       case 'salon-plani':
@@ -1223,9 +1228,10 @@ const AnaSayfaContent = React.memo(() => {
           const seciliSalon = aktifSalonlar.find(salon => salon.id === seciliSalonId) || aktifSalonlar[0];
           
           return (
-            <Box sx={{ position: 'relative' }}>
-              {/* Salon planı - SalonPlani bileşeni kendi salon seçimini yapar */}
-              <SalonPlani 
+            <ErrorBoundary componentName="SalonPlani">
+              <Box sx={{ position: 'relative' }}>
+                {/* Salon planı - SalonPlani bileşeni kendi salon seçimini yapar */}
+                <SalonPlani 
                 sinif={{
                   id: seciliSalon.id,
                   salonAdi: seciliSalon.salonAdi || seciliSalon.ad,
@@ -1242,15 +1248,17 @@ const AnaSayfaContent = React.memo(() => {
                 seciliSalonId={seciliSalonId}
                 onSeciliSalonDegistir={setSeciliSalonId}
               />
-            </Box>
+              </Box>
+            </ErrorBoundary>
           );
         }
         
         return (
-          <Box sx={{ position: 'relative' }}>
-            {yerlestirmeSonucu && (
-              <>
-                <SalonPlani 
+          <ErrorBoundary componentName="SalonPlani">
+            <Box sx={{ position: 'relative' }}>
+              {yerlestirmeSonucu && (
+                <>
+                  <SalonPlani 
                   sinif={yerlestirmeSonucu?.salon || {
                     id: 'A-101',
                     kapasite: Math.max(ogrenciler.length, 30),
@@ -1336,16 +1344,17 @@ const AnaSayfaContent = React.memo(() => {
             
             {/* Salon planı boşken - SalonPlani bileşeni ile salon sekmeleri render edilecek */}
             {!yerlestirmeSonucu && (
-              <>
-                {(() => {
-                  const seciliSalon = salonlar.find(salon => salon.id === (seciliSalonId || salonlar[0]?.id));
-                  if (!seciliSalon) return null;
-                  
-                  // Kapasite bilgisini doğru şekilde al
-                  const salonKapasite = seciliSalon.kapasite || 0;
-                  
-                  return (
-                    <SalonPlani 
+              <ErrorBoundary componentName="SalonPlani">
+                <>
+                  {(() => {
+                    const seciliSalon = salonlar.find(salon => salon.id === (seciliSalonId || salonlar[0]?.id));
+                    if (!seciliSalon) return null;
+                    
+                    // Kapasite bilgisini doğru şekilde al
+                    const salonKapasite = seciliSalon.kapasite || 0;
+                    
+                    return (
+                      <SalonPlani 
                       sinif={{
                         id: seciliSalon.id,
                         kapasite: salonKapasite,
@@ -1409,18 +1418,22 @@ const AnaSayfaContent = React.memo(() => {
                   </Button>
                 </Box>
                 
-              </>
-            )}
-            
-            
-          </Box>
+                </>
+              </ErrorBoundary>
+              )}
+              
+              
+            </Box>
+          </ErrorBoundary>
         );
       
       case 'kayitli-planlar':
         return (
-          <KayitliPlanlar 
-            onPlanYukle={handlePlanYukle}
-          />
+          <ErrorBoundary componentName="KayitliPlanlar">
+            <KayitliPlanlar 
+              onPlanYukle={handlePlanYukle}
+            />
+          </ErrorBoundary>
         );
       
       case 'database-test':
