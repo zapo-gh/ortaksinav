@@ -97,7 +97,9 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
 
   // Filtrelenmiş öğrenci listesi - sadece arama terimi varsa hesapla
   const filtrelenmisOgrenciler = React.useMemo(() => {
-    // Manuel ekleme dialog'u açıkken ve arama yoksa direkt döndür
+    // Manuel ekleme dialog'u açıkken hesaplamayı atla (performans optimizasyonu)
+    if (manualEklemeAcik) return ogrenciler;
+    
     if (!aramaTerimi.trim()) return ogrenciler;
     
     // Sayı kontrolü (numara araması)
@@ -126,7 +128,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
              soyad.toLowerCase().includes(aramaTerimi.toLowerCase()) ||
              numara.includes(aramaTerimi);
     });
-  }, [ogrenciler, aramaTerimi, normalizeText]);
+  }, [ogrenciler, aramaTerimi, normalizeText, manualEklemeAcik]);
   const [basarili, setBasarili] = useState(null);
   const [dialogAcik, setDialogAcik] = useState(false);
   const [bekleyenOgrenciler, setBekleyenOgrenciler] = useState([]);
@@ -1070,7 +1072,8 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
           )}
         </Box>
 
-        {/* Öğrenci Tablosu */}
+        {/* Öğrenci Tablosu - Dialog açıkken render etme (performans optimizasyonu) */}
+        {!manualEklemeAcik && (
         <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
           <Table stickyHeader>
             <TableHead>
@@ -1145,9 +1148,10 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
             </TableBody>
           </Table>
         </TableContainer>
+        )}
 
         {/* Arama sonucu bulunamadığında */}
-        {aramaTerimi && filtrelenmisOgrenciler.length === 0 && ogrenciler.length > 0 && (
+        {!manualEklemeAcik && aramaTerimi && filtrelenmisOgrenciler.length === 0 && ogrenciler.length > 0 && (
           <Box sx={{ textAlign: 'center', py: 4 }}>
             <SearchIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
             <Typography variant="h6" color="text.secondary" gutterBottom>
