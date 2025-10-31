@@ -1,4 +1,4 @@
-import React, { useState, memo, useRef, useEffect } from 'react';
+import React, { useState, memo, useRef, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -84,7 +84,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
   }, [aramaAcik, aramaTerimi]);
 
   // Türkçe karakterleri normalize eden fonksiyon
-  const normalizeText = (text) => {
+  const normalizeText = useCallback((text) => {
     return text
       .toLowerCase()
       .replace(/ğ/g, 'g')
@@ -93,7 +93,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
       .replace(/ı/g, 'i')
       .replace(/ö/g, 'o')
       .replace(/ç/g, 'c');
-  };
+  }, []);
 
   // Filtrelenmiş öğrenci listesi
   const filtrelenmisOgrenciler = React.useMemo(() => {
@@ -125,7 +125,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
              soyad.toLowerCase().includes(aramaTerimi.toLowerCase()) ||
              numara.includes(aramaTerimi);
     });
-  }, [ogrenciler, aramaTerimi]);
+  }, [ogrenciler, aramaTerimi, normalizeText]);
   const [basarili, setBasarili] = useState(null);
   const [dialogAcik, setDialogAcik] = useState(false);
   const [bekleyenOgrenciler, setBekleyenOgrenciler] = useState([]);
@@ -229,12 +229,12 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
   };
 
   // Manuel öğrenci ekleme fonksiyonları
-  const handleManuelOgrenciChange = (field, value) => {
+  const handleManuelOgrenciChange = useCallback((field, value) => {
     setManuelOgrenci(prev => ({
       ...prev,
       [field]: value
     }));
-  };
+  }, []);
 
   const handleManuelOgrenciEkle = () => {
     // Validasyon
@@ -281,7 +281,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
     setManualEklemeAcik(false);
   };
 
-  const handleManuelEklemeIptal = () => {
+  const handleManuelEklemeIptal = useCallback(() => {
     setManualEklemeAcik(false);
     setManuelOgrenci({
       ad: '',
@@ -290,7 +290,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
       sinif: '',
       cinsiyet: 'E'
     });
-  };
+  }, []);
 
   // 12. sınıf dialog handler'ları
   const handleOnikinciSinifKabul = () => {
