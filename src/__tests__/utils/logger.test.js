@@ -1,4 +1,16 @@
-import logger from '../../utils/logger';
+/**
+ * Logger Test Suite
+ * Tests the logger utility with proper mocking of console methods
+ */
+
+// Store original console methods
+const originalConsole = {
+  log: console.log,
+  error: console.error,
+  warn: console.warn,
+  info: console.info,
+  debug: console.debug,
+};
 
 // Mock console methods
 const mockConsole = {
@@ -7,82 +19,40 @@ const mockConsole = {
   warn: jest.fn(),
   info: jest.fn(),
   debug: jest.fn(),
-  table: jest.fn(),
-  group: jest.fn(),
-  groupEnd: jest.fn(),
-  time: jest.fn(),
-  timeEnd: jest.fn()
 };
 
-// Replace console with mock
-global.console = mockConsole;
-
-// Mock the logger module to use the current NODE_ENV
-jest.mock('../../utils/logger', () => {
-  const isDevelopment = process.env.NODE_ENV === 'development';
-
-  return {
-    log: (...args) => {
-      if (isDevelopment) {
-        mockConsole.log(...args);
-      }
-    },
-    error: (...args) => {
-      mockConsole.error(...args);
-    },
-    warn: (...args) => {
-      if (isDevelopment) {
-        mockConsole.warn(...args);
-      }
-    },
-    info: (...args) => {
-      if (isDevelopment) {
-        mockConsole.info(...args);
-      }
-    },
-    debug: (...args) => {
-      if (isDevelopment) {
-        mockConsole.debug(...args);
-      }
-    },
-    table: (data) => {
-      if (isDevelopment) {
-        mockConsole.table(data);
-      }
-    },
-    group: (label) => {
-      if (isDevelopment) {
-        mockConsole.group(label);
-      }
-    },
-    groupEnd: () => {
-      if (isDevelopment) {
-        mockConsole.groupEnd();
-      }
-    },
-    time: (label) => {
-      if (isDevelopment) {
-        mockConsole.time(label);
-      }
-    },
-    timeEnd: (label) => {
-      if (isDevelopment) {
-        mockConsole.timeEnd(label);
-      }
-    }
-  };
-}, { virtual: true });
-
 describe('Logger Utility', () => {
+  let logger;
+
   beforeEach(() => {
+    // Replace console with mocks before importing logger
+    global.console = {
+      ...originalConsole,
+      ...mockConsole,
+    };
+
+    // Clear all mocks
     jest.clearAllMocks();
-    // Reset NODE_ENV to development for most tests
-    process.env.NODE_ENV = 'development';
+
+    // Reset NODE_ENV
+    delete process.env.NODE_ENV;
+    delete process.env.REACT_APP_DEBUG;
+
+    // Clear module cache to force re-import
+    jest.resetModules();
+  });
+
+  afterEach(() => {
+    // Restore original console
+    global.console = originalConsole;
   });
 
   describe('Development Mode', () => {
     beforeEach(() => {
       process.env.NODE_ENV = 'development';
+      process.env.REACT_APP_DEBUG = undefined;
+      // Re-import logger to get fresh instance
+      logger = require('../../utils/logger').default;
     });
 
     it('should call console.log when logger.log is called', () => {
@@ -104,37 +74,13 @@ describe('Logger Utility', () => {
       logger.debug('Test debug');
       expect(mockConsole.debug).toHaveBeenCalledWith('Test debug');
     });
-
-    it('should call console.table when logger.table is called', () => {
-      const testData = [{ id: 1, name: 'Test' }];
-      logger.table(testData);
-      expect(mockConsole.table).toHaveBeenCalledWith(testData);
-    });
-
-    it('should call console.group when logger.group is called', () => {
-      logger.group('Test Group');
-      expect(mockConsole.group).toHaveBeenCalledWith('Test Group');
-    });
-
-    it('should call console.groupEnd when logger.groupEnd is called', () => {
-      logger.groupEnd();
-      expect(mockConsole.groupEnd).toHaveBeenCalled();
-    });
-
-    it('should call console.time when logger.time is called', () => {
-      logger.time('Test Timer');
-      expect(mockConsole.time).toHaveBeenCalledWith('Test Timer');
-    });
-
-    it('should call console.timeEnd when logger.timeEnd is called', () => {
-      logger.timeEnd('Test Timer');
-      expect(mockConsole.timeEnd).toHaveBeenCalledWith('Test Timer');
-    });
   });
 
   describe('Production Mode', () => {
     beforeEach(() => {
       process.env.NODE_ENV = 'production';
+      process.env.REACT_APP_DEBUG = undefined;
+      logger = require('../../utils/logger').default;
     });
 
     it('should not call console.log when logger.log is called in production', () => {
@@ -156,50 +102,60 @@ describe('Logger Utility', () => {
       logger.debug('Test debug');
       expect(mockConsole.debug).not.toHaveBeenCalled();
     });
+  });
 
-    it('should not call console.table when loggerhan.table is called in production', () => {
-      const testData = [{ id: 1, name: 'Test' }];
-      logger.table(testData);
-      expect(mockConsole.table).not.toHaveBeenCalled();
+  describe('Debug Mode (REACT_APP_DEBUG=true)', () => {
+    beforeEach(() => {
+      process.env.NODE_ENV = 'production';
+      process.env.REACT_APP_DEBUG = 'true';
+      logger = require('../../utils/logger').default;
     });
 
-    it('should not call console.group when logger.group is called in production', () => {
-      logger.group('Test Group');
-      expect(mockConsole.group).not.toHaveBeenCalled();
+    it('should call console.log when REACT_APP_DEBUG is true (even in production)', () => {
+      logger.log('Test message');
+      expect(mockConsole.log).toHaveBeenCalledWith('Test message');
     });
 
-    it('should not call console.groupEnd when logger.groupEnd is called in production', () => {
-      logger.groupEnd();
-      expect(mockConsole.groupEnd).not.toHaveBeenCalled();
+    it('should call console.debug when REACT_APP_DEBUG is true (even in production)', () => {
+      logger.debug('Test debug');
+      expect(mockConsole.debug).toHaveBeenCalledWith('Test debug');
     });
 
-    it('should not call console.time when logger.time is called in production', () => {
-      logger.time('Test Timer');
-      expect(mockConsole.time).not.toHaveBeenCalled();
+    it('should call console.info when REACT_APP_DEBUG is true (even in production)', () => {
+      logger.info('Test info');
+      expect(mockConsole.info).toHaveBeenCalledWith('Test info');
     });
 
-    it('should not call console.timeEnd when logger.timeEnd is called in production', () => {
-      logger.timeEnd('Test Timer');
-      expect(mockConsole.timeEnd).not.toHaveBeenCalled();
+    it('should call console.warn when REACT_APP_DEBUG is true (even in production)', () => {
+      logger.warn('Test warning');
+      expect(mockConsole.warn).toHaveBeenCalledWith('Test warning');
     });
   });
 
   describe('Error Logging', () => {
-    it('should always call console.error regardless of environment', () => {
-      // Test in development
+    it('should always call console.error regardless of environment (development)', () => {
       process.env.NODE_ENV = 'development';
+      process.env.REACT_APP_DEBUG = undefined;
+      logger = require('../../utils/logger').default;
+
       logger.error('Test error');
       expect(mockConsole.error).toHaveBeenCalledWith('Test error');
+    });
 
-      jest.clearAllMocks();
-
-      // Test in production
+    it('should always call console.error regardless of environment (production)', () => {
       process.env.NODE_ENV = 'production';
+      process.env.REACT_APP_DEBUG = undefined;
+      logger = require('../../utils/logger').default;
+
       logger.error('Test error');
       expect(mockConsole.error).toHaveBeenCalledWith('Test error');
     });
 
     it('should handle multiple arguments in error logging', () => {
+      process.env.NODE_ENV = 'development';
+      process.env.REACT_APP_DEBUG = undefined;
+      logger = require('../../utils/logger').default;
+
       logger.error('Error:', 'Additional info', { code: 500 });
       expect(mockConsole.error).toHaveBeenCalledWith('Error:', 'Additional info', { code: 500 });
     });
@@ -208,6 +164,8 @@ describe('Logger Utility', () => {
   describe('Multiple Arguments', () => {
     beforeEach(() => {
       process.env.NODE_ENV = 'development';
+      process.env.REACT_APP_DEBUG = undefined;
+      logger = require('../../utils/logger').default;
     });
 
     it('should handle multiple arguments in log', () => {
@@ -230,5 +188,33 @@ describe('Logger Utility', () => {
       expect(mockConsole.debug).toHaveBeenCalledWith('Debug:', 'Additional info', { data: 'test' });
     });
   });
-});
 
+  describe('Logger API', () => {
+    beforeEach(() => {
+      process.env.NODE_ENV = 'development';
+      logger = require('../../utils/logger').default;
+    });
+
+    it('should export default logger object', () => {
+      expect(logger).toBeDefined();
+      expect(typeof logger).toBe('object');
+    });
+
+    it('should have all required methods', () => {
+      expect(typeof logger.log).toBe('function');
+      expect(typeof logger.warn).toBe('function');
+      expect(typeof logger.error).toBe('function');
+      expect(typeof logger.debug).toBe('function');
+      expect(typeof logger.info).toBe('function');
+    });
+
+    it('should not have methods that do not exist in implementation', () => {
+      // These methods were tested but don't exist in logger.js
+      expect(logger.table).toBeUndefined();
+      expect(logger.group).toBeUndefined();
+      expect(logger.groupEnd).toBeUndefined();
+      expect(logger.time).toBeUndefined();
+      expect(logger.timeEnd).toBeUndefined();
+    });
+  });
+});
