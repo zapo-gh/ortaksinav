@@ -3,11 +3,20 @@ import { logger } from '../../utils/logger';
 
 // Mock logger to avoid console output during tests
 jest.mock('../../utils/logger', () => ({
+  __esModule: true,
   logger: {
     info: jest.fn(),
     error: jest.fn(),
     warn: jest.fn(),
-    debug: jest.fn()
+    debug: jest.fn(),
+    log: jest.fn()
+  },
+  default: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+    log: jest.fn()
   }
 }));
 
