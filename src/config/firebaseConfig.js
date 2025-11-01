@@ -5,7 +5,8 @@
  */
 
 // Environment variable to disable Firebase (set in .env.local)
-const DISABLE_FIREBASE = process.env.REACT_APP_DISABLE_FIREBASE === 'true';
+// TEMPORARY: Disabled to avoid quota exceeded errors
+const DISABLE_FIREBASE = true; // process.env.REACT_APP_DISABLE_FIREBASE === 'true';
 
 // Firebase configuration
 const firebaseConfig = {
