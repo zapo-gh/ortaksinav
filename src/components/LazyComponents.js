@@ -8,10 +8,21 @@ const LoadingFallback = () => (
   </Box>
 );
 
-// Lazy loaded components
+// Lazy loaded components - Test/Debug components
 export const LazyTestDashboard = lazy(() => import('./TestDashboard'));
 export const LazyDatabaseTest = lazy(() => import('./DatabaseTest'));
 export const LazyWelcomePage = lazy(() => import('./WelcomePage'));
+
+// Lazy loaded components - Main application components (Code splitting)
+export const LazySalonPlani = lazy(() => import('./SalonPlani'));
+export const LazyPlanlamaYap = lazy(() => import('./PlanlamaYap'));
+export const LazySabitAtamalar = lazy(() => import('./SabitAtamalar'));
+export const LazyKayitliPlanlar = lazy(() => import('./KayitliPlanlar'));
+
+// Lazy loaded components - Printable components (only loaded when printing)
+export const LazySalonPlaniPrintable = lazy(() => import('./SalonPlaniPrintable').then(module => ({ default: module.SalonPlaniPrintable })));
+export const LazySalonOgrenciListesiPrintable = lazy(() => import('./SalonOgrenciListesiPrintable').then(module => ({ default: module.SalonOgrenciListesiPrintable })));
+export const LazySalonImzaListesiPrintable = lazy(() => import('./SalonImzaListesiPrintable').then(module => ({ default: module.SalonImzaListesiPrintable })));
 
 // HOC for lazy loading with Suspense
 export const withLazyLoading = (Component) => {
@@ -22,10 +33,18 @@ export const withLazyLoading = (Component) => {
   );
 };
 
-// Lazy loaded components with Suspense
+// Lazy loaded components with Suspense - Test/Debug
 export const TestDashboardLazy = withLazyLoading(LazyTestDashboard);
 export const DatabaseTestLazy = withLazyLoading(LazyDatabaseTest);
 export const WelcomePageLazy = withLazyLoading(LazyWelcomePage);
+
+// Lazy loaded components with Suspense - Main application
+export const SalonPlaniLazy = withLazyLoading(LazySalonPlani);
+export const PlanlamaYapLazy = withLazyLoading(LazyPlanlamaYap);
+export const SabitAtamalarLazy = withLazyLoading(LazySabitAtamalar);
+export const KayitliPlanlarLazy = withLazyLoading(LazyKayitliPlanlar);
+
+
 
 
 

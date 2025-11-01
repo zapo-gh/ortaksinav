@@ -33,7 +33,7 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
 
   // Test Dashboard görünürlüğünü kontrol et
   React.useEffect(() => {
-    console.log('🚀 Header v2.1 - useEffect çalıştı (Debounce ile)');
+    // Log kaldırıldı - gereksiz console spam'i önlemek için
     
     const checkTestDashboardVisibility = () => {
       // URL parametresi kontrolü - basit ?test
@@ -46,12 +46,12 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
         // URL'de ?test varsa localStorage'a kaydet ve göster
         localStorage.setItem('show_test_dashboard', 'true');
         setShowTestDashboard(true);
-        console.log('✅ Test Dashboard görünür yapıldı (URL parametresi: ?test)');
+        // Log kaldırıldı - gereksiz console spam'i önlemek için
       } else {
         // URL'de ?test yoksa localStorage'ı temizle ve gizle
         localStorage.removeItem('show_test_dashboard');
         setShowTestDashboard(false);
-        console.log('❌ Test Dashboard gizlendi (URL parametresi yok)');
+        // Log kaldırıldı - gereksiz console spam'i önlemek için
       }
     };
 
@@ -64,8 +64,15 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
     
     window.addEventListener('popstate', handleUrlChange);
     
-    // URL değişikliklerini manuel olarak kontrol et (her 500ms)
-    const urlCheckInterval = setInterval(checkTestDashboardVisibility, 500);
+    // URL parametrelerini düzenli kontrol et - sadece değişiklik olduğunda kontrol et
+    let lastUrlState = window.location.search;
+    const urlCheckInterval = setInterval(() => {
+      const currentUrlState = window.location.search;
+      if (currentUrlState !== lastUrlState) {
+        lastUrlState = currentUrlState;
+        checkTestDashboardVisibility();
+      }
+    }, 500);
 
     // Space tuşunu globalde (form alanları hariç) engelle
     const preventSpaceToggle = (e) => {

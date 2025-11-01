@@ -4,11 +4,13 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { ExamProvider } from '../../context/ExamContext';
+import { NotificationProvider } from '../../components/NotificationSystem';
 import AnaSayfa from '../../pages/AnaSayfa';
 
 // Mock logger
 jest.mock('../../utils/logger', () => ({
-  logger: {
+  __esModule: true,
+  default: {
     info: jest.fn(),
     error: jest.fn(),
     warn: jest.fn(),
@@ -56,11 +58,13 @@ const mockAyarlar = {
 const renderWithProviders = (component) => {
   return render(
     <ThemeProvider theme={theme}>
-      <DndProvider backend={HTML5Backend}>
-        <ExamProvider>
-          {component}
-        </ExamProvider>
-      </DndProvider>
+      <NotificationProvider>
+        <DndProvider backend={HTML5Backend}>
+          <ExamProvider>
+            {component}
+          </ExamProvider>
+        </DndProvider>
+      </NotificationProvider>
     </ThemeProvider>
   );
 };

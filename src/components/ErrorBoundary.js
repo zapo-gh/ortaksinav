@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Typography, Button, Paper, Collapse } from '@mui/material';
 import { Error as ErrorIcon, Refresh as RefreshIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon } from '@mui/icons-material';
 import logger from '../utils/logger';
+import errorTracker from '../utils/errorTracker';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -40,23 +41,13 @@ class ErrorBoundary extends React.Component {
     // Always log error (logger.error always logs)
     logger.error('Error Boundary caught an error:', errorData);
 
-    // In production, optionally send to error tracking service
-    if (process.env.NODE_ENV === 'production') {
-      // Future: Send to error tracking service (Sentry, etc.)
-      // For now, store in localStorage for debugging
-      try {
-        const errorLogs = JSON.parse(localStorage.getItem('errorLogs') || '[]');
-        errorLogs.push({
-          ...errorData,
-          timestamp: Date.now()
-        });
-        // Keep only last 10 errors
-        const recentLogs = errorLogs.slice(-10);
-        localStorage.setItem('errorLogs', JSON.stringify(recentLogs));
-      } catch (e) {
-        logger.debug('Failed to store error log:', e);
-      }
-    }
+    // Track error with errorTracker
+    errorTracker.trackError(error, {
+      component: this.props.componentName || 'Unknown',
+      action: 'render',
+      componentStack: errorInfo.componentStack,
+      errorBoundary: true
+    });
   }
 
   handleReset = () => {

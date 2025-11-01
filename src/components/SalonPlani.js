@@ -393,14 +393,27 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
         >
         {(conflict?.gender || conflict?.classSideBySide || conflict?.classBackToBack) && (() => {
           // Conflict detay mesajını hesapla
-          const plan2D = Array(sinifDuzeni?.satirSayisi || 0).fill(null).map(() => Array(sinifDuzeni?.sutunSayisi || 0).fill(null));
-          if (sinifDuzeni?.masalar) {
-            sinifDuzeni.masalar.forEach(m => {
-              if (m.ogrenci) {
-                plan2D[m.satir][m.sutun] = { ogrenci: m.ogrenci, grup: m.grup };
-              }
-            });
+          // Güvenlik kontrolü: sinifDuzeni ve masalar kontrolü
+          if (!sinifDuzeni || !sinifDuzeni.masalar || !Array.isArray(sinifDuzeni.masalar)) {
+            return null;
           }
+          
+          const satirSayisi = sinifDuzeni.satirSayisi || 0;
+          const sutunSayisi = sinifDuzeni.sutunSayisi || 0;
+          
+          // Geçerli boyutlarda plan2D oluştur
+          const plan2D = Array(satirSayisi).fill(null).map(() => Array(sutunSayisi).fill(null));
+          
+          sinifDuzeni.masalar.forEach(m => {
+            if (m && m.ogrenci && typeof m.satir === 'number' && typeof m.sutun === 'number') {
+              // Bounds check - satir ve sutun değerlerinin geçerli aralıkta olduğundan emin ol
+              if (m.satir >= 0 && m.satir < satirSayisi && m.sutun >= 0 && m.sutun < sutunSayisi) {
+                if (plan2D[m.satir]) {
+                  plan2D[m.satir][m.sutun] = { ogrenci: m.ogrenci, grup: m.grup };
+                }
+              }
+            }
+          });
           const info = getConstraintConflictInfo(masa, plan2D);
           
           return (
@@ -1137,7 +1150,14 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
         {sinifDuzeni.gruplar ? (
           // Grup bazlı görüntüleme - YAN YANA
           <Box sx={{ display: 'flex', flexDirection: 'row', gap: 3, flexWrap: 'nowrap', justifyContent: 'center', mb: 2 }}>
-            {Object.keys(sinifDuzeni.gruplar).map((grupId, index) => (
+            {Object.keys(sinifDuzeni.gruplar).map((grupId, index) => {
+              // Güvenlik kontrolü: grupId'nin gruplar'da var olduğundan ve array olduğundan emin ol
+              const grupMasalar = sinifDuzeni.gruplar[grupId];
+              if (!grupMasalar || !Array.isArray(grupMasalar)) {
+                return null; // Geçersiz grup, render etme
+              }
+              
+              return (
               <Box key={grupId} sx={{ minWidth: '280px', flex: '1 1 0', maxWidth: '25%' }}>
                 <Typography variant="subtitle1" sx={{ mb: 1, color: 'primary.main', fontWeight: 'bold', textAlign: 'center' }}>
                   Grup {index + 1}
@@ -1151,7 +1171,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                     mx: 'auto'
                   }}
                 >
-                  {sinifDuzeni.gruplar[grupId].map((masa) => {
+                  {grupMasalar.map((masa) => {
                     const isSecili = seciliOgrenciId && masa.ogrenci?.id === seciliOgrenciId;
                     const isHovered = hoveredOgrenci && masa.ogrenci?.id === hoveredOgrenci.id;
                     
@@ -1212,10 +1232,25 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                             currentSalon={sinif}
                             allSalons={tumSalonlar || []}
                             conflict={(() => {
-                              const plan2D = Array(sinifDuzeni.satirSayisi).fill(null).map(() => Array(sinifDuzeni.sutunSayisi).fill(null));
+                              // Güvenlik kontrolü: sinifDuzeni ve masalar kontrolü
+                              if (!sinifDuzeni || !sinifDuzeni.masalar || !Array.isArray(sinifDuzeni.masalar)) {
+                                return false;
+                              }
+                              
+                              const satirSayisi = sinifDuzeni.satirSayisi || 0;
+                              const sutunSayisi = sinifDuzeni.sutunSayisi || 0;
+                              
+                              // Geçerli boyutlarda plan2D oluştur
+                              const plan2D = Array(satirSayisi).fill(null).map(() => Array(sutunSayisi).fill(null));
+                              
                               sinifDuzeni.masalar.forEach(m => {
-                                if (m.ogrenci) {
-                                  plan2D[m.satir][m.sutun] = { ogrenci: m.ogrenci, grup: m.grup };
+                                if (m && m.ogrenci && typeof m.satir === 'number' && typeof m.sutun === 'number') {
+                                  // Bounds check - satir ve sutun değerlerinin geçerli aralıkta olduğundan emin ol
+                                  if (m.satir >= 0 && m.satir < satirSayisi && m.sutun >= 0 && m.sutun < sutunSayisi) {
+                                    if (plan2D[m.satir]) {
+                                      plan2D[m.satir][m.sutun] = { ogrenci: m.ogrenci, grup: m.grup };
+                                    }
+                                  }
                                 }
                               });
                               return hasConstraintConflict(masa, plan2D);
@@ -1227,7 +1262,8 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                   })}
                 </Box>
               </Box>
-            ))}
+              );
+            })}
           </Box>
         ) : (
           // Fallback: Normal grid görüntüleme
@@ -1305,10 +1341,25 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                     currentSalon={sinif}
                     allSalons={tumSalonlar || []}
                     conflict={(() => {
-                      const plan2D = Array(sinifDuzeni.satirSayisi).fill(null).map(() => Array(sinifDuzeni.sutunSayisi).fill(null));
+                      // Güvenlik kontrolü: sinifDuzeni ve masalar kontrolü
+                      if (!sinifDuzeni || !sinifDuzeni.masalar || !Array.isArray(sinifDuzeni.masalar)) {
+                        return false;
+                      }
+                      
+                      const satirSayisi = sinifDuzeni.satirSayisi || 0;
+                      const sutunSayisi = sinifDuzeni.sutunSayisi || 0;
+                      
+                      // Geçerli boyutlarda plan2D oluştur
+                      const plan2D = Array(satirSayisi).fill(null).map(() => Array(sutunSayisi).fill(null));
+                      
                       sinifDuzeni.masalar.forEach(m => {
-                        if (m.ogrenci) {
-                          plan2D[m.satir][m.sutun] = { ogrenci: m.ogrenci, grup: m.grup };
+                        if (m && m.ogrenci && typeof m.satir === 'number' && typeof m.sutun === 'number') {
+                          // Bounds check - satir ve sutun değerlerinin geçerli aralıkta olduğundan emin ol
+                          if (m.satir >= 0 && m.satir < satirSayisi && m.sutun >= 0 && m.sutun < sutunSayisi) {
+                            if (plan2D[m.satir]) {
+                              plan2D[m.satir][m.sutun] = { ogrenci: m.ogrenci, grup: m.grup };
+                            }
+                          }
                         }
                       });
                       return hasConstraintConflict(masa, plan2D);

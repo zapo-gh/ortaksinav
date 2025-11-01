@@ -3,7 +3,7 @@
  * Kaydetme ve yükleme işlemlerini standardize eder
  */
 
-import db from '../database/database';
+import db from '../database';
 
 class PlanManager {
   constructor() {
@@ -51,10 +51,30 @@ class PlanManager {
     try {
       console.log('📥 Plan yükleniyor:', planId);
       
+      // planId validation
+      if (planId === null || planId === undefined || planId === '') {
+        throw new Error('Plan ID geçersiz: null, undefined veya boş string');
+      }
+      
+      // Dexie primary key number bekliyor, string ise number'a çevir
+      let normalizedPlanId = planId;
+      if (typeof planId === 'string') {
+        const numId = parseInt(planId, 10);
+        if (!isNaN(numId)) {
+          normalizedPlanId = numId;
+        } else {
+          throw new Error(`Plan ID geçersiz format: "${planId}" (number'a çevrilemedi)`);
+        }
+      } else if (typeof planId !== 'number') {
+        throw new Error(`Plan ID geçersiz tip: ${typeof planId} (number veya string olmalı)`);
+      }
+      
+      console.log('📥 Normalize edilmiş Plan ID:', normalizedPlanId);
+      
       // Veritabanından planı al
-      const plan = await db.getPlan(planId);
+      const plan = await db.getPlan(normalizedPlanId);
       if (!plan) {
-        throw new Error('Plan bulunamadı');
+        throw new Error(`Plan bulunamadı (ID: ${normalizedPlanId})`);
       }
       
       console.log('✅ Plan yüklendi:', plan.name);
@@ -95,24 +115,42 @@ class PlanManager {
     try {
       console.log('📋 Tüm planlar yükleniyor...');
       const plans = await db.getAllPlans();
-      // Temizlik: tamamen boş kayıtları ayıkla
-      const emptyPlans = plans.filter(p => (p.totalStudents || 0) === 0 && (p.salonCount || 0) === 0);
+      
+      // ÖNCE: Geçersiz ID'ye sahip planları filtrele
+      const validIdPlans = plans.filter(p => {
+        const hasValidId = p.id !== null && p.id !== undefined && p.id !== '';
+        if (!hasValidId) {
+          console.warn('⚠️ Geçersiz Plan ID\'ye sahip plan bulundu ve atlandı:', p);
+        }
+        return hasValidId;
+      });
+      
+      // Temizlik: tamamen boş kayıtları ayıkla (sadece geçerli ID'li planlar için)
+      const emptyPlans = validIdPlans.filter(p => (p.totalStudents || 0) === 0 && (p.salonCount || 0) === 0);
       if (emptyPlans.length > 0) {
         console.warn(`🧹 ${emptyPlans.length} boş plan bulundu, siliniyor...`);
         for (const p of emptyPlans) {
-          try { await db.deletePlan(p.id); } catch (e) { console.warn('Plan silme hatası:', p.id, e); }
+          try { 
+            await db.deletePlan(p.id); 
+          } catch (e) { 
+            console.warn('Plan silme hatası:', p.id, e); 
+          }
         }
       }
-      const nonEmptyPlans = plans.filter(p => (p.totalStudents || 0) > 0 || (p.salonCount || 0) > 0);
-      console.log('✅ Tüm planlar yüklendi:', plans.length, 'plan');
-      console.log('📋 Plan detayları:', plans.map(p => ({ id: p.id, name: p.name, date: p.date })));
+      
+      // Geçerli ID'li ve boş olmayan planları filtrele
+      const nonEmptyPlans = validIdPlans.filter(p => (p.totalStudents || 0) > 0 || (p.salonCount || 0) > 0);
+      console.log('✅ Tüm planlar yüklendi:', nonEmptyPlans.length, 'geçerli plan');
+      console.log('📋 Plan detayları:', nonEmptyPlans.map(p => ({ id: p.id, name: p.name, date: p.date })));
       
       const mappedPlans = nonEmptyPlans.map(plan => ({
         id: plan.id,
         name: plan.name,
         date: plan.date,
         totalStudents: plan.totalStudents,
-        salonCount: plan.salonCount
+        salonCount: plan.salonCount,
+        createdAt: plan.createdAt,
+        updatedAt: plan.updatedAt
       }));
       
       console.log('✅ Planlar map edildi:', mappedPlans.length, 'plan');
@@ -130,7 +168,25 @@ class PlanManager {
    */
   async deletePlan(planId) {
     try {
-      await db.deletePlan(planId);
+      // planId validation
+      if (planId === null || planId === undefined || planId === '') {
+        throw new Error('Plan ID geçersiz: null, undefined veya boş string');
+      }
+      
+      // Dexie primary key number bekliyor, string ise number'a çevir
+      let normalizedPlanId = planId;
+      if (typeof planId === 'string') {
+        const numId = parseInt(planId, 10);
+        if (!isNaN(numId)) {
+          normalizedPlanId = numId;
+        } else {
+          throw new Error(`Plan ID geçersiz format: "${planId}" (number'a çevrilemedi)`);
+        }
+      } else if (typeof planId !== 'number') {
+        throw new Error(`Plan ID geçersiz tip: ${typeof planId} (number veya string olmalı)`);
+      }
+      
+      await db.deletePlan(normalizedPlanId);
       console.log('✅ Plan silindi:', planId);
     } catch (error) {
       console.error('❌ Plan silme hatası:', error);

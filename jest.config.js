@@ -19,6 +19,9 @@ module.exports = {
   },
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.js'],
+  transformIgnorePatterns: [
+    'node_modules/(?!(react-dnd|dnd-core|@react-dnd|@dnd-kit)/)'
+  ],
   moduleNameMapping: {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     '\\.(gif|ttf|eot|svg|png)$': '<rootDir>/src/__mocks__/fileMock.js',

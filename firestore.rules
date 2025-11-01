@@ -2,34 +2,55 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Plans collection - kimlik doğrulama kapalı (dev)
+    // Veri boyutu kontrolü - abartılı yazmaları önle
+    function isValidDataSize() {
+      // Basit kontrol - herhangi bir çok büyük document'i reddet
+      return request.resource.data.size() < 1000000;
+    }
+    
+    // Plans collection - Basit boyut kontrolü
     match /plans/{planId} {
-      allow read, write: if true;
+      // Okuma serbest (sınav planları genelde public)
+      allow read: if true;
+      
+      // Yazma işlemlerinde veri boyutu kontrolü
+      allow create, update: if isValidDataSize();
+      allow delete: if true;
       
       // Salon subcollection
       match /salons/{salonId} {
-        allow read, write: if true;
+        allow read: if true;
+        allow create, update: if isValidDataSize();
+        allow delete: if true;
       }
       
       // Unplaced students subcollection
       match /unplaced/{chunkId} {
-        allow read, write: if true;
+        allow read: if true;
+        allow create, update: if isValidDataSize();
+        allow delete: if true;
       }
     }
     
     // Students collection
     match /students/{studentId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidDataSize();
+      allow delete: if true;
     }
     
     // Salons collection
     match /salons/{salonId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidDataSize();
+      allow delete: if true;
     }
     
     // Settings collection
     match /settings/{settingKey} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidDataSize();
+      allow delete: if true;
     }
   }
 }

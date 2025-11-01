@@ -160,6 +160,9 @@ class FirestoreClient {
    * Plan yükleme
    */
   async loadPlan(planId) {
+    const disabledResult = this._handleDisabledFirebase('loadPlan', null);
+    if (disabledResult) return disabledResult;
+    
     try {
       logger.debug('📥 Firestore: Plan yükleniyor:', planId);
       
@@ -215,6 +218,9 @@ class FirestoreClient {
    * Tüm planları listele
    */
   async getAllPlans() {
+    const disabledResult = this._handleDisabledFirebase('getAllPlans', []);
+    if (disabledResult) return disabledResult;
+    
     try {
       logger.debug('🔍 Firestore: Planlar listeleniyor...');
       
@@ -242,6 +248,9 @@ class FirestoreClient {
    * Plan silme
    */
   async deletePlan(planId) {
+    const disabledResult = this._handleDisabledFirebase('deletePlan', null);
+    if (disabledResult) return disabledResult;
+    
     try {
       logger.debug('🗑️ Firestore: Plan siliniyor:', planId);
       
@@ -278,6 +287,9 @@ class FirestoreClient {
    * Öğrencileri kaydet
    */
   async saveStudents(students) {
+    const disabledResult = this._handleDisabledFirebase('saveStudents', null);
+    if (disabledResult) return disabledResult;
+    
     try {
       logger.debug('💾 Firestore: Öğrenciler kaydediliyor...');
       
@@ -334,6 +346,9 @@ class FirestoreClient {
    * Ayarları kaydet
    */
   async saveSettings(settings) {
+    const disabledResult = this._handleDisabledFirebase('saveSettings', null);
+    if (disabledResult) return disabledResult;
+    
     try {
       logger.debug('💾 Firestore: Ayarlar kaydediliyor...');
       
@@ -386,6 +401,9 @@ class FirestoreClient {
    * Salonları kaydet
    */
   async saveSalons(salons) {
+    const disabledResult = this._handleDisabledFirebase('saveSalons', null);
+    if (disabledResult) return disabledResult;
+    
     try {
       logger.debug('💾 Firestore: Salonlar kaydediliyor...');
       

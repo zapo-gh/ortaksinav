@@ -145,6 +145,8 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
     sinif: '',
     cinsiyet: 'E'
   });
+  const [validationErrors, setValidationErrors] = useState({});
+  const [validationWarnings, setValidationWarnings] = useState({});
 
   // Başarı mesajını göster ve otomatik kaybolsun
   const basariliMesajGoster = (mesaj) => {
@@ -240,21 +242,79 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
     }));
   }, []);
 
-  // Her alan için optimize edilmiş handler'lar
+  // Her alan için optimize edilmiş handler'lar + real-time validation
   const handleAdChange = useCallback((e) => {
-    handleManuelOgrenciChange('ad', e.target.value);
+    const value = e.target.value;
+    handleManuelOgrenciChange('ad', value);
+    // Real-time validation
+    const { validateOnChange } = require('../utils/formValidation');
+    const validation = validateOnChange(value, {
+      required: true,
+      requiredMessage: 'Ad zorunludur',
+      minLength: 2,
+      maxLength: 30,
+      type: 'string'
+    });
+    setValidationErrors(prev => ({ ...prev, ad: validation.errors[0] || null }));
   }, [handleManuelOgrenciChange]);
 
   const handleSoyadChange = useCallback((e) => {
-    handleManuelOgrenciChange('soyad', e.target.value);
+    const value = e.target.value;
+    handleManuelOgrenciChange('soyad', value);
+    // Real-time validation
+    const { validateOnChange } = require('../utils/formValidation');
+    const validation = validateOnChange(value, {
+      required: true,
+      requiredMessage: 'Soyad zorunludur',
+      minLength: 2,
+      maxLength: 30,
+      type: 'string'
+    });
+    setValidationErrors(prev => ({ ...prev, soyad: validation.errors[0] || null }));
   }, [handleManuelOgrenciChange]);
 
   const handleNumaraChange = useCallback((e) => {
-    handleManuelOgrenciChange('numara', e.target.value);
+    const value = e.target.value;
+    handleManuelOgrenciChange('numara', value);
+    // Real-time validation
+    const { validateOnChange } = require('../utils/formValidation');
+    const validation = validateOnChange(value, {
+      required: true,
+      requiredMessage: 'Öğrenci numarası zorunludur',
+      type: 'number',
+      min: 1
+    });
+    setValidationErrors(prev => ({ ...prev, numara: validation.errors[0] || null }));
+    if (value && String(value).length < 3) {
+      setValidationWarnings(prev => ({ ...prev, numara: 'Numara çok kısa (3+ hane önerilir)' }));
+    } else {
+      setValidationWarnings(prev => ({ ...prev, numara: null }));
+    }
   }, [handleManuelOgrenciChange]);
 
   const handleSinifChange = useCallback((e) => {
-    handleManuelOgrenciChange('sinif', e.target.value);
+    const value = e.target.value.toUpperCase(); // Otomatik büyük harfe çevir
+    handleManuelOgrenciChange('sinif', value);
+    // Real-time validation
+    const { validateOnChange } = require('../utils/formValidation');
+    const validation = validateOnChange(value, {
+      required: true,
+      requiredMessage: 'Sınıf zorunludur',
+      pattern: /^\d+-[A-Z]$/,
+      patternMessage: 'Sınıf formatı hatalı (örn: 9-A)'
+    });
+    setValidationErrors(prev => ({ ...prev, sinif: validation.errors[0] || null }));
+    // Sınıf seviyesi kontrolü (uyarı)
+    if (value && /^\d+-[A-Z]$/.test(value)) {
+      const level = parseInt(value.split('-')[0]);
+      if (level < 5 || level > 12) {
+        setValidationWarnings(prev => ({ ...prev, sinif: 'Sınıf seviyesi 5-12 arası olmalıdır' }));
+      } else {
+        setValidationWarnings(prev => ({ ...prev, sinif: null }));
+      }
+    } else {
+      setValidationWarnings(prev => ({ ...prev, sinif: null }));
+    }
   }, [handleManuelOgrenciChange]);
 
   const handleCinsiyetChange = useCallback((e) => {
@@ -262,14 +322,30 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
   }, [handleManuelOgrenciChange]);
 
   const handleManuelOgrenciEkle = () => {
-    // Validasyon
-    if (!manuelOgrenci.ad.trim() || !manuelOgrenci.soyad.trim() || !manuelOgrenci.numara.trim() || !manuelOgrenci.sinif.trim()) {
-      setHata('Lütfen tüm alanları doldurun!');
+    // Validation kullanarak kontrol et
+    const { validateStudentForm } = require('../utils/formValidation');
+    const { sanitizeText, sanitizeNumber, sanitizeClassName } = require('../utils/sanitization');
+    
+    // Önce sanitize et
+    const sanitizedFormData = {
+      ad: sanitizeText(manuelOgrenci.ad || '', { maxLength: 30, allowNumbers: false }),
+      soyad: sanitizeText(manuelOgrenci.soyad || '', { maxLength: 30, allowNumbers: false }),
+      numara: sanitizeNumber(manuelOgrenci.numara || '', { min: 1 }),
+      sinif: sanitizeClassName(manuelOgrenci.sinif || ''),
+      cinsiyet: manuelOgrenci.cinsiyet || 'E'
+    };
+
+    // Validation yap
+    const validation = validateStudentForm(sanitizedFormData);
+    
+    if (!validation.isValid) {
+      const firstError = Object.values(validation.errors)[0];
+      setHata(firstError);
       return;
     }
 
-    // Öğrenci numarası kontrolü
-    const mevcutNumara = ogrenciler.find(o => o.numara === manuelOgrenci.numara);
+    // Öğrenci numarası kontrolü (duplicate check)
+    const mevcutNumara = ogrenciler.find(o => String(o.numara) === String(sanitizedFormData.numara));
     if (mevcutNumara) {
       setHata('Bu öğrenci numarası zaten kullanılıyor!');
       return;
@@ -277,11 +353,11 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
 
     const yeniOgrenci = {
       id: Date.now(),
-      ad: manuelOgrenci.ad.trim(),
-      soyad: manuelOgrenci.soyad.trim(),
-      numara: manuelOgrenci.numara.trim(),
-      sinif: manuelOgrenci.sinif,
-      cinsiyet: manuelOgrenci.cinsiyet,
+      ad: sanitizedFormData.ad,
+      soyad: sanitizedFormData.soyad,
+      numara: String(sanitizedFormData.numara),
+      sinif: sanitizedFormData.sinif,
+      cinsiyet: sanitizedFormData.cinsiyet,
       gecmisSkor: Math.floor(Math.random() * 40) + 60,
       ozelDurum: false
     };
@@ -304,6 +380,9 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
       cinsiyet: 'E'
     });
     setManualEklemeAcik(false);
+    // Validation state'lerini temizle
+    setValidationErrors({});
+    setValidationWarnings({});
   };
 
   const handleManuelEklemeIptal = useCallback(() => {
@@ -315,6 +394,9 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
       sinif: '',
       cinsiyet: 'E'
     });
+    // Validation state'lerini temizle
+    setValidationErrors({});
+    setValidationWarnings({});
   }, []);
 
   // 12. sınıf dialog handler'ları
@@ -1401,6 +1483,9 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
               required
               variant="outlined"
               size="small"
+              error={!!validationErrors?.ad}
+              helperText={validationErrors?.ad}
+              inputProps={{ maxLength: 30 }}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -1412,6 +1497,9 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
               required
               variant="outlined"
               size="small"
+              error={!!validationErrors?.soyad}
+              helperText={validationErrors?.soyad}
+              inputProps={{ maxLength: 30 }}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -1423,6 +1511,10 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
               required
               variant="outlined"
               size="small"
+              type="number"
+              error={!!validationErrors?.numara}
+              helperText={validationErrors?.numara || validationWarnings?.numara}
+              inputProps={{ min: 1, max: 9999999999 }}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -1435,6 +1527,9 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
               variant="outlined"
               size="small"
               placeholder="Örn: 9-A, 10-B"
+              error={!!validationErrors?.sinif}
+              helperText={validationErrors?.sinif || validationWarnings?.sinif}
+              inputProps={{ pattern: '^\\d+-[A-Z]$', maxLength: 5 }}
             />
           </Grid>
           <Grid item xs={12}>

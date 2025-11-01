@@ -12,16 +12,19 @@ npm start # geliştirme
 ```
 
 ## 2) Ortam Değişkenleri (.env)
-`.env.example` içeriğini `.env` olarak kopyalayın ve doldurun:
+`.env.example` içeriğini `.env` olarak kopyalayın ve yapılandırın:
 
-- REACT_APP_FIREBASE_API_KEY
-- REACT_APP_FIREBASE_AUTH_DOMAIN
-- REACT_APP_FIREBASE_PROJECT_ID
-- REACT_APP_FIREBASE_STORAGE_BUCKET
-- REACT_APP_FIREBASE_MESSAGING_SENDER_ID
-- REACT_APP_FIREBASE_APP_ID
+**Zorunlu:**
+- `REACT_APP_DISABLE_FIREBASE` - Firebase'i devre dışı bırak (development için)
+  - Production: `false`
+  - Development: `true` (quotayı korumak için)
 
-Not: Üretimde `REACT_APP_USE_FIRESTORE_EMULATOR=false` olmalı.
+**Opsiyonel:**
+- `REACT_APP_DEBUG` - Debug modunu aç/kapat
+  - Production: `false`
+  - Development: `true`
+
+**Not:** Firebase API keys `src/config/firebaseConfig.js` içinde hardcoded'dur (client-side olduğu için güvenlik sorunu yok).
 
 ## 3) Veri Kalıcılığı
 - IndexedDB (Dexie) birincil kalıcı depolama.
@@ -57,7 +60,8 @@ Not: Üretimde `REACT_APP_USE_FIRESTORE_EMULATOR=false` olmalı.
 - Değişiklik özeti: IndexedDB fallback’leri; plan senkronizasyonu; imza listesi düzenleri; boş plan temizliği; log iyileştirmeleri.
 
 ## 10) Güvenlik Notları
-- Firebase anahtarları `.env` ile aktarılır; depo içinde **tutmayın**.
+- Firebase anahtarları `src/config/firebaseConfig.js` içinde hardcoded'dur (client-side uygulamalarda normal).
+- Firestore Rules aktif (`firestore.rules` - 1MB document size limit).
 - Tarayıcıda saklanan veriler yereldir; çok kullanıcılı cihazlarda planları dışa aktarın ve local verileri temizleyin.
 
 ---

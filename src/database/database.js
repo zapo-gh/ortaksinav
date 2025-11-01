@@ -142,9 +142,27 @@ class KelebekDatabase extends Dexie {
    */
   async getPlan(planId) {
     try {
-      const plan = await this.plans.get(planId);
+      // planId validation - Dexie Table.get() için gerekli
+      if (planId === null || planId === undefined || planId === '') {
+        throw new Error('Invalid argument to Table.get(): planId cannot be null, undefined, or empty string');
+      }
+      
+      // Dexie primary key number bekliyor, string ise number'a çevir
+      let normalizedPlanId = planId;
+      if (typeof planId === 'string') {
+        const numId = parseInt(planId, 10);
+        if (!isNaN(numId)) {
+          normalizedPlanId = numId;
+        } else {
+          throw new Error(`Invalid argument to Table.get(): planId "${planId}" cannot be converted to number`);
+        }
+      } else if (typeof planId !== 'number') {
+        throw new Error(`Invalid argument to Table.get(): planId must be number or string, got ${typeof planId}`);
+      }
+      
+      const plan = await this.plans.get(normalizedPlanId);
       if (!plan) {
-        console.log('⚠️ Plan bulunamadı:', planId);
+        console.log('⚠️ Plan bulunamadı:', normalizedPlanId);
         return null;
       }
       
@@ -187,14 +205,32 @@ class KelebekDatabase extends Dexie {
    */
   async deletePlan(planId) {
     try {
+      // planId validation - Dexie Table.delete() için gerekli
+      if (planId === null || planId === undefined || planId === '') {
+        throw new Error('Invalid argument to Table.delete(): planId cannot be null, undefined, or empty string');
+      }
+      
+      // Dexie primary key number bekliyor, string ise number'a çevir
+      let normalizedPlanId = planId;
+      if (typeof planId === 'string') {
+        const numId = parseInt(planId, 10);
+        if (!isNaN(numId)) {
+          normalizedPlanId = numId;
+        } else {
+          throw new Error(`Invalid argument to Table.delete(): planId "${planId}" cannot be converted to number`);
+        }
+      } else if (typeof planId !== 'number') {
+        throw new Error(`Invalid argument to Table.delete(): planId must be number or string, got ${typeof planId}`);
+      }
+      
       await this.transaction('rw', [this.plans, this.students, this.salons], async () => {
         // İlgili öğrenci ve salon verilerini de sil
-        await this.students.where('planId').equals(planId).delete();
-        await this.salons.where('planId').equals(planId).delete();
-        await this.plans.delete(planId);
+        await this.students.where('planId').equals(normalizedPlanId).delete();
+        await this.salons.where('planId').equals(normalizedPlanId).delete();
+        await this.plans.delete(normalizedPlanId);
       });
       
-      console.log('✅ Plan silindi:', planId);
+      console.log('✅ Plan silindi:', normalizedPlanId);
     } catch (error) {
       console.error('❌ Plan silme hatası:', error);
       throw error;

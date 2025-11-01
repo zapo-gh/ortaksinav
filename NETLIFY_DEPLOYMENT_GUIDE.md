@@ -28,9 +28,43 @@
 
 ---
 
-### **ADIM 2: Netlify Auth Token & Site ID Alma**
+### **ADIM 2: Environment Variables Ekleme (KRİTİK!)**
 
-#### **2.1 Personal Access Token (ÖNEMLİ!):**
+#### **2.1 Netlify'da Environment Variables**
+1. Netlify ana sayfa → Site'ı seç
+2. **"Site settings"** (üst menü)
+3. **"Environment variables"** (sol menü)
+4. **"Add a variable"** butonuna tıkla
+
+#### **2.2 Aşağıdaki Değişkenleri Ekle**
+
+**Değişken 1:**
+- **Key:** `REACT_APP_DISABLE_FIREBASE`
+- **Value:** `false`
+- **"Add variable"**
+
+**Değişken 2:**
+- **Key:** `REACT_APP_DEBUG`
+- **Value:** `false`
+- **"Add variable"**
+
+**Değişken 3:**
+- **Key:** `REACT_APP_VERSION`
+- **Value:** `2.1`
+- **"Add variable"**
+
+#### **2.3 Neden Önemli?**
+- `REACT_APP_DISABLE_FIREBASE=false` olmalı, yoksa **Firebase devre dışı** kalır!
+- Firebase olmadan **planlar farklı cihazlarda görünmez** (sadece local IndexedDB'de kalır)
+- Production'da Firebase **MUTLAKA aktif** olmalı
+
+✅ **Environment variables eklendi!**
+
+---
+
+### **ADIM 3: Netlify Auth Token & Site ID Alma**
+
+#### **3.1 Personal Access Token (ÖNEMLİ!):**
 1. Netlify ana sayfa → **Avatar** (sağ üst) → **"User settings"**
 2. Sol menü → **"Applications"** tab'ı
 3. **"Personal access tokens"** → **"New access token"**
@@ -38,7 +72,7 @@
 5. **"Generate token"** → Token'ı hemen kopyala! (bir daha görünmez)
 6. ⚠️ Bu token'ı kaydet, GitHub Secrets'e ekleyeceğiz!
 
-#### **2.2 Site ID Alma:**
+#### **3.2 Site ID Alma:**
 1. Netlify ana sayfa
 2. Site'ı seç (deploy edilen site)
 3. **"Site settings"** (üst menü)
@@ -47,34 +81,34 @@
 
 ---
 
-### **ADIM 3: GitHub Secrets Ekleme**
+### **ADIM 4: GitHub Secrets Ekleme**
 
-#### **3.1 GitHub Repo'ya Git**
+#### **4.1 GitHub Repo'ya Git**
 1. https://github.com → Projene git
 
-#### **3.2 Settings → Secrets**
+#### **4.2 Settings → Secrets**
 1. **Settings** (repo'da, üst menü)
 2. Sol menü → **"Secrets and variables"** → **"Actions"**
 
-#### **3.3 İki Secret Ekle**
+#### **4.3 İki Secret Ekle**
 
 **Secret 1: NETLIFY_AUTH_TOKEN**
 1. **"New repository secret"**
 2. **Name:** `NETLIFY_AUTH_TOKEN`
-3. **Value:** (2.1'de kopyaladığın token)
+3. **Value:** (3.1'de kopyaladığın token)
 4. **"Add secret"**
 
 **Secret 2: NETLIFY_SITE_ID**
 1. Tekrar **"New repository secret"**
 2. **Name:** `NETLIFY_SITE_ID`
-3. **Value:** (2.2'de kopyaladığın Site ID)
+3. **Value:** (3.2'de kopyaladığın Site ID)
 4. **"Add secret"**
 
 ✅ **Secrets eklendi!**
 
 ---
 
-### **ADIM 4: Workflow Dosyası Hazır**
+### **ADIM 5: Workflow Dosyası Hazır**
 
 ✅ **Workflow dosyası zaten hazır:**
 - `.github/workflows/deploy-netlify.yml`
@@ -86,7 +120,7 @@ ls -la .github/workflows/deploy-netlify.yml
 
 ---
 
-### **ADIM 5: Commit ve Push**
+### **ADIM 6: Commit ve Push**
 
 ```bash
 # Workflow dosyasını git'e ekle
@@ -101,9 +135,9 @@ git push origin main
 
 ---
 
-### **ADIM 6: İlk Deploy'i İzle**
+### **ADIM 7: İlk Deploy'i İzle**
 
-#### **6.1 GitHub Actions**
+#### **7.1 GitHub Actions**
 1. GitHub → **"Actions"** tab'ı
 2. **"Deploy to Netlify"** workflow'u görünecek
 3. Workflow çalışıyor olmalı
@@ -115,12 +149,12 @@ git push origin main
    - ✅ Build başarılı!
    - ✅ Deploy to Netlify
 
-#### **6.2 Netlify'da Kontrol**
+#### **7.2 Netlify'da Kontrol**
 1. Netlify → **"Deploys"** tab'ı
 2. Yeni deploy görünecek (manuel değil, GitHub Actions tarafından)
 3. Status: ✅ **Published**
 
-#### **6.3 Site'i Test Et**
+#### **7.3 Site'i Test Et**
 1. Site URL'e git (örn: `kelebek-sinav.netlify.app`)
 2. Site çalışıyor mu kontrol et
 3. Console'da hata var mı?
@@ -129,9 +163,42 @@ git push origin main
 
 ---
 
-### **ADIM 7: Otomatik Deploy Testi**
+### **ADIM 8: Firebase Sync Kontrolü (ÖNEMLİ!)**
 
-#### **7.1 Küçük Bir Değişiklik**
+#### **8.1 Site'e Git ve Test Et**
+1. Netlify URL'ine git
+2. Bir plan kaydet
+3. Başka bir cihazdan aynı URL'e git
+4. **"Kayıtlı Planlar"** tab'ına tıkla
+5. Plan görünüyor mu?
+
+✅ **Firebase sync çalışıyor!**
+
+#### **8.2 Eğer Plan Görünmüyorsa**
+
+**Kontrol 1: Environment Variables**
+1. Netlify → Site Settings → Environment variables
+2. `REACT_APP_DISABLE_FIREBASE=false` olmalı
+3. Değilse ekle ve **"Redeploy site"**
+
+**Kontrol 2: Browser Console**
+1. F12 → Console
+2. `🔧 Firebase disabled` mesajı var mı?
+3. Varsa Firebase devre dışı!
+
+**Kontrol 3: Firestore Rules**
+1. Firebase Console → Firestore Database → Rules
+2. Rules dosyası deploy edilmiş mi?
+3. Eğer deploy edilmemişse:
+   ```bash
+   firebase deploy --only firestore:rules
+   ```
+
+---
+
+### **ADIM 9: Otomatik Deploy Testi**
+
+#### **9.1 Küçük Bir Değişiklik**
 ```bash
 # README.md'ye bir satır ekle
 echo "" >> README.md
@@ -144,7 +211,7 @@ git commit -m "test: trigger auto-deploy"
 git push origin main
 ```
 
-#### **7.2 Deploy'i İzle**
+#### **9.2 Deploy'i İzle**
 1. GitHub Actions → workflow çalışıyor
 2. ~5-10 dakika bekle
 3. Netlify → yeni deploy oluştu

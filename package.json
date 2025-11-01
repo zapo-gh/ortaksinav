@@ -16,14 +16,10 @@
     "@testing-library/user-event": "^13.5.0",
     "dexie": "^4.2.1",
     "firebase": "^12.4.0",
-    "html2canvas": "^1.4.1",
-    "jspdf": "^3.0.3",
-    "papaparse": "^5.5.3",
     "react": "^19.2.0",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^19.2.0",
-    "react-icons": "^5.5.0",
     "react-scripts": "5.0.1",
     "react-to-print": "^3.1.1",
     "web-vitals": "^2.1.4",
@@ -32,7 +28,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "analyze": "npm run build && npx webpack-bundle-analyzer build/static/js/*.json || true",
+    "analyze": "npm run build && npx webpack-bundle-analyzer build/static/js/*.js.map || npx webpack-bundle-analyzer build/static/js/*.json || echo 'Bundle analyzer: Build dosyaları bulunamadı. Önce npm run build çalıştırın.'",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

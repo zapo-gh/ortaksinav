@@ -2,11 +2,13 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { ExamProvider } from '../../context/ExamContext';
+import { NotificationProvider } from '../../components/NotificationSystem';
 import SalonFormu from '../../components/SalonFormu';
 
 // Mock logger
 jest.mock('../../utils/logger', () => ({
-  logger: {
+  __esModule: true,
+  default: {
     info: jest.fn(),
     error: jest.fn(),
     warn: jest.fn(),
@@ -33,9 +35,11 @@ const mockSalonlar = [
 const renderWithProviders = (component) => {
   return render(
     <ThemeProvider theme={theme}>
-      <ExamProvider>
-        {component}
-      </ExamProvider>
+      <NotificationProvider>
+        <ExamProvider>
+          {component}
+        </ExamProvider>
+      </NotificationProvider>
     </ThemeProvider>
   );
 };

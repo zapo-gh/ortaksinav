@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, Suspense } from 'react';
 import { useDrag, useDrop, DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import {
@@ -47,22 +47,27 @@ import { useReactToPrint } from 'react-to-print';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ErrorBoundary from '../components/ErrorBoundary';
-import SalonPlani from '../components/SalonPlani';
-import { SalonPlaniPrintable } from '../components/SalonPlaniPrintable';
-import { SalonOgrenciListesiPrintable } from '../components/SalonOgrenciListesiPrintable';
-import { SalonImzaListesiPrintable } from '../components/SalonImzaListesiPrintable';
 import GenelAyarlarFormu from '../components/GenelAyarlarFormu';
 import OgrenciListesi from '../components/OgrenciListesi';
 import AyarlarFormu from '../components/AyarlarFormu';
 import SalonFormu from '../components/SalonFormu';
-import SabitAtamalar from '../components/SabitAtamalar';
-import PlanlamaYap from '../components/PlanlamaYap';
 import { useExam } from '../context/ExamContext';
 import { useNotifications, NotificationProvider } from '../components/NotificationSystem';
 import { gelismisYerlestirme } from '../algorithms/gelismisYerlestirmeAlgoritmasi';
 import { calculateDeskNumbersForMasalar } from '../algorithms/gelismisYerlestirmeAlgoritmasi';
 import planManager from '../utils/planManager';
-import { DatabaseTestLazy, TestDashboardLazy, WelcomePageLazy } from '../components/LazyComponents';
+import { 
+  DatabaseTestLazy, 
+  TestDashboardLazy, 
+  WelcomePageLazy,
+  SalonPlaniLazy,
+  PlanlamaYapLazy,
+  SabitAtamalarLazy,
+  KayitliPlanlarLazy,
+  LazySalonPlaniPrintable,
+  LazySalonOgrenciListesiPrintable,
+  LazySalonImzaListesiPrintable
+} from '../components/LazyComponents';
 import logger from '../utils/logger';
 import transferManager from '../utils/transferManager';
 
@@ -122,207 +127,6 @@ const PlanKaydetmeDialog = React.memo(({
 });
 
 
-// Kayıtlı Planlar Bileşeni
-const KayitliPlanlar = ({ onPlanYukle }) => {
-  const [kayitliPlanlar, setKayitliPlanlar] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const { showSuccess, showError } = useNotifications();
-
-  const loadPlans = async () => {
-    try {
-      setIsLoading(true);
-      const allPlans = await planManager.getAllPlans();
-      
-      // Geçici kayıtları filtrele (kullanıcı tarafından kaydedilen planları göster)
-      const filteredPlans = allPlans.filter(plan => {
-        // plan.id'nin string olduğundan emin ol
-        const planId = String(plan.id || '');
-        const planName = String(plan.name || '');
-        
-        return !planName.includes('Geçici Plan') && 
-               !planId.startsWith('temp_');
-      });
-      
-      // Son eklenen kayıtlar en sağda olacak şekilde sırala (tarihe göre artan sıralama)
-      const sortedPlans = filteredPlans.sort((a, b) => {
-        const dateA = new Date(a.date || a.createdAt || 0);
-        const dateB = new Date(b.date || b.createdAt || 0);
-        return dateA - dateB; // Eski tarihler önce, yeni tarihler sonra
-      });
-      
-      setKayitliPlanlar(sortedPlans);
-    } catch (error) {
-      logger.error('❌ Planlar yüklenirken hata:', error);
-      showError('Planlar yüklenirken hata oluştu!');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadPlans();
-  }, []);
-
-  const handlePlanSil = async (planId) => {
-    try {
-      await planManager.deletePlan(planId);
-      showSuccess('Plan silindi!');
-      loadPlans();
-    } catch (error) {
-      logger.error('❌ Plan silme hatası:', error);
-      showError('Plan silinirken hata oluştu!');
-    }
-  };
-
-  // Geçici kayıtları temizleme fonksiyonu
-  const handleCleanupTempPlans = async () => {
-    try {
-      console.log('🧹 Geçici kayıtlar temizleme başlatılıyor...');
-      const { cleanupTempPlans } = await import('../utils/cleanupTempPlans');
-      const result = await cleanupTempPlans();
-      
-      console.log('📊 Temizleme sonucu:', result);
-      
-      if (result.success) {
-        if (result.deletedCount > 0) {
-          showSuccess(`${result.deletedCount} geçici kayıt temizlendi!`);
-        } else {
-          showSuccess('Temizlenecek geçici kayıt bulunamadı.');
-        }
-        loadPlans(); // Listeyi yenile
-      } else {
-        console.error('❌ Temizleme başarısız:', result.error);
-        showError(`Geçici kayıtlar temizlenirken hata oluştu: ${result.error || 'Bilinmeyen hata'}`);
-      }
-    } catch (error) {
-      console.error('❌ Geçici kayıtlar temizlenirken hata:', error);
-      logger.error('❌ Geçici kayıt temizleme hatası:', error);
-      showError(`Geçici kayıtlar temizlenirken hata oluştu: ${error.message}`);
-    }
-  };
-
-  return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
-      <Card elevation={2}>
-        <CardContent>
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            mb: { xs: 2, sm: 3 },
-            flexDirection: { xs: 'column', sm: 'row' },
-            gap: { xs: 1, sm: 0 }
-          }}>
-            <Typography variant="h5" gutterBottom sx={{ 
-              mb: 0,
-              fontSize: { xs: '1.25rem', sm: '1.5rem' }
-            }}>
-              Kayıtlı Planlar
-            </Typography>
-            <Button
-              variant="outlined"
-              color="warning"
-              size="small"
-              onClick={handleCleanupTempPlans}
-              sx={{ 
-                ml: { xs: 0, sm: 2 },
-                fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                px: { xs: 1, sm: 2 }
-              }}
-            >
-              Geçici Kayıtları Temizle
-            </Button>
-          </Box>
-      
-      {isLoading ? (
-        <Box display="flex" justifyContent="center" p={3}>
-          <CircularProgress />
-        </Box>
-      ) : kayitliPlanlar.length === 0 ? (
-        <Box sx={{ textAlign: 'center', py: 4 }}>
-          <Typography variant="h6" color="text.secondary">
-            Henüz kayıtlı plan bulunmuyor
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Salon Planı sekmesinde bir plan oluşturup kaydedebilirsiniz
-          </Typography>
-        </Box>
-      ) : (
-        <Box sx={{ 
-          display: 'flex', 
-          flexWrap: 'wrap', 
-          gap: 2, 
-          justifyContent: 'center',
-          alignItems: 'flex-start',
-          maxWidth: '1200px', 
-          mx: 'auto',
-          px: 2
-        }}>
-          {kayitliPlanlar.map((plan) => (
-            <Card key={plan.id} sx={{ p: 2, width: '300px', flex: '0 0 300px' }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  {plan.name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Kayıt Tarihi: {(() => {
-                    try {
-                      const tarih = new Date(plan.date);
-                      if (isNaN(tarih.getTime())) {
-                        return plan.date || 'Bilinmiyor';
-                      }
-                      return tarih.toLocaleDateString('tr-TR');
-                    } catch (error) {
-                      return plan.date || 'Bilinmiyor';
-                    }
-                  })()}
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  Toplam Öğrenci: {plan.totalStudents || 0}
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 2 }}>
-                  Salon Sayısı: {plan.salonCount || 0}
-                </Typography>
-                <Box sx={{ 
-                  display: 'flex', 
-                  gap: { xs: 0.5, sm: 1 }, 
-                  justifyContent: 'center',
-                  flexDirection: { xs: 'column', sm: 'row' }
-                }}>
-                  <Button 
-                    variant="contained" 
-                    size="small"
-                    onClick={() => onPlanYukle(plan)}
-                    sx={{ 
-                      fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                      px: { xs: 1, sm: 2 }
-                    }}
-                  >
-                    Yükle
-                  </Button>
-                  <Button 
-                    variant="outlined" 
-                    color="error" 
-                    size="small"
-                    onClick={() => handlePlanSil(plan.id)}
-                    sx={{ 
-                      fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                      px: { xs: 1, sm: 2 }
-                    }}
-                  >
-                    Sil
-                  </Button>
-                </Box>
-              </CardContent>
-            </Card>
-          ))}
-        </Box>
-      )}
-        </CardContent>
-      </Card>
-    </Container>
-  );
-};
 
 // Unplaced Students Drop Zone Component
 const UnplacedStudentsDropZone = ({ children, onStudentMove }) => {
@@ -697,14 +501,33 @@ const AnaSayfaContent = React.memo(() => {
   // Plan yükleme fonksiyonu
   const handlePlanYukle = async (plan) => {
     try {
-      const loadedPlan = await planManager.loadPlan(plan.id);
+      console.log('🔍 AnaSayfa.handlePlanYukle çağrıldı, plan:', plan);
+      console.log('🔍 AnaSayfa.handlePlanYukle - plan tip:', typeof plan);
+      console.log('🔍 AnaSayfa.handlePlanYukle - plan.id:', plan?.id);
+      
+      // Eğer plan zaten data objesi ise (KayitliPlanlar'dan geliyor), direkt kullan
+      let planData;
+      if (plan && !plan.id && (plan.tumSalonlar || plan.salon)) {
+        // Plan zaten yüklenmiş data objesi
+        console.log('✅ Plan verisi zaten yüklenmiş, direkt kullanılıyor');
+        planData = plan;
+      } else if (plan && plan.id) {
+        // Plan ID'si var, veritabanından yükle
+        console.log('📥 Plan ID ile yükleniyor:', plan.id);
+        const loadedPlan = await planManager.loadPlan(plan.id);
 
-      if (!loadedPlan || !loadedPlan.data) {
-        showError('Plan verisi bulunamadı!');
+        if (!loadedPlan || !loadedPlan.data) {
+          showError('Plan verisi bulunamadı!');
+          return;
+        }
+
+        planData = loadedPlan.data;
+      } else {
+        // Geçersiz plan objesi
+        console.error('❌ Geçersiz plan objesi:', plan);
+        showError('Plan verisi geçersiz!');
         return;
       }
-
-      const planData = loadedPlan.data;
 
       // Plan verisini yerlestirmeSonucu formatına dönüştür
       const yerlestirmeFormatinda = {
@@ -753,7 +576,7 @@ const AnaSayfaContent = React.memo(() => {
       
       tabDegistir('salon-plani');
 
-      showSuccess(`"${loadedPlan.name}" planı yüklendi!`);
+      showSuccess('Plan başarıyla yüklendi!');
 
     } catch (error) {
       console.error('❌ Plan yükleme hatası:', error);
@@ -1198,14 +1021,14 @@ const AnaSayfaContent = React.memo(() => {
       case 'sabit-atamalar':
         return (
           <ErrorBoundary componentName="SabitAtamalar">
-            <SabitAtamalar />
+            <SabitAtamalarLazy />
           </ErrorBoundary>
         );
       
       case 'planlama':
         return (
           <ErrorBoundary componentName="PlanlamaYap">
-            <PlanlamaYap 
+            <PlanlamaYapLazy 
               ogrenciler={ogrenciler}
               ayarlar={ayarlar}
               salonlar={salonlar}
@@ -1231,7 +1054,7 @@ const AnaSayfaContent = React.memo(() => {
             <ErrorBoundary componentName="SalonPlani">
               <Box sx={{ position: 'relative' }}>
                 {/* Salon planı - SalonPlani bileşeni kendi salon seçimini yapar */}
-                <SalonPlani 
+                <SalonPlaniLazy 
                 sinif={{
                   id: seciliSalon.id,
                   salonAdi: seciliSalon.salonAdi || seciliSalon.ad,
@@ -1258,7 +1081,7 @@ const AnaSayfaContent = React.memo(() => {
             <Box sx={{ position: 'relative' }}>
               {yerlestirmeSonucu && (
                 <>
-                  <SalonPlani 
+                  <SalonPlaniLazy 
                   sinif={yerlestirmeSonucu?.salon || {
                     id: 'A-101',
                     kapasite: Math.max(ogrenciler.length, 30),
@@ -1354,7 +1177,7 @@ const AnaSayfaContent = React.memo(() => {
                     const salonKapasite = seciliSalon.kapasite || 0;
                     
                     return (
-                      <SalonPlani 
+                      <SalonPlaniLazy 
                       sinif={{
                         id: seciliSalon.id,
                         kapasite: salonKapasite,
@@ -1430,7 +1253,7 @@ const AnaSayfaContent = React.memo(() => {
       case 'kayitli-planlar':
         return (
           <ErrorBoundary componentName="KayitliPlanlar">
-            <KayitliPlanlar 
+            <KayitliPlanlarLazy 
               onPlanYukle={handlePlanYukle}
             />
           </ErrorBoundary>
@@ -1620,14 +1443,16 @@ const AnaSayfaContent = React.memo(() => {
         {/* Tab Content */}
         {renderTabIcerik()}
 
-        {/* Gizli PDF Export Bileşeni */}
+        {/* Gizli PDF Export Bileşeni - Lazy loaded */}
         {yerlestirmeSonucu && (
           <Box sx={{ position: 'absolute', left: '-9999px', top: '-9999px', visibility: 'hidden' }}>
-            <SalonPlaniPrintable 
-              ref={salonPlaniPrintRef}
-              yerlestirmeSonucu={yerlestirmeSonucu}
-              ayarlar={ayarlar}
-            />
+            <Suspense fallback={null}>
+              <LazySalonPlaniPrintable 
+                ref={salonPlaniPrintRef}
+                yerlestirmeSonucu={yerlestirmeSonucu}
+                ayarlar={ayarlar}
+              />
+            </Suspense>
           </Box>
         )}
       </Container>
@@ -1709,27 +1534,33 @@ const AnaSayfaContent = React.memo(() => {
           top: '-9999px',
           visibility: 'hidden'
         }}>
-          {/* Salon Planı */}
-          <SalonPlaniPrintable 
-            ref={salonPlaniPrintRef}
-            yerlestirmeSonucu={yerlestirmeSonucu}
-            ayarlar={ayarlar}
-          />
+          {/* Salon Planı - Lazy loaded */}
+          <Suspense fallback={null}>
+            <LazySalonPlaniPrintable 
+              ref={salonPlaniPrintRef}
+              yerlestirmeSonucu={yerlestirmeSonucu}
+              ayarlar={ayarlar}
+            />
+          </Suspense>
           
-          {/* Sınıf Listesi */}
-          <SalonOgrenciListesiPrintable 
-            ref={sinifListesiPrintRef}
-            ogrenciler={ogrenciler}
-            yerlestirmeSonucu={yerlestirmeSonucu}
-            ayarlar={ayarlar}
-          />
+          {/* Sınıf Listesi - Lazy loaded */}
+          <Suspense fallback={null}>
+            <LazySalonOgrenciListesiPrintable 
+              ref={sinifListesiPrintRef}
+              ogrenciler={ogrenciler}
+              yerlestirmeSonucu={yerlestirmeSonucu}
+              ayarlar={ayarlar}
+            />
+          </Suspense>
           
-          {/* Salon İmza Listesi */}
-          <SalonImzaListesiPrintable 
-            ref={salonImzaListesiPrintRef}
-            yerlestirmeSonucu={yerlestirmeSonucu}
-            ayarlar={ayarlar}
-          />
+          {/* Salon İmza Listesi - Lazy loaded */}
+          <Suspense fallback={null}>
+            <LazySalonImzaListesiPrintable 
+              ref={salonImzaListesiPrintRef}
+              yerlestirmeSonucu={yerlestirmeSonucu}
+              ayarlar={ayarlar}
+            />
+          </Suspense>
         </Box>
       </Box>
 
