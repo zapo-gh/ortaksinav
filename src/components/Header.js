@@ -12,7 +12,6 @@ import {
   Chip
 } from '@mui/material';
 import {
-  School as SchoolIcon,
   Menu as MenuIcon,
   AccountCircle,
   ExitToApp,
@@ -20,6 +19,8 @@ import {
   Home as HomeIcon,
   Search as SearchIcon
 } from '@mui/icons-material';
+import { FaGraduationCap } from 'react-icons/fa';
+import { BsClipboardCheck } from 'react-icons/bs';
 
 import QuickSearchModal from './QuickSearchModal';
 
@@ -28,7 +29,6 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
   const [showTestDashboard, setShowTestDashboard] = React.useState(false);
   const [lastKeyPress, setLastKeyPress] = React.useState(0);
   const [lastKeyCode, setLastKeyCode] = React.useState(null);
-  const [logoError, setLogoError] = React.useState(false);
   const [openSearch, setOpenSearch] = React.useState(false);
 
   // Test Dashboard görünürlüğünü kontrol et
@@ -174,35 +174,68 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
     <AppBar position="static" sx={{ bgcolor: 'primary.main', boxShadow: 2 }}>
       <Toolbar sx={{ position: 'relative', minHeight: '64px !important' }}>
         {/* Sol taraf - Logo */}
-        {!logoError ? (
-          <Box 
-            component="img"
-            src="/header-logo.svg"
-            alt="Logo"
-            onError={() => setLogoError(true)}
-            sx={{ 
-              height: 32,
-              width: 'auto',
-              position: 'absolute', 
-              left: 16, 
-              top: '50%', 
-              transform: 'translateY(-50%)', 
-              zIndex: 1,
-              cursor: 'pointer'
-            }} 
-          />
-        ) : (
-          <SchoolIcon 
-            sx={{ 
-              fontSize: 32, 
-              position: 'absolute', 
-              left: 16, 
-              top: '50%', 
-              transform: 'translateY(-50%)', 
-              zIndex: 1
-            }} 
-          />
-        )}
+        <Box
+          onClick={onHomeClick}
+          sx={{
+            position: 'absolute',
+            left: 16,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 1,
+            width: 44,
+            height: 44,
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f0f7ff 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 2px 12px rgba(25, 118, 210, 0.25), 0 0 0 1px rgba(25, 118, 210, 0.1)',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            '&:hover': {
+              transform: 'translateY(-50%) scale(1.08)',
+              boxShadow: '0 4px 16px rgba(25, 118, 210, 0.35), 0 0 0 1px rgba(25, 118, 210, 0.15)',
+              '& .logo-icon': {
+                transform: 'scale(1.1) rotate(-2deg)',
+              }
+            }
+          }}
+        >
+          <Box
+            sx={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <FaGraduationCap 
+              className="logo-icon"
+              style={{ 
+                fontSize: 26, 
+                color: '#1976d2',
+                filter: 'drop-shadow(0 2px 4px rgba(25, 118, 210, 0.3))',
+                transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                position: 'relative',
+                zIndex: 2
+              }} 
+            />
+            <BsClipboardCheck 
+              style={{ 
+                fontSize: 14, 
+                color: '#42a5f5',
+                position: 'absolute',
+                bottom: -4,
+                right: -4,
+                filter: 'drop-shadow(0 1px 2px rgba(66, 165, 245, 0.4))',
+                backgroundColor: 'white',
+                borderRadius: '50%',
+                padding: '2px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              }} 
+            />
+          </Box>
+        </Box>
         
         {/* Orta - Başlık (ortalanmış) */}
         <Typography 
