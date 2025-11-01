@@ -74,43 +74,27 @@ F12 → Console
 ```
 
 **3. Temizlik Scriptini Çalıştır**
+
+⚠️ **Firebase import sorunları var, daha basit yöntem kullan!**
+
+**YÖNTEM 1: Firebase Console (ÖNERİLEN)**
+1. https://console.firebase.google.com → Firestore
+2. `plans` collection aç
+3. Her test plan için: Checkbox → Delete
+
+**YÖNTEM 2: Tüm Collection'ı Sil ve Yeniden Başla**
+1. Firebase Console → Firestore
+2. `plans` collection → Delete collection
+3. Onayla
+4. Yeni plan oluştur
+
+⚠️ **DİKKAT:** Bu tüm planları siler!
+
+**YÖNTEM 3: Manuel Cleanup Script** (Kompleks)
+
 ```javascript
-// Test planları sil
-(async () => {
-  const { db } = await import('./src/firebase/config.js');
-  const { collection, getDocs, deleteDoc, doc } = await import('firebase/firestore');
-  
-  const plansRef = collection(db, 'plans');
-  const snapshot = await getDocs(plansRef);
-  
-  let deleted = 0;
-  let kept = 0;
-  
-  for (const planDoc of snapshot.docs) {
-    const plan = planDoc.data();
-    const planName = plan.name || '';
-    
-    // Test plan mı kontrol et
-    const isTestPlan = 
-      planName.includes('Test Plan') ||
-      planName.includes('Test') ||
-      planName.includes('Minimal Plan') ||
-      planName.includes('Plan 1') ||
-      planName.includes('Plan 2') ||
-      planName.includes('Valid Plan');
-    
-    if (isTestPlan) {
-      await deleteDoc(doc(db, 'plans', planDoc.id));
-      deleted++;
-      console.log(`🗑️ Silindi: ${planName}`);
-    } else {
-      kept++;
-      console.log(`✅ Tutuldu: ${planName}`);
-    }
-  }
-  
-  console.log(`\n✅ Tamamlandı! Silinen: ${deleted}, Tutulan: ${kept}`);
-})();
+// QUICK_CLEANUP.js dosyasını kullan
+// Veya FIREBASE_CLEANUP.md dosyasındaki yöntemleri takip et
 ```
 
 ---
