@@ -2,7 +2,7 @@
  * Veri Yedekleme Yöneticisi
  * Kritik veri kaybı durumlarında geri alma imkanı sağlar
  */
-import db from '../database/database';
+import db from '../database';
 import logger from './logger';
 
 class DataBackupManager {

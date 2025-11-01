@@ -2,7 +2,7 @@
  * Otomatik temizlik sistemi
  * Eski geçici kayıtları otomatik siler
  */
-import db from '../database/database';
+import db from '../database';
 import logger from './logger';
 
 class AutoCleanup {
