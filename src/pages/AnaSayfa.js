@@ -398,7 +398,9 @@ const AnaSayfaContent = React.memo(() => {
     }
 
     try {
-      // Plan verisini hazırla
+      // Plan verisini hazırla - Ayarları derin kopyala (referans sorununu önlemek için)
+      const ayarlarKopya = JSON.parse(JSON.stringify(ayarlar || {}));
+      
       const planData = {
         salon: yerlestirmeSonucu.salon,
         tumSalonlar: yerlestirmeSonucu.tumSalonlar,
@@ -407,11 +409,19 @@ const AnaSayfaContent = React.memo(() => {
         istatistikler: yerlestirmeSonucu.istatistikler,
         // Ayarlar bilgilerini de kaydet (dersler ve salonlar listesi ayarlar içinde yer alıyor)
         ayarlar: {
-          ...ayarlar,
+          ...ayarlarKopya,
           // Salonlar listesini de kaydet (salon ayarları için)
           kayitliSalonlar: salonlar || []
         }
       };
+      
+      // DEBUG: Sınav bilgilerini kontrol et
+      console.log('🔍 Plan kaydediliyor - Ayarlar:', {
+        sinavTarihi: planData.ayarlar.sinavTarihi,
+        sinavSaati: planData.ayarlar.sinavSaati,
+        sinavDonemi: planData.ayarlar.sinavDonemi,
+        donem: planData.ayarlar.donem
+      });
 
 
       // DEBUG: Plan kaydetme öncesi veri kontrolü

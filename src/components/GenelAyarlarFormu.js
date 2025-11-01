@@ -27,6 +27,21 @@ const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir }) => {
     ...ayarlar
   });
 
+  // Ayarlar prop'u değiştiğinde formData'yı güncelle (özellikle plan yükleme sonrası)
+  React.useEffect(() => {
+    if (ayarlar) {
+      setFormData(prev => ({
+        ...prev,
+        ...ayarlar,
+        // Özellikle sınav bilgilerini güncelle
+        sinavTarihi: ayarlar.sinavTarihi !== undefined ? ayarlar.sinavTarihi : prev.sinavTarihi,
+        sinavSaati: ayarlar.sinavSaati !== undefined ? ayarlar.sinavSaati : prev.sinavSaati,
+        sinavDonemi: ayarlar.sinavDonemi !== undefined ? ayarlar.sinavDonemi : prev.sinavDonemi,
+        donem: ayarlar.donem !== undefined ? ayarlar.donem : prev.donem
+      }));
+    }
+  }, [ayarlar?.sinavTarihi, ayarlar?.sinavSaati, ayarlar?.sinavDonemi, ayarlar?.donem]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     const yeniFormData = {

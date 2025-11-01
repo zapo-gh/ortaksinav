@@ -29,17 +29,26 @@ class PlanManager {
       // Sınav tarihi-saati bilgilerini metadata'ya ekle (plan listesinde göstermek için)
       const ayarlar = cleanPlanData.ayarlar || {};
       
+      // DEBUG: Ayarlar kontrolü
+      console.log('🔍 planManager.savePlan - Ayarlar:', {
+        sinavTarihi: ayarlar.sinavTarihi,
+        sinavSaati: ayarlar.sinavSaati,
+        sinavDonemi: ayarlar.sinavDonemi,
+        donem: ayarlar.donem,
+        ayarlarKeys: Object.keys(ayarlar)
+      });
+      
       // Veritabanına kaydet
       const savedPlan = await db.savePlan({
         name: planName,
         date: new Date().toISOString(),
         totalStudents: cleanPlanData.totalStudents || 0,
         salonCount: cleanPlanData.salonCount || 0,
-        // Sınav bilgilerini metadata'ya ekle
-        sinavTarihi: ayarlar.sinavTarihi || null,
-        sinavSaati: ayarlar.sinavSaati || null,
-        sinavDonemi: ayarlar.sinavDonemi || null,
-        donem: ayarlar.donem || null,
+        // Sınav bilgilerini metadata'ya ekle (boş string'leri de kaydet)
+        sinavTarihi: ayarlar.sinavTarihi !== undefined && ayarlar.sinavTarihi !== null && ayarlar.sinavTarihi !== '' ? ayarlar.sinavTarihi : null,
+        sinavSaati: ayarlar.sinavSaati !== undefined && ayarlar.sinavSaati !== null && ayarlar.sinavSaati !== '' ? ayarlar.sinavSaati : null,
+        sinavDonemi: ayarlar.sinavDonemi !== undefined && ayarlar.sinavDonemi !== null && ayarlar.sinavDonemi !== '' ? ayarlar.sinavDonemi : null,
+        donem: ayarlar.donem !== undefined && ayarlar.donem !== null && ayarlar.donem !== '' ? ayarlar.donem : null,
         data: cleanPlanData
       });
       
