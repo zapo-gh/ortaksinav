@@ -26,12 +26,20 @@ class PlanManager {
         return null;
       }
       
+      // Sınav tarihi-saati bilgilerini metadata'ya ekle (plan listesinde göstermek için)
+      const ayarlar = cleanPlanData.ayarlar || {};
+      
       // Veritabanına kaydet
       const savedPlan = await db.savePlan({
         name: planName,
         date: new Date().toISOString(),
         totalStudents: cleanPlanData.totalStudents || 0,
         salonCount: cleanPlanData.salonCount || 0,
+        // Sınav bilgilerini metadata'ya ekle
+        sinavTarihi: ayarlar.sinavTarihi || null,
+        sinavSaati: ayarlar.sinavSaati || null,
+        sinavDonemi: ayarlar.sinavDonemi || null,
+        donem: ayarlar.donem || null,
         data: cleanPlanData
       });
       
@@ -149,6 +157,10 @@ class PlanManager {
         date: plan.date,
         totalStudents: plan.totalStudents,
         salonCount: plan.salonCount,
+        sinavTarihi: plan.sinavTarihi || null,
+        sinavSaati: plan.sinavSaati || null,
+        sinavDonemi: plan.sinavDonemi || null,
+        donem: plan.donem || null,
         createdAt: plan.createdAt,
         updatedAt: plan.updatedAt
       }));

@@ -543,6 +543,27 @@ const AnaSayfaContent = React.memo(() => {
         ayarlarGuncelle(planData.ayarlar);
       }
 
+      // Salonlar listesini güncelle (plan içindeki tumSalonlar'dan)
+      if (planData.tumSalonlar && planData.tumSalonlar.length > 0) {
+        // tumSalonlar'dan salonlar listesini oluştur (salon ayarları formatına dönüştür)
+        const guncellenmisSalonlar = planData.tumSalonlar.map(salon => ({
+          id: salon.id || salon.salonId,
+          salonId: salon.salonId || salon.id,
+          salonAdi: salon.salonAdi || salon.ad || 'İsimsiz Salon',
+          ad: salon.salonAdi || salon.ad || 'İsimsiz Salon',
+          kapasite: salon.kapasite || 0,
+          siraDizilimi: salon.siraDizilimi || { satir: 0, sutun: 0 },
+          aktif: true, // Varsayılan olarak aktif
+          // Eğer salon ayarlarında siraTipi, grupSayisi vb. varsa onları da ekle
+          siraTipi: salon.siraTipi || 'ikili',
+          grupSayisi: salon.grupSayisi || 1,
+          gruplar: salon.gruplar || []
+        }));
+        
+        salonlarGuncelle(guncellenmisSalonlar);
+        console.log('✅ Salonlar listesi güncellendi:', guncellenmisSalonlar.length, 'salon');
+      }
+
       // CRITICAL: Salon objesinde masalar array'i eksikse, tumSalonlar'dan al
       if (yerlestirmeFormatinda.salon && (!yerlestirmeFormatinda.salon.masalar || yerlestirmeFormatinda.salon.masalar.length === 0)) {
         // İlk salonu bul ve masalarını al

@@ -11,7 +11,7 @@ class KelebekDatabase extends Dexie {
     // Veritabanı şeması tanımları
     this.version(1).stores({
       // Planlar tablosu
-      plans: '++id, name, date, totalStudents, salonCount, data, createdAt, updatedAt',
+      plans: '++id, name, date, totalStudents, salonCount, sinavTarihi, sinavSaati, sinavDonemi, donem, data, createdAt, updatedAt',
       
       // Öğrenciler tablosu (plan bazlı)
       students: '++id, planId, name, surname, number, class, gender, masaNumarasi, salonId, isPlaced',
@@ -56,6 +56,10 @@ class KelebekDatabase extends Dexie {
         date: planData.date,
         totalStudents: planData.totalStudents,
         salonCount: planData.salonCount,
+        sinavTarihi: planData.sinavTarihi || null,
+        sinavSaati: planData.sinavSaati || null,
+        sinavDonemi: planData.sinavDonemi || null,
+        donem: planData.donem || null,
         data: planData.data
       };
       
@@ -77,6 +81,10 @@ class KelebekDatabase extends Dexie {
             date: planData.date,
             totalStudents: planData.totalStudents,
             salonCount: planData.salonCount,
+            sinavTarihi: planData.sinavTarihi || null,
+            sinavSaati: planData.sinavSaati || null,
+            sinavDonemi: planData.sinavDonemi || null,
+            donem: planData.donem || null,
             data: planData.data
           };
           

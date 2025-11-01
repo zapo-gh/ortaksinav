@@ -270,6 +270,12 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
                             <HistoryIcon sx={{ fontSize: '0.875rem', verticalAlign: 'middle', mr: 0.5 }} />
                             {formatDate(plan.date || plan.createdAt)}
                           </Typography>
+                          {plan.sinavTarihi && (
+                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                              📅 {new Date(plan.sinavTarihi).toLocaleDateString('tr-TR')}
+                              {plan.sinavSaati && ` • 🕐 ${plan.sinavSaati}`}
+                            </Typography>
+                          )}
                         </Box>
                       }
                     />
