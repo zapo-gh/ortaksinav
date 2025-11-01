@@ -32,9 +32,36 @@ npm start # geliştirme
 - Otomatik temizlik: Uygulama açılışında boş/geçici planlar temizlenir.
 
 ## 4) Yayın (Deploy)
-1. `npm run build`
-2. Çıktıyı (`build/`) static host’a (Firebase Hosting, Netlify, Vercel, Nginx) yükleyin.
-3. CDN/Proxy’de `Cache-Control: public, max-age=31536000, immutable` (hash’li dosyalar) önerilir.
+
+### **🔥 Firebase Hosting (ÖNERİLEN)**
+```bash
+# Build
+npm run build
+
+# Deploy
+firebase deploy --only hosting
+```
+
+✅ **Site Hazır:** https://ortak-sinav.web.app
+
+**Detaylı Rehber:** `FIREBASE_DEPLOY_GUIDE.md`
+
+### **🟣 Vercel**
+```bash
+vercel --prod
+```
+
+**Detaylı Rehber:** `VERCEL_ENV_VAR_STEPS.md`
+
+### **🟢 Netlify**
+```bash
+netlify deploy --prod
+```
+
+**Detaylı Rehber:** `NETLIFY_DEPLOYMENT_GUIDE.md`
+
+### **CDN/Proxy Ayarları**
+CDN/Proxy’de `Cache-Control: public, max-age=31536000, immutable` (hash’li dosyalar) önerilir.
 
 ## 5) Baskı/Çıktı İpuçları
 - Salon İmza Listesi, Sınıf Listeleri ve Salon Planı yazdırma için sayfa kenar boşlukları “None”/“Minimum” seçilmelidir.
