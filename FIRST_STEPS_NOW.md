@@ -5,39 +5,58 @@
 
 ---
 
+## 🎯 HANGI PLATFORM KULLANIYORSUN?
+
+### **🟣 Vercel Kullananlar**
+→ **VERCEL_FIRST_STEPS.md** dosyasına git!
+
+### **🟢 Netlify Kullananlar**
+→ Aşağıdaki adımları takip et!
+
+---
+
 ## ⚡ HIZLI ÇÖZÜM (2 DAKİKA)
 
-### **1. Netlify'a Git**
-https://app.netlify.com
+### **🟣 VERCEL**
+1. https://vercel.com/dashboard
+2. Project seç → **Settings** → **Environment Variables**
+3. **"Add New"** → Key: `REACT_APP_DISABLE_FIREBASE`, Value: `false`
+4. **Deployments** → En üstteki → **⋯** → **"Redeploy"**
 
-### **2. Environment Variable Ekle**
-1. Site'ı seç
-2. Site settings → **Environment variables**
-3. **"Add a variable"** tıkla
-4. **Key:** `REACT_APP_DISABLE_FIREBASE`
-5. **Value:** `false`
-6. Save
+### **🟢 NETLIFY**
+1. https://app.netlify.com
+2. Site seç → **Site settings** → **Environment variables**
+3. **"Add a variable"** → Key: `REACT_APP_DISABLE_FIREBASE`, Value: `false`
+4. **Deploys** → **"Trigger deploy"** → **"Deploy site"**
 
-### **3. REDEPLOY Yap**
-1. Deploys tab
-2. **"Trigger deploy"** → **"Deploy site"**
+---
 
-### **4. Test Et**
-1. Site'e git
-2. F12 → Console
-3. "🔥 Firebase App initialized" görünüyor mu?
-4. Bir plan kaydet
-5. Telefondan gir, plan görünüyor mu?
+## ✅ TEST (HER İKİ PLATFORM)
+
+1. Deploy tamamlandıktan sonra (2-5 dakika)
+2. Site'e git
+3. F12 → Console
+4. "🔥 Firebase App initialized" görünüyor mu?
+5. Bir plan kaydet
+6. Telefondan gir, plan görünüyor mu?
 
 ---
 
 ## 📄 DETAYLI REHBERLER
 
+### **🟣 Vercel Kullananlar**
+- **VERCEL_FIRST_STEPS.md** - Hızlı başlangıç
+- **VERCEL_ENV_VAR_STEPS.md** - Adım adım detaylı rehber
+
+### **🟢 Netlify Kullananlar**
+- **NETLIFY_ENV_VAR_STEPS.md** - Adım adım detaylı rehber
 - **FIREBASE_NETLIFY_FIX.md** - Detaylı çözüm adımları
 - **NETLIFY_DEPLOYMENT_GUIDE.md** - Deployment guide
+
+### **Her İkisi için**
 - **FIREBASE_TROUBLESHOOTING.md** - Troubleshooting
 
 ---
 
-**Son Güncelleme:** 2025-10-31
+**Son Güncelleme:** 2025-11-01
 

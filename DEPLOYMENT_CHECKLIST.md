@@ -74,9 +74,43 @@ npx serve -s build
 # http://localhost:3000
 ```
 
-### **4. Deploy to Netlify**
+### **4. Deploy Platform Seç**
 
-#### **Option A: GitHub Actions (Önerilen) 🚀**
+#### **🟣 Vercel (ÖNERİLEN)**
+
+**Option 1: Vercel CLI (Hızlı)**
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# Deploy
+vercel --prod
+
+# Follow prompts to:
+# 1. Link your project (if first time)
+# 2. Overwrite settings? No (use existing)
+```
+
+**Option 2: Vercel Dashboard**
+1. Go to https://vercel.com/dashboard
+2. **"Add New Project"**
+3. Import from GitHub
+4. Configure:
+   - **Framework Preset:** Create React App
+   - **Build Command:** `npm run build`
+   - **Output Directory:** `build`
+   - **Environment variables:**
+     - `REACT_APP_DISABLE_FIREBASE=false`
+     - `REACT_APP_DEBUG=false`
+     - `REACT_APP_VERSION=2.1`
+
+**Detaylı rehber:** `VERCEL_ENV_VAR_STEPS.md`
+
+---
+
+#### **🟢 Netlify**
+
+**Option A: GitHub Actions (Önerilen) 🚀**
 ✅ Workflow dosyası hazır: `.github/workflows/deploy-netlify.yml`
 
 **Adım adım:**
@@ -92,7 +126,7 @@ git push origin main
 
 **Detaylı rehber:** `NETLIFY_DEPLOYMENT_GUIDE.md`
 
-#### **Option B: Netlify CLI**
+**Option B: Netlify CLI**
 ```bash
 # Install Netlify CLI
 npm install -g netlify-cli
@@ -106,7 +140,7 @@ netlify deploy --prod
 # 3. Set build command: npm run build
 ```
 
-#### **Option C: Netlify Dashboard**
+**Option C: Netlify Dashboard**
 1. Go to https://app.netlify.com
 2. Create new site → Deploy manually
 3. Drag `build/` folder
@@ -116,6 +150,12 @@ netlify deploy --prod
    - **Environment variables:**
      - `REACT_APP_DISABLE_FIREBASE=false`
      - `REACT_APP_DEBUG=false`
+
+**Detaylı rehber:** `NETLIFY_ENV_VAR_STEPS.md`
+
+---
+
+#### **🔥 Firebase Hosting**
 
 ### **5. Deploy to Firebase**
 
