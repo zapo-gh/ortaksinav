@@ -401,18 +401,17 @@ const AnaSayfaContent = React.memo(() => {
       // Plan verisini hazırla - Ayarları derin kopyala (referans sorununu önlemek için)
       const ayarlarKopya = JSON.parse(JSON.stringify(ayarlar || {}));
       
+      // Salonlar listesini ayarlardan kaldır (sistemde zaten kayıtlı olduğu için kaydetmeye gerek yok)
+      const { kayitliSalonlar, ...ayarlarKopyaTemiz } = ayarlarKopya;
+      
       const planData = {
         salon: yerlestirmeSonucu.salon,
         tumSalonlar: yerlestirmeSonucu.tumSalonlar,
         kalanOgrenciler: yerlestirmeSonucu.kalanOgrenciler,
         yerlesilemeyenOgrenciler: yerlestirmeSonucu.yerlesilemeyenOgrenciler,
         istatistikler: yerlestirmeSonucu.istatistikler,
-        // Ayarlar bilgilerini de kaydet (dersler ve salonlar listesi ayarlar içinde yer alıyor)
-        ayarlar: {
-          ...ayarlarKopya,
-          // Salonlar listesini de kaydet (salon ayarları için)
-          kayitliSalonlar: salonlar || []
-        }
+        // Ayarlar bilgilerini de kaydet (sadece dersler, salonlar listesi kaydedilmez)
+        ayarlar: ayarlarKopyaTemiz
       };
       
       // DEBUG: Sınav bilgilerini kontrol et
@@ -552,59 +551,14 @@ const AnaSayfaContent = React.memo(() => {
         istatistikler: planData.istatistikler
       };
 
-      // Ayarlar ve dersler bilgilerini yükle
+      // Ayarlar ve dersler bilgilerini yükle (salonlar listesi değiştirilmez)
       if (planData.ayarlar) {
-        ayarlarGuncelle(planData.ayarlar);
+        // Salonlar listesini ayarlardan kaldır (sistemde zaten kayıtlı olduğu için güncellemeye gerek yok)
+        const { kayitliSalonlar, ...ayarlarTemiz } = planData.ayarlar;
+        ayarlarGuncelle(ayarlarTemiz);
       }
 
-      // Salonlar listesini güncelle
-      // ÖNCE: Plan içindeki kayıtlı salonlar listesini kullan (eğer varsa)
-      if (planData.ayarlar && planData.ayarlar.kayitliSalonlar && planData.ayarlar.kayitliSalonlar.length > 0) {
-        // Plan kaydedilirken salonlar listesi kaydedilmişse, onu kullan
-        salonlarGuncelle(planData.ayarlar.kayitliSalonlar);
-        console.log('✅ Salonlar listesi plan kayıtlarından yüklendi:', planData.ayarlar.kayitliSalonlar.length, 'salon');
-      } else if (planData.tumSalonlar && planData.tumSalonlar.length > 0) {
-        // Eğer kayıtlı salonlar listesi yoksa, tumSalonlar'dan oluştur
-        // Mevcut salonlar listesini koru ve plan içindeki salonlarla birleştir
-        const mevcutSalonlar = salonlar || [];
-        const planSalonlari = planData.tumSalonlar;
-        
-        // Plan içindeki salonları mevcut salonlarla birleştir
-        const guncellenmisSalonlar = planSalonlari.map(planSalon => {
-          // Mevcut salonlar listesinde bu salon var mı kontrol et
-          const mevcutSalon = mevcutSalonlar.find(s => (s.id || s.salonId) === (planSalon.id || planSalon.salonId));
-          
-          if (mevcutSalon) {
-            // Mevcut salonu kullan ama plan'dan gelen bazı bilgileri güncelle
-            return {
-              ...mevcutSalon,
-              salonAdi: planSalon.salonAdi || planSalon.ad || mevcutSalon.salonAdi,
-              ad: planSalon.salonAdi || planSalon.ad || mevcutSalon.ad,
-              kapasite: planSalon.kapasite || mevcutSalon.kapasite,
-              siraDizilimi: planSalon.siraDizilimi || mevcutSalon.siraDizilimi,
-              aktif: mevcutSalon.aktif !== undefined ? mevcutSalon.aktif : true
-            };
-          } else {
-            // Mevcut salonlar listesinde yoksa, plan'dan oluştur
-            return {
-              id: planSalon.id || planSalon.salonId,
-              salonId: planSalon.salonId || planSalon.id,
-              salonAdi: planSalon.salonAdi || planSalon.ad || 'İsimsiz Salon',
-              ad: planSalon.salonAdi || planSalon.ad || 'İsimsiz Salon',
-              kapasite: planSalon.kapasite || 0,
-              siraDizilimi: planSalon.siraDizilimi || { satir: 0, sutun: 0 },
-              aktif: true,
-              // Plan içindeki salon ayarlarını kullan (varsa)
-              siraTipi: planSalon.siraTipi || 'ikili',
-              grupSayisi: planSalon.grupSayisi || 1,
-              gruplar: planSalon.gruplar || []
-            };
-          }
-        });
-        
-        salonlarGuncelle(guncellenmisSalonlar);
-        console.log('✅ Salonlar listesi tumSalonlar\'dan oluşturuldu:', guncellenmisSalonlar.length, 'salon');
-      }
+      // NOT: Salonlar listesi sistemde zaten kayıtlı olduğu için plan yükleme sırasında güncellenmez
 
       // CRITICAL: Salon objesinde masalar array'i eksikse, tumSalonlar'dan al
       if (yerlestirmeFormatinda.salon && (!yerlestirmeFormatinda.salon.masalar || yerlestirmeFormatinda.salon.masalar.length === 0)) {
