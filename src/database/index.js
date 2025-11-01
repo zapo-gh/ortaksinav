@@ -109,6 +109,32 @@ class DatabaseAdapter {
   }
 
   /**
+   * Tek plan getirme (getPlan)
+   */
+  async getPlan(planId) {
+    try {
+      // Firestore'da getPlan yok, direkt IndexedDB'den getPlan çağır
+      // IndexedDB'de getPlan metodu var ve daha spesifik
+      const indexedDB = await this.getIndexedDB();
+      return await indexedDB.getPlan(planId);
+    } catch (error) {
+      logger.error('❌ Plan getirme hatası:', error);
+      
+      // Hata durumunda loadPlan'ı dene
+      try {
+        const db = await this.getActiveDB();
+        if (db.loadPlan) {
+          return await db.loadPlan(planId);
+        }
+      } catch (fallbackError) {
+        logger.error('❌ Fallback loadPlan hatası:', fallbackError);
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
    * Tüm planları listele
    */
   async getAllPlans() {
