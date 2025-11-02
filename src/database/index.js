@@ -72,10 +72,10 @@ class DatabaseAdapter {
    */
   async savePlan(planData) {
     try {
-      // IndexedDB kullanıyoruz (Firestore devre dışı)
+      // Firestore birincil - veriyi sanitize et
+      const payload = this.sanitizeForFirestore(planData);
       const db = await this.getActiveDB();
-      // IndexedDB için sanitize gerekmez
-      return await db.savePlan(planData);
+      return await db.savePlan(payload);
     } catch (error) {
       logger.error('❌ Plan kaydetme hatası:', error);
       
