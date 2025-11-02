@@ -111,8 +111,19 @@ class PlanManager {
       console.log('💾 planManager: db.savePlan çağrılıyor...', {
         dbType: typeof db,
         hasSavePlan: typeof db?.savePlan === 'function',
-        dbConstructor: db?.constructor?.name
+        dbConstructor: db?.constructor?.name,
+        dbKeys: Object.keys(db || {}),
+        useFirestore: db?.useFirestore,
+        getDatabaseType: db?.getDatabaseType ? db.getDatabaseType() : 'N/A'
       });
+      
+      // DEBUG: DatabaseAdapter'ın çağrıldığından emin olmak için
+      if (db?.useFirestore !== undefined) {
+        console.log('✅ planManager: DatabaseAdapter kullanılıyor, useFirestore:', db.useFirestore);
+      } else {
+        console.warn('⚠️ planManager: DatabaseAdapter KULLANILMIYOR! Doğrudan IndexedDB kullanılıyor olabilir!');
+        console.warn('⚠️ db objesi:', db);
+      }
       
       const savedPlan = await db.savePlan(planPayload);
       
