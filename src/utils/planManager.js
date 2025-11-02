@@ -293,19 +293,24 @@ class PlanManager {
         throw new Error('Plan ID geçersiz: null, undefined veya boş string');
       }
       
-      // Dexie primary key number bekliyor, string ise number'a çevir
+      // Firestore ID'leri string, IndexedDB ID'leri number olabilir
+      // Her iki formatı da destekle
       let normalizedPlanId = planId;
       if (typeof planId === 'string') {
+        // String ID'yi kontrol et - Firestore ID'si mi (alfanumerik) yoksa sayısal string mi?
         const numId = parseInt(planId, 10);
-        if (!isNaN(numId)) {
+        if (!isNaN(numId) && String(numId) === planId) {
+          // Sayısal string ise (örn: "123"), number'a çevir (IndexedDB için)
           normalizedPlanId = numId;
         } else {
-          throw new Error(`Plan ID geçersiz format: "${planId}" (number'a çevrilemedi)`);
+          // Firestore ID'si (örn: "SYAMtaEPx9xyqU8TWWCy") - string olarak bırak
+          normalizedPlanId = planId;
         }
       } else if (typeof planId !== 'number') {
         throw new Error(`Plan ID geçersiz tip: ${typeof planId} (number veya string olmalı)`);
       }
       
+      // Veritabanından planı sil - hem string hem number ID'leri destekler
       await db.deletePlan(normalizedPlanId);
       console.log('✅ Plan silindi:', planId);
     } catch (error) {
