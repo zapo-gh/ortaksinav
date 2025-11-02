@@ -177,6 +177,27 @@ class DatabaseAdapter {
   }
 
   /**
+   * En son planı getir
+   */
+  async getLatestPlan() {
+    try {
+      const db = await this.getActiveDB();
+      return await db.getLatestPlan();
+    } catch (error) {
+      logger.error('❌ En son plan yükleme hatası:', error);
+      
+      if (this.useFirestore) {
+        logger.info('🔄 Firestore hatası, IndexedDB\'ye geçiliyor...');
+        this.useFirestore = false;
+        const indexedDB = await this.getIndexedDB();
+        return await indexedDB.getLatestPlan();
+      }
+      
+      return null;
+    }
+  }
+
+  /**
    * Plan silme
    */
   async deletePlan(planId) {

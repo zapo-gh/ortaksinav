@@ -86,7 +86,7 @@ class PlanManager {
       });
       
       // Veritabanına kaydet
-      const savedPlan = await db.savePlan({
+      const planPayload = {
         name: planName,
         date: new Date().toISOString(),
         totalStudents: cleanPlanData.totalStudents || 0,
@@ -97,9 +97,22 @@ class PlanManager {
         sinavDonemi: ayarlar.sinavDonemi !== undefined && ayarlar.sinavDonemi !== null && ayarlar.sinavDonemi !== '' ? ayarlar.sinavDonemi : null,
         donem: ayarlar.donem !== undefined && ayarlar.donem !== null && ayarlar.donem !== '' ? ayarlar.donem : null,
         data: cleanPlanData
+      };
+      
+      console.log('💾 planManager: Plan payload hazırlandı:', {
+        name: planPayload.name,
+        totalStudents: planPayload.totalStudents,
+        salonCount: planPayload.salonCount,
+        hasData: !!planPayload.data,
+        dataKeys: planPayload.data ? Object.keys(planPayload.data) : []
       });
       
-      console.log('✅ Plan başarıyla kaydedildi:', savedPlan);
+      const savedPlan = await db.savePlan(planPayload);
+      
+      console.log('✅ planManager: Plan başarıyla kaydedildi:', savedPlan);
+      console.log('✅ planManager: Kaydedilen plan ID tipi:', typeof savedPlan);
+      console.log('✅ planManager: Kaydedilen plan ID değeri:', savedPlan);
+      
       return savedPlan;
       
     } catch (error) {

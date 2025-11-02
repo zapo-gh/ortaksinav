@@ -293,6 +293,86 @@ class FirestoreClient {
   }
 
   /**
+   * En son planı getir
+   */
+  async getLatestPlan() {
+    const disabledResult = this._handleDisabledFirebase('getLatestPlan', null);
+    if (disabledResult) return disabledResult;
+    
+    try {
+      logger.debug('📥 Firestore: En son plan yükleniyor...');
+      
+      const plansRef = collection(this.db, 'plans');
+      const q = query(plansRef);
+      const plansSnap = await getDocs(q);
+      
+      const plans = [];
+      plansSnap.forEach(doc => {
+        const planData = doc.data();
+        // Test Plan'ları filtrele
+        const planName = String(planData?.name || '').trim();
+        const lowerName = planName.toLowerCase();
+        if (planName === 'Test Plan' || 
+            planName === 'Valid Plan' ||
+            lowerName.includes('test plan') ||
+            lowerName.includes('valid plan')) {
+          return; // Bu planı atla
+        }
+        
+        plans.push({
+          id: doc.id,
+          ...planData
+        });
+      });
+      
+      // Client-side sıralama
+      if (plans.length > 0) {
+        plans.sort((a, b) => {
+          let dateA, dateB;
+          
+          if (a.updatedAt?.toMillis) {
+            dateA = a.updatedAt.toMillis();
+          } else if (a.createdAt?.toMillis) {
+            dateA = a.createdAt.toMillis();
+          } else if (a.date) {
+            dateA = new Date(a.date).getTime();
+          } else {
+            dateA = 0;
+          }
+          
+          if (b.updatedAt?.toMillis) {
+            dateB = b.updatedAt.toMillis();
+          } else if (b.createdAt?.toMillis) {
+            dateB = b.createdAt.toMillis();
+          } else if (b.date) {
+            dateB = new Date(b.date).getTime();
+          } else {
+            dateB = 0;
+          }
+          
+          return dateB - dateA; // Yeni tarihler önce
+        });
+        
+        // En son planı al
+        const latestPlan = plans[0];
+        
+        // Plan detaylarını yükle (data alanı için loadPlan kullan)
+        if (latestPlan && latestPlan.id) {
+          const fullPlan = await this.loadPlan(latestPlan.id);
+          logger.debug('✅ Firestore: En son plan yüklendi:', latestPlan.name);
+          return fullPlan;
+        }
+      }
+      
+      logger.debug('⚠️ Firestore: Plan bulunamadı');
+      return null;
+    } catch (error) {
+      logger.error('❌ Firestore: En son plan yükleme hatası:', error);
+      return null;
+    }
+  }
+
+  /**
    * Tüm planları listele
    */
   async getAllPlans() {
