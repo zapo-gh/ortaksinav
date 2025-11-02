@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import logger from '../utils/logger';
+import { storageOptimizer } from '../utils/storageOptimizer';
 
 // localStorage yardımcı fonksiyonları (sıkıştırmasız)
 const loadFromStorage = (key, defaultValue) => {
@@ -12,37 +13,40 @@ const loadFromStorage = (key, defaultValue) => {
   }
 };
 
-const saveToStorage = async (key, value) => {
+// Gerçek kaydetme fonksiyonu (optimizer tarafından çağrılır)
+const _saveToStorage = async (key, value) => {
   try {
     // Lazy import db
     const { default: db } = await import('../database');
     
-    // IndexedDB'ye kaydet
+    // IndexedDB'ye kaydet (localStorage sadece fallback - daha az kullan)
     if (key === 'exam_ogrenciler') {
       await db.saveStudents(value);
-      // localStorage yedeği
-      try { localStorage.setItem('exam_ogrenciler', JSON.stringify(value)); } catch (e) { logger.debug('localStorage mirror failed (exam_ogrenciler):', e); }
+      // localStorage yedeği - sadece hata durumunda
+      // try { localStorage.setItem('exam_ogrenciler', JSON.stringify(value)); } catch (e) { logger.debug('localStorage mirror failed (exam_ogrenciler):', e); }
     } else if (key === 'exam_ayarlar') {
       await db.saveSettings(value);
-      try { localStorage.setItem('exam_ayarlar', JSON.stringify(value)); } catch (e) { logger.debug('localStorage mirror failed (exam_ayarlar):', e); }
+      // try { localStorage.setItem('exam_ayarlar', JSON.stringify(value)); } catch (e) { logger.debug('localStorage mirror failed (exam_ayarlar):', e); }
     } else if (key === 'exam_salonlar') {
       await db.saveSalons(value);
-      try { localStorage.setItem('exam_salonlar', JSON.stringify(value)); } catch (e) { logger.debug('localStorage mirror failed (exam_salonlar):', e); }
+      // try { localStorage.setItem('exam_salonlar', JSON.stringify(value)); } catch (e) { logger.debug('localStorage mirror failed (exam_salonlar):', e); }
     } else if (key === 'exam_yerlestirme') {
       // Değer boş/null ise kaydetmeyi atla
       if (!value) {
         logger.debug('ℹ️ Yerleştirme sonucu boş, veritabanına kaydetme atlandı');
+        return; // Erken çıkış
       } else {
         // Firestore/IndexedDB: Yerleştirme planını veritabanına kaydet
         await db.savePlan(value);
         logger.debug('✅ Yerleştirme sonucu veritabanına kaydedildi (Firestore/IndexedDB)');
       }
-      try { localStorage.setItem('exam_yerlestirme', JSON.stringify(value)); } catch (e) { logger.debug('localStorage mirror failed (exam_yerlestirme):', e); }
+      // localStorage yedeği - sadece hata durumunda
+      // try { localStorage.setItem('exam_yerlestirme', JSON.stringify(value)); } catch (e) { logger.debug('localStorage mirror failed (exam_yerlestirme):', e); }
     } else if (key === 'exam_aktif_tab') {
+      // Sadece localStorage (basit string)
       try { localStorage.setItem('exam_aktif_tab', JSON.stringify(value)); } catch (e) { logger.debug('localStorage mirror failed (exam_aktif_tab):', e); }
     } else {
       // Diğer veriler için normal kayıt
-      // LocalStorage yerine veritabanı adapter'ını kullanmaya devam edelim
       logger.debug(`✅ ${key} veritabanına kaydedildi (adapter)`);
     }
   } catch (error) {
@@ -52,10 +56,20 @@ const saveToStorage = async (key, value) => {
     if (error.name === 'QuotaExceededError') {
       logger.info('🧹 Quota hatası - eski veriler temizleniyor...');
       // Firestore/IndexedDB kullanıldığı için localStorage temizlik/tekrar deneme yapmıyoruz
-    } else {
-      // Fallback localStorage devre dışı (quota sorunlarını önlemek için)
     }
   }
+};
+
+// Optimize edilmiş saveToStorage - debouncing ve değişiklik kontrolü ile
+const saveToStorage = async (key, value, immediate = false) => {
+  // Acil durumlar için (örneğin plan kaydetme)
+  if (immediate) {
+    await storageOptimizer.immediateSave(key, value, _saveToStorage);
+    return;
+  }
+
+  // Normal durumlar için debounced save
+  await storageOptimizer.debouncedSave(key, value, _saveToStorage);
 };
 
 // Firestore'dan veri yükleme fonksiyonu
@@ -472,7 +486,7 @@ const examReducer = (state, action) => {
         })(),
         yukleme: false
       };
-      saveToStorage('exam_yerlestirme', newState.yerlestirmeSonucu);
+      saveToStorage('exam_yerlestirme', newState.yerlestirmeSonucu, true); // immediate = true
       try { localStorage.setItem('exam_placement_index', JSON.stringify(newState.placementIndex)); } catch (e) { logger.debug('localStorage mirror failed (exam_placement_index):', e); }
       return newState;
       
@@ -511,8 +525,8 @@ const examReducer = (state, action) => {
         })()
       };
       
-      // CRITICAL: Hem localStorage hem IndexedDB'ye kaydet
-      saveToStorage('exam_yerlestirme', newState.yerlestirmeSonucu);
+      // CRITICAL: Hem localStorage hem IndexedDB'ye kaydet (yerleştirme sonucu acil kaydedilmeli)
+      saveToStorage('exam_yerlestirme', newState.yerlestirmeSonucu, true); // immediate = true
       try { localStorage.setItem('exam_placement_index', JSON.stringify(newState.placementIndex)); } catch (e) { logger.debug('localStorage mirror failed (exam_placement_index):', e); }
       
       logger.debug('🔄 Context: State güncellendi, salon:', !!newState.yerlestirmeSonucu?.salon);
@@ -526,7 +540,7 @@ const examReducer = (state, action) => {
         yerlestirmeSonucu: null,
         placementIndex: {}
       };
-      saveToStorage('exam_yerlestirme', newState.yerlestirmeSonucu);
+      saveToStorage('exam_yerlestirme', newState.yerlestirmeSonucu, true); // immediate = true (temizleme acil)
       try { localStorage.removeItem('exam_placement_index'); } catch (e) { logger.debug('localStorage remove failed (exam_placement_index):', e); }
       return newState;
       
@@ -965,3 +979,4 @@ export const useExam = () => {
 };
 
 export default ExamContext;
+
