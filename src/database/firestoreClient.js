@@ -68,6 +68,11 @@ class FirestoreClient {
         date: sanitizedPlanData?.date || null,
         totalStudents: sanitizedPlanData?.totalStudents || null,
         salonCount: sanitizedPlanData?.salonCount || null,
+        // Sınav bilgilerini metadata'ya ekle
+        sinavTarihi: sanitizedPlanData?.sinavTarihi || null,
+        sinavSaati: sanitizedPlanData?.sinavSaati || null,
+        sinavDonemi: sanitizedPlanData?.sinavDonemi || null,
+        donem: sanitizedPlanData?.donem || null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       };

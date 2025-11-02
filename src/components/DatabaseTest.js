@@ -44,10 +44,8 @@ const DatabaseTest = () => {
       // Gereksiz test planları Firestore'da birikmesin diye test plan kaydetme özelliği kapatıldı
       addTestResult('Save Plan', 'skipped', 'Plan kaydetme testi atlandı (gereksiz test planı oluşturmayı önlemek için)');
 
-      // Test 3: Plan yükleme
-      addTestResult('Load Plan', 'running', 'Plan yükleme test ediliyor...');
-      const loadedPlan = await db.getPlan(savedPlan);
-      addTestResult('Load Plan', 'success', 'Plan başarıyla yüklendi', loadedPlan);
+      // Test 3: Plan yükleme - DEVRE DIŞI (plan kaydetme olmadan plan yükleme test edilemez)
+      addTestResult('Load Plan', 'skipped', 'Plan yükleme testi atlandı (plan kaydetme devre dışı olduğu için)');
 
       // Test 4: Öğrenci kaydetme
       addTestResult('Save Students', 'running', 'Öğrenci kaydetme test ediliyor...');
