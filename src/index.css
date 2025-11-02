@@ -60,6 +60,9 @@ code {
   body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    font-family: 'Segoe UI', 'Arial', 'Helvetica', 'Roboto', sans-serif !important;
+    -webkit-font-feature-settings: normal !important;
+    font-feature-settings: normal !important;
   }
   
   /* Hide browser headers and footers */
@@ -72,6 +75,7 @@ code {
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    font-family: 'Segoe UI', 'Arial', 'Helvetica', 'Roboto', sans-serif !important;
   }
   
   /* Hide all pseudo-elements */

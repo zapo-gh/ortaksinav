@@ -1468,49 +1468,63 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
         fontSize: '1.25rem',
         fontWeight: 600,
         color: 'primary.main',
-        pb: 1
+        pb: 1,
+        pt: 3,
+        px: 3
       }}>
         Manuel Öğrenci Ekleme
       </DialogTitle>
-      <DialogContent sx={{ py: 2 }}>
-        <Grid container spacing={2}>
+      <DialogContent sx={{ pt: 5, pb: 3, px: 3, overflow: 'visible' }}>
+        <Grid container spacing={3}>
           <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
-              label="Ad"
+              label="Ad *"
               value={manuelOgrenci.ad}
               onChange={handleAdChange}
               required
               variant="outlined"
-              size="small"
+              size="medium"
               error={!!validationErrors?.ad}
               helperText={validationErrors?.ad}
               inputProps={{ maxLength: 30 }}
+              InputLabelProps={{
+                sx: { 
+                  backgroundColor: 'white',
+                  px: 0.5
+                }
+              }}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
-              label="Soyad"
+              label="Soyad *"
               value={manuelOgrenci.soyad}
               onChange={handleSoyadChange}
               required
               variant="outlined"
-              size="small"
+              size="medium"
               error={!!validationErrors?.soyad}
               helperText={validationErrors?.soyad}
               inputProps={{ maxLength: 30 }}
+              InputLabelProps={{
+                sx: { 
+                  backgroundColor: 'white',
+                  px: 0.5
+                }
+              }}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
-              label="Öğrenci No"
+              label="Öğrenci No *"
               value={manuelOgrenci.numara}
               onChange={handleNumaraChange}
               required
               variant="outlined"
-              size="small"
+              size="medium"
               type="number"
               error={!!validationErrors?.numara}
               helperText={validationErrors?.numara || validationWarnings?.numara}
@@ -1520,20 +1534,20 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
           <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
-              label="Sınıf"
+              label="Sınıf *"
               value={manuelOgrenci.sinif}
               onChange={handleSinifChange}
               required
               variant="outlined"
-              size="small"
+              size="medium"
               placeholder="Örn: 9-A, 10-B"
               error={!!validationErrors?.sinif}
               helperText={validationErrors?.sinif || validationWarnings?.sinif}
               inputProps={{ pattern: '^\\d+-[A-Z]$', maxLength: 5 }}
             />
           </Grid>
-          <Grid item xs={12}>
-            <FormControl fullWidth size="small">
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth size="medium">
               <InputLabel>Cinsiyet</InputLabel>
               <Select
                 value={manuelOgrenci.cinsiyet}
@@ -1548,9 +1562,10 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
         </Grid>
       </DialogContent>
       <DialogActions sx={{ 
-        justifyContent: 'center', 
+        justifyContent: 'flex-end', 
         gap: 2, 
         pb: 3,
+        pt: 2,
         px: 3
       }}>
         <Button
@@ -1559,9 +1574,10 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
           sx={{
             borderRadius: '8px',
             px: 3,
-            py: 1,
+            py: 1.25,
             textTransform: 'none',
-            fontWeight: 500
+            fontWeight: 500,
+            minWidth: 100
           }}
         >
           İptal
@@ -1573,10 +1589,11 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
           sx={{
             borderRadius: '8px',
             px: 3,
-            py: 1,
+            py: 1.25,
             textTransform: 'none',
             fontWeight: 500,
-            boxShadow: '0 2px 8px rgba(25, 118, 210, 0.3)'
+            boxShadow: '0 2px 8px rgba(25, 118, 210, 0.3)',
+            minWidth: 140
           }}
         >
           Öğrenci Ekle
