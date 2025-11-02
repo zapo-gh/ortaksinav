@@ -196,17 +196,26 @@ class FirestoreClient {
         const chunk = salons.slice(i, i + chunkSize);
         
         chunk.forEach((salon, chunkIndex) => {
-          // Salon ID'sini string'e çevir ve fallback ekle
+          // Salon ID'sini string'e çevir ve sıfırlarla doldur (sıralama için)
           // Firestore path segment'leri her zaman string olmalı
+          // String sıralamasında "01" < "02" < "10" şeklinde olacak (sayısal sıralama gibi)
           const salonIdRaw = salon.salonId || salon.id;
           let salonId = null;
           
           if (salonIdRaw !== undefined && salonIdRaw !== null) {
-            salonId = String(salonIdRaw);
+            // Sayısal değeri sıfırlarla doldurarak string'e çevir (2 haneli: "01", "02", ..., "10", "11")
+            // Eğer sayısal değilse direkt string'e çevir
+            const numValue = Number(salonIdRaw);
+            if (!isNaN(numValue) && isFinite(numValue) && numValue >= 0) {
+              // Sıfırlarla doldur (en fazla 3 haneli salon ID'leri için)
+              salonId = String(numValue).padStart(3, '0'); // "001", "002", "010", "100"
+            } else {
+              salonId = String(salonIdRaw);
+            }
           } else {
-            // Fallback: index'e dayalı ID oluştur
+            // Fallback: index'e dayalı ID oluştur (sıfırlarla doldurulmuş)
             const globalIndex = i + chunkIndex;
-            salonId = `salon_${globalIndex}`;
+            salonId = String(globalIndex).padStart(3, '0'); // "000", "001", "002", ...
             console.warn(`⚠️ Firestore: Salon ID bulunamadı, fallback ID kullanılıyor: ${salonId}`, salon);
           }
           
