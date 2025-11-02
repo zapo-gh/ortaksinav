@@ -110,34 +110,30 @@ const loadFromFirestore = async () => {
       console.log('✅ Yerleştirme sonucu en son plandan yüklendi');
     }
     
-    // Firestore'dan veri gelmişse onu kullan (birincil veritabanı)
-    if (firestoreOgrenciler && firestoreOgrenciler.length > 0) {
-      console.log('✅ Firestore\'dan öğrenciler yüklendi:', firestoreOgrenciler.length, 'öğrenci');
-      return {
-        ogrenciler: firestoreOgrenciler,
-        ayarlar: firestoreAyarlar || {
-          sinavAdi: '',
-          sinavTarihi: '',
-          sinavSaati: '',
-          dersler: []
-        },
-        salonlar: firestoreSalonlar?.length > 0 ? firestoreSalonlar : [],
-        yerlestirmeSonucu: yerlestirmeSonucu
-      };
-    }
+    // Firestore'dan TÜM mevcut verileri kullan (birincil veritabanı)
+    // Öğrenci, salon, ayar verilerinden hangisi varsa onları kullan
+    const hasAnyFirestoreData = 
+      (firestoreOgrenciler && firestoreOgrenciler.length > 0) ||
+      (firestoreSalonlar && firestoreSalonlar.length > 0) ||
+      (firestoreAyarlar && Object.keys(firestoreAyarlar).length > 0);
     
-    // Firestore'da öğrenci yoksa ama ayarlar/salonlar varsa onları kullan
-    if ((firestoreAyarlar && Object.keys(firestoreAyarlar).length > 0) || (firestoreSalonlar && firestoreSalonlar.length > 0)) {
-      console.log('⚠️ Firestore\'da öğrenci yok ama ayarlar/salonlar var, onlar yükleniyor');
+    if (hasAnyFirestoreData) {
+      console.log('✅ Firestore\'dan veriler yükleniyor:', {
+        ogrenciler: firestoreOgrenciler?.length || 0,
+        salonlar: firestoreSalonlar?.length || 0,
+        ayarlar: firestoreAyarlar ? Object.keys(firestoreAyarlar).length : 0
+      });
+      
       return {
-        ogrenciler: [],
-        ayarlar: firestoreAyarlar || {
+        // Firestore'dan hangi veriler varsa onları kullan, yoksa boş array/object
+        ogrenciler: firestoreOgrenciler && firestoreOgrenciler.length > 0 ? firestoreOgrenciler : [],
+        salonlar: firestoreSalonlar && firestoreSalonlar.length > 0 ? firestoreSalonlar : [],
+        ayarlar: firestoreAyarlar && Object.keys(firestoreAyarlar).length > 0 ? firestoreAyarlar : {
           sinavAdi: '',
           sinavTarihi: '',
           sinavSaati: '',
           dersler: []
         },
-        salonlar: firestoreSalonlar?.length > 0 ? firestoreSalonlar : [],
         yerlestirmeSonucu: yerlestirmeSonucu
       };
     }
