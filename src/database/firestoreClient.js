@@ -231,17 +231,9 @@ class FirestoreClient {
       
       const plansRef = collection(this.db, 'plans');
       
-      // orderBy('updatedAt', 'desc') index gerektirebilir, önce basit sorgu deneyelim
-      // Eğer hata verirse, orderBy olmadan sorgula
-      let q;
-      try {
-        q = query(plansRef, orderBy('updatedAt', 'desc'));
-      } catch (indexError) {
-        logger.warn('⚠️ Firestore index hatası, orderBy olmadan sorgulanıyor:', indexError);
-        // Index yoksa orderBy olmadan sorgula
-        q = query(plansRef);
-      }
-      
+      // orderBy kullanmadan tüm planları getir (index sorunlarını önlemek için)
+      // Client-side sıralama yapacağız
+      const q = query(plansRef);
       const plansSnap = await getDocs(q);
       
       const plans = [];
@@ -260,11 +252,32 @@ class FirestoreClient {
         });
       });
       
-      // Eğer orderBy kullanılamadıysa, client-side sırala
-      if (plans.length > 0 && !q._queryConstraints?.some(c => c.type === 'orderBy')) {
+      // Client-side sıralama (Firestore index gerektirmeyen yöntem)
+      if (plans.length > 0) {
         plans.sort((a, b) => {
-          const dateA = a.updatedAt?.toMillis?.() || new Date(a.date || a.createdAt || 0).getTime();
-          const dateB = b.updatedAt?.toMillis?.() || new Date(b.date || b.createdAt || 0).getTime();
+          // Firestore Timestamp'lerini handle et
+          let dateA, dateB;
+          
+          if (a.updatedAt?.toMillis) {
+            dateA = a.updatedAt.toMillis();
+          } else if (a.createdAt?.toMillis) {
+            dateA = a.createdAt.toMillis();
+          } else if (a.date) {
+            dateA = new Date(a.date).getTime();
+          } else {
+            dateA = 0;
+          }
+          
+          if (b.updatedAt?.toMillis) {
+            dateB = b.updatedAt.toMillis();
+          } else if (b.createdAt?.toMillis) {
+            dateB = b.createdAt.toMillis();
+          } else if (b.date) {
+            dateB = new Date(b.date).getTime();
+          } else {
+            dateB = 0;
+          }
+          
           return dateB - dateA; // Yeni tarihler önce
         });
       }
