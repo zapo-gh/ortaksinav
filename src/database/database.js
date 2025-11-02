@@ -50,14 +50,38 @@ class KelebekDatabase extends Dexie {
    */
   async savePlan(planData) {
     try {
-      // Test Plan ve Valid Plan kaydetmeyi engelle (Firestore kota sorununu önlemek için)
+      // TÜM TEST PLANLARINI ENGelle (Firestore kota sorununu önlemek için)
       const planName = String(planData?.name || '').trim();
       const lowerPlanName = planName.toLowerCase();
-      if (planName === 'Test Plan' || 
-          planName === 'Valid Plan' ||
-          lowerPlanName.includes('test plan') ||
-          lowerPlanName.includes('valid plan')) {
-        console.warn('⚠️ IndexedDB: Test/Valid Plan kaydetme engellendi (kota koruması):', planName);
+      
+      // Test plan isimleri listesi (genişletilmiş)
+      const testPlanNames = [
+        'test plan',
+        'valid plan',
+        'minimal plan',
+        'plan 1',
+        'plan 2',
+        'plan 3',
+        'plan 4',
+        'plan 5',
+        'test',
+        'geçici plan',
+        'temp plan',
+        'sample plan',
+        'demo plan'
+      ];
+      
+      // Tam eşleşme veya içerme kontrolü
+      const isTestPlan = testPlanNames.some(testName => 
+        planName === testName || 
+        planName.toLowerCase() === testName ||
+        lowerPlanName === testName ||
+        lowerPlanName.includes(testName) ||
+        testPlanNames.some(tpn => lowerPlanName.startsWith(tpn + ' ') || lowerPlanName.endsWith(' ' + tpn))
+      );
+      
+      if (isTestPlan) {
+        console.warn('⚠️ IndexedDB: Test Plan kaydetme engellendi (kota koruması):', planName);
         return null; // Kaydetme
       }
       
