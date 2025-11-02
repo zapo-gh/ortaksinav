@@ -3,7 +3,8 @@
  * Kaydetme ve yükleme işlemlerini standardize eder
  */
 
-import db from '../database';
+// DatabaseAdapter'ı import et (Firestore birincil, IndexedDB fallback)
+import db from '../database/index';
 
 class PlanManager {
   constructor() {
