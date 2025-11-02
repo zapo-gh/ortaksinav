@@ -404,11 +404,78 @@ const AnaSayfaContent = React.memo(() => {
       // Salonlar listesini ayarlardan kaldır (sistemde zaten kayıtlı olduğu için kaydetmeye gerek yok)
       const { kayitliSalonlar, ...ayarlarKopyaTemiz } = ayarlarKopya;
       
+      // KRITIK: Plan kaydedilirken güncel verilerle yerlestirmeSonucu'yu güncelle
+      // 1. Salon isimlerini güncelle (global salonlar listesinden)
+      const guncelTumSalonlar = (yerlestirmeSonucu.tumSalonlar || []).map(salon => {
+        // Global salonlar listesinden bu salonu bul
+        const guncelSalon = salonlar.find(s => s.id === salon.id || s.salonId === salon.salonId);
+        if (guncelSalon) {
+          // Güncel salon bilgileriyle güncelle (isim, kapasite vb.)
+          return {
+            ...salon,
+            ad: guncelSalon.ad || guncelSalon.salonAdi || salon.ad,
+            salonAdi: guncelSalon.salonAdi || guncelSalon.ad || salon.salonAdi,
+            kapasite: guncelSalon.kapasite || salon.kapasite,
+            siraDizilimi: guncelSalon.siraDizilimi || salon.siraDizilimi
+          };
+        }
+        return salon;
+      });
+      
+      // 2. Ana salonu güncelle
+      const guncelSalon = guncelTumSalonlar.find(s => 
+        s.id === yerlestirmeSonucu.salon?.id || 
+        s.salonId === yerlestirmeSonucu.salon?.salonId
+      ) || yerlestirmeSonucu.salon;
+      
+      // 3. Silinen öğrencileri yerleşmeyen öğrenciler listesinden kaldır
+      const mevcutOgrenciIdleri = new Set(ogrenciler.map(o => o.id));
+      const guncelYerlesilemeyenOgrenciler = (yerlestirmeSonucu.yerlesilemeyenOgrenciler || [])
+        .filter(ogrenci => mevcutOgrenciIdleri.has(ogrenci.id));
+      
+      // 4. Salon masalarındaki silinen öğrencileri temizle
+      const guncelSalonMasalar = (guncelSalon?.masalar || []).map(masa => {
+        if (masa.ogrenci && !mevcutOgrenciIdleri.has(masa.ogrenci.id)) {
+          // Öğrenci silinmişse masadan kaldır
+          return { ...masa, ogrenci: null };
+        }
+        return masa;
+      });
+      
+      const guncelSalonFinal = guncelSalon ? {
+        ...guncelSalon,
+        masalar: guncelSalonMasalar,
+        ogrenciler: guncelSalonMasalar
+          .filter(m => m.ogrenci)
+          .map(m => ({ ...m.ogrenci, masaNumarasi: m.masaNumarasi }))
+      } : guncelSalon;
+      
+      // 5. TumSalonlar içindeki masaları da güncelle
+      const guncelTumSalonlarFinal = guncelTumSalonlar.map(salon => {
+        if (salon.id === guncelSalonFinal?.id || salon.salonId === guncelSalonFinal?.salonId) {
+          return guncelSalonFinal;
+        }
+        // Diğer salonların masalarını da kontrol et
+        const guncelMasalar = (salon.masalar || []).map(masa => {
+          if (masa.ogrenci && !mevcutOgrenciIdleri.has(masa.ogrenci.id)) {
+            return { ...masa, ogrenci: null };
+          }
+          return masa;
+        });
+        return {
+          ...salon,
+          masalar: guncelMasalar,
+          ogrenciler: guncelMasalar
+            .filter(m => m.ogrenci)
+            .map(m => ({ ...m.ogrenci, masaNumarasi: m.masaNumarasi }))
+        };
+      });
+      
       const planData = {
-        salon: yerlestirmeSonucu.salon,
-        tumSalonlar: yerlestirmeSonucu.tumSalonlar,
-        kalanOgrenciler: yerlestirmeSonucu.kalanOgrenciler,
-        yerlesilemeyenOgrenciler: yerlestirmeSonucu.yerlesilemeyenOgrenciler,
+        salon: guncelSalonFinal,
+        tumSalonlar: guncelTumSalonlarFinal,
+        kalanOgrenciler: yerlestirmeSonucu.kalanOgrenciler || [],
+        yerlesilemeyenOgrenciler: guncelYerlesilemeyenOgrenciler,
         istatistikler: yerlestirmeSonucu.istatistikler,
         // Ayarlar bilgilerini de kaydet (sadece dersler, salonlar listesi kaydedilmez)
         ayarlar: ayarlarKopyaTemiz
