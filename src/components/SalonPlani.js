@@ -598,6 +598,15 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
       return null;
     }
     
+    // KRITIK: siraDizilimi kontrolü - eksikse varsayılan değerler ekle
+    if (!sinif.siraDizilimi || !sinif.siraDizilimi.satir || !sinif.siraDizilimi.sutun) {
+      console.warn('⚠️ SalonPlani: sinif.siraDizilimi eksik, varsayılan değerler kullanılıyor');
+      const kapasite = sinif.kapasite || 30;
+      sinif.siraDizilimi = sinif.siraDizilimi || {};
+      sinif.siraDizilimi.satir = sinif.siraDizilimi.satir || Math.ceil(Math.sqrt(kapasite)) || 6;
+      sinif.siraDizilimi.sutun = sinif.siraDizilimi.sutun || Math.ceil(kapasite / sinif.siraDizilimi.satir) || 5;
+    }
+    
     // Eğer sinif.masalar varsa, grup bazlı salon yapısını kullan
     if (sinif.masalar && sinif.masalar.length > 0) {
       // Masaları gruplara göre ayır

@@ -452,10 +452,31 @@ class PlanManager {
       planData.salon = planData.tumSalonlar[0];
     }
 
+    // KRITIK: Tüm salonların siraDizilimi'ni kontrol et ve eksikse ekle
+    // SalonPlani bileşeni siraDizilimi.satir ve siraDizilimi.sutun bekliyor
+    if (planData.salon && (!planData.salon.siraDizilimi || !planData.salon.siraDizilimi.satir || !planData.salon.siraDizilimi.sutun)) {
+      console.warn('⚠️ Ana salon siraDizilimi eksik, varsayılan değerler ekleniyor');
+      planData.salon.siraDizilimi = planData.salon.siraDizilimi || {};
+      planData.salon.siraDizilimi.satir = planData.salon.siraDizilimi.satir || Math.ceil(Math.sqrt(planData.salon.kapasite || 30)) || 6;
+      planData.salon.siraDizilimi.sutun = planData.salon.siraDizilimi.sutun || Math.ceil((planData.salon.kapasite || 30) / planData.salon.siraDizilimi.satir) || 5;
+    }
+
+    // TumSalonlar içindeki tüm salonların siraDizilimi'ni kontrol et
+    planData.tumSalonlar = planData.tumSalonlar.map(salon => {
+      if (!salon.siraDizilimi || !salon.siraDizilimi.satir || !salon.siraDizilimi.sutun) {
+        console.warn('⚠️ Salon siraDizilimi eksik, varsayılan değerler ekleniyor:', salon.salonAdi || salon.ad);
+        salon.siraDizilimi = salon.siraDizilimi || {};
+        salon.siraDizilimi.satir = salon.siraDizilimi.satir || Math.ceil(Math.sqrt(salon.kapasite || 30)) || 6;
+        salon.siraDizilimi.sutun = salon.siraDizilimi.sutun || Math.ceil((salon.kapasite || 30) / salon.siraDizilimi.satir) || 5;
+      }
+      return salon;
+    });
+
     console.log('✅ Plan verisi doğrulandı:', {
       salonVar: !!planData.salon,
       tumSalonlarSayisi: planData.tumSalonlar.length,
-      totalStudents: planData.totalStudents || 0
+      totalStudents: planData.totalStudents || 0,
+      salonSiraDizilimi: planData.salon?.siraDizilimi
     });
 
     // Debug: Plan verisinin detaylarını kontrol et

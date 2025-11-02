@@ -618,6 +618,29 @@ const AnaSayfaContent = React.memo(() => {
         istatistikler: planData.istatistikler
       };
 
+      // KRITIK: Salonların siraDizilimi'ni kontrol et ve eksikse ekle (SalonPlani bileşeni için gerekli)
+      if (yerlestirmeFormatinda.salon && (!yerlestirmeFormatinda.salon.siraDizilimi || !yerlestirmeFormatinda.salon.siraDizilimi.satir)) {
+        console.warn('⚠️ Ana salon siraDizilimi eksik, varsayılan değerler ekleniyor');
+        yerlestirmeFormatinda.salon.siraDizilimi = yerlestirmeFormatinda.salon.siraDizilimi || {};
+        const kapasite = yerlestirmeFormatinda.salon.kapasite || 30;
+        yerlestirmeFormatinda.salon.siraDizilimi.satir = yerlestirmeFormatinda.salon.siraDizilimi.satir || Math.ceil(Math.sqrt(kapasite)) || 6;
+        yerlestirmeFormatinda.salon.siraDizilimi.sutun = yerlestirmeFormatinda.salon.siraDizilimi.sutun || Math.ceil(kapasite / yerlestirmeFormatinda.salon.siraDizilimi.satir) || 5;
+      }
+
+      // TumSalonlar içindeki tüm salonların siraDizilimi'ni kontrol et
+      if (yerlestirmeFormatinda.tumSalonlar && Array.isArray(yerlestirmeFormatinda.tumSalonlar)) {
+        yerlestirmeFormatinda.tumSalonlar = yerlestirmeFormatinda.tumSalonlar.map(salon => {
+          if (!salon.siraDizilimi || !salon.siraDizilimi.satir || !salon.siraDizilimi.sutun) {
+            console.warn('⚠️ Salon siraDizilimi eksik, varsayılan değerler ekleniyor:', salon.salonAdi || salon.ad);
+            salon.siraDizilimi = salon.siraDizilimi || {};
+            const kapasite = salon.kapasite || 30;
+            salon.siraDizilimi.satir = salon.siraDizilimi.satir || Math.ceil(Math.sqrt(kapasite)) || 6;
+            salon.siraDizilimi.sutun = salon.siraDizilimi.sutun || Math.ceil(kapasite / salon.siraDizilimi.satir) || 5;
+          }
+          return salon;
+        });
+      }
+
       // Ayarlar ve dersler bilgilerini yükle (salonlar listesi değiştirilmez)
       if (planData.ayarlar) {
         // Salonlar listesini ayarlardan kaldır (sistemde zaten kayıtlı olduğu için güncellemeye gerek yok)
