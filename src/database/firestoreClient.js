@@ -33,7 +33,24 @@ import { DISABLE_FIREBASE } from '../config/firebaseConfig';
 class FirestoreClient {
   constructor() {
     this.db = db;
-    this.isDisabled = DISABLE_FIREBASE || db?.mock;
+    // DEBUG: Firestore durumunu kontrol et
+    const isMockDb = db?.mock === true;
+    this.isDisabled = DISABLE_FIREBASE || isMockDb;
+    
+    // DEBUG: Durum logları
+    logger.debug('🔥 FirestoreClient constructor:', {
+      DISABLE_FIREBASE,
+      dbIsMock: isMockDb,
+      isDisabled: this.isDisabled,
+      dbType: typeof db,
+      dbHasMock: 'mock' in (db || {})
+    });
+    
+    if (this.isDisabled) {
+      logger.warn('⚠️ Firestore DEVRE DIŞI - veriler Firestore\'a kaydedilmeyecek!');
+    } else {
+      logger.info('✅ Firestore AKTIF - veriler Firestore\'a kaydedilecek');
+    }
   }
 
   /**
@@ -41,7 +58,7 @@ class FirestoreClient {
    */
   _handleDisabledFirebase(operation, defaultValue = null) {
     if (this.isDisabled) {
-      logger.debug(`🔧 Firebase disabled - ${operation} skipped, using localStorage fallback`);
+      logger.warn(`🔧 Firebase disabled - ${operation} skipped, using localStorage fallback`);
       return Promise.resolve(defaultValue);
     }
     return null;
@@ -51,8 +68,18 @@ class FirestoreClient {
    * Plan meta bilgilerini kaydet
    */
   async savePlan(planData) {
+    // DEBUG: Plan kaydetme başlangıcı
+    logger.info('💾 Firestore savePlan çağrıldı:', {
+      planName: planData?.name,
+      isDisabled: this.isDisabled,
+      dbIsMock: this.db?.mock
+    });
+    
     const disabledResult = this._handleDisabledFirebase('savePlan', 'mock-plan-id');
-    if (disabledResult) return disabledResult;
+    if (disabledResult) {
+      logger.warn('⚠️ Firestore devre dışı, plan kaydedilmeyecek!');
+      return disabledResult;
+    }
     
     try {
       // TÜM TEST PLANLARINI ENGelle (Firestore kota sorununu önlemek için)
@@ -140,7 +167,8 @@ class FirestoreClient {
         await this.saveUnplacedStudents(planId, planData.data.yerlesilemeyenOgrenciler);
       }
       
-      logger.debug('✅ Firestore: Plan kaydedildi:', planId);
+      logger.info('✅ Firestore: Plan kaydedildi:', planId);
+      logger.info('✅ Firestore: Plan kaydetme başarılı - Plan ID:', planId);
       return planId;
     } catch (error) {
       logger.error('❌ Firestore: Plan kaydetme hatası:', error);
@@ -415,11 +443,20 @@ class FirestoreClient {
    * Tüm öğrencileri getir
    */
   async getAllStudents() {
+    // DEBUG: Öğrenci yükleme başlangıcı
+    logger.info('📥 Firestore getAllStudents çağrıldı:', {
+      isDisabled: this.isDisabled,
+      dbIsMock: this.db?.mock
+    });
+    
     const disabledResult = this._handleDisabledFirebase('getAllStudents', []);
-    if (disabledResult) return disabledResult;
+    if (disabledResult) {
+      logger.warn('⚠️ Firestore devre dışı, öğrenciler yüklenmeyecek!');
+      return disabledResult;
+    }
     
     try {
-      logger.debug('📥 Firestore: Öğrenciler yükleniyor...');
+      logger.info('📥 Firestore: Öğrenciler yükleniyor...');
       
       const studentsRef = collection(this.db, 'students');
       const studentsSnap = await getDocs(studentsRef);
@@ -429,7 +466,10 @@ class FirestoreClient {
         students.push({ id: doc.id, ...doc.data() });
       });
       
-      logger.debug('✅ Firestore: Öğrenciler yüklendi:', students.length);
+      logger.info('✅ Firestore: Öğrenciler yüklendi:', students.length, 'öğrenci');
+      if (students.length > 0) {
+        logger.info('📋 İlk öğrenci:', students[0]);
+      }
       return students;
     } catch (error) {
       logger.error('❌ Firestore: Öğrenci yükleme hatası:', error);
@@ -529,21 +569,35 @@ class FirestoreClient {
    * Tüm salonları getir
    */
   async getAllSalons() {
+    // DEBUG: Salon yükleme başlangıcı
+    logger.info('📥 Firestore getAllSalons çağrıldı:', {
+      isDisabled: this.isDisabled,
+      dbIsMock: this.db?.mock
+    });
+    
     const disabledResult = this._handleDisabledFirebase('getAllSalons', []);
-    if (disabledResult) return disabledResult;
+    if (disabledResult) {
+      logger.warn('⚠️ Firestore devre dışı, salonlar yüklenmeyecek!');
+      return disabledResult;
+    }
     
     try {
-      logger.debug('📥 Firestore: Salonlar yükleniyor...');
+      logger.info('📥 Firestore: Salonlar yükleniyor...');
       
       const salonsRef = collection(this.db, 'salons');
       const salonsSnap = await getDocs(salonsRef);
+      
+      logger.info('📊 Firestore salonsSnap.size:', salonsSnap.size);
       
       const salons = [];
       salonsSnap.forEach(doc => {
         salons.push({ id: doc.id, ...doc.data() });
       });
       
-      logger.debug('✅ Firestore: Salonlar yüklendi:', salons.length);
+      logger.info('✅ Firestore: Salonlar yüklendi:', salons.length, 'salon');
+      if (salons.length > 0) {
+        logger.info('📋 İlk salon:', salons[0]);
+      }
       return salons;
     } catch (error) {
       logger.error('❌ Firestore: Salon yükleme hatası:', error);

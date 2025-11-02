@@ -34,6 +34,8 @@ if (DISABLE_FIREBASE) {
     console.log('🔥 Firebase App initialized:', app);
     console.log('🔥 Firestore DB initialized:', db);
     console.log('🔥 Firebase Config:', firebaseConfig);
+    console.log('🔥 Firestore DB mock durumu:', db?.mock);
+    console.log('🔥 DISABLE_FIREBASE:', DISABLE_FIREBASE);
   } catch (error) {
     console.error('❌ Firebase initialization failed:', error);
     console.log('🔧 Falling back to mock Firebase for development');

@@ -87,17 +87,36 @@ const loadFromFirestore = async () => {
     const { default: db } = await import('../database');
     
     // Firestore'dan verileri çek (birincil veritabanı)
+    console.log('📥 loadFromFirestore: Veriler yükleniyor...');
+    console.log('📥 loadFromFirestore: DB adapter:', {
+      useFirestore: db?.useFirestore,
+      getDatabaseType: db?.getDatabaseType ? db.getDatabaseType() : 'unknown'
+    });
+    
     const [firestoreOgrenciler, firestoreAyarlar, firestoreSalonlar, latestPlan] = await Promise.all([
-      db.getAllStudents().catch(() => []),
-      db.getSettings().catch(() => null),
-      db.getAllSalons().catch(() => []),
-      db.getLatestPlan().catch(() => null)
+      db.getAllStudents().catch((error) => {
+        console.error('❌ getAllStudents hatası:', error);
+        return [];
+      }),
+      db.getSettings().catch((error) => {
+        console.error('❌ getSettings hatası:', error);
+        return null;
+      }),
+      db.getAllSalons().catch((error) => {
+        console.error('❌ getAllSalons hatası:', error);
+        return [];
+      }),
+      db.getLatestPlan().catch((error) => {
+        console.error('❌ getLatestPlan hatası:', error);
+        return null;
+      })
     ]);
     
     console.log('📥 Firestore\'dan yüklenen veriler:', {
       ogrenciler: firestoreOgrenciler?.length || 0,
       ayarlar: firestoreAyarlar ? Object.keys(firestoreAyarlar).length : 0,
-      salonlar: firestoreSalonlar?.length || 0
+      salonlar: firestoreSalonlar?.length || 0,
+      latestPlan: latestPlan ? latestPlan.name : 'Yok'
     });
     console.log('🔍 Firestore\'dan yüklenen salonlar:', firestoreSalonlar?.map(s => s.ad || s.salonAdi || 'İsimsiz') || []);
     console.log('🔍 Firestore\'dan yüklenen en son plan:', latestPlan ? latestPlan.name : 'Yok');

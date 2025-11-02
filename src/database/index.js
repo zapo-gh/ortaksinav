@@ -72,10 +72,27 @@ class DatabaseAdapter {
    */
   async savePlan(planData) {
     try {
+      // DEBUG: Plan kaydetme başlangıcı
+      logger.info('💾 DatabaseAdapter savePlan çağrıldı:', {
+        planName: planData?.name,
+        useFirestore: this.useFirestore,
+        planDataKeys: Object.keys(planData || {})
+      });
+      
       // Firestore birincil - veriyi sanitize et
       const payload = this.sanitizeForFirestore(planData);
       const db = await this.getActiveDB();
-      return await db.savePlan(payload);
+      
+      logger.info('🔍 Aktif DB türü:', this.useFirestore ? 'Firestore' : 'IndexedDB');
+      logger.info('🔍 DB objesi:', {
+        type: typeof db,
+        hasSavePlan: typeof db?.savePlan === 'function',
+        isFirestore: db?.constructor?.name === 'FirestoreClient' || db?.isDisabled !== undefined
+      });
+      
+      const result = await db.savePlan(payload);
+      logger.info('✅ DatabaseAdapter savePlan başarılı:', result);
+      return result;
     } catch (error) {
       logger.error('❌ Plan kaydetme hatası:', error);
       
