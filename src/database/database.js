@@ -50,6 +50,17 @@ class KelebekDatabase extends Dexie {
    */
   async savePlan(planData) {
     try {
+      // Test Plan ve Valid Plan kaydetmeyi engelle (Firestore kota sorununu önlemek için)
+      const planName = String(planData?.name || '').trim();
+      const lowerPlanName = planName.toLowerCase();
+      if (planName === 'Test Plan' || 
+          planName === 'Valid Plan' ||
+          lowerPlanName.includes('test plan') ||
+          lowerPlanName.includes('valid plan')) {
+        console.warn('⚠️ IndexedDB: Test/Valid Plan kaydetme engellendi (kota koruması):', planName);
+        return null; // Kaydetme
+      }
+      
       console.log('💾 Plan verisi kaydediliyor...');
       const plan = {
         name: planData.name,
@@ -62,7 +73,7 @@ class KelebekDatabase extends Dexie {
         donem: planData.donem || null,
         data: planData.data
       };
-      
+
       const id = await this.plans.add(plan);
       console.log('✅ Plan veritabanına kaydedildi:', id);
       return id;
