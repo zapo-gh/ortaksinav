@@ -151,22 +151,28 @@ class PlanManager {
         throw new Error('Plan ID geçersiz: null, undefined veya boş string');
       }
       
-      // Dexie primary key number bekliyor, string ise number'a çevir
+      // Firestore ID'leri string, IndexedDB ID'leri number olabilir
+      // Her iki formatı da destekle
       let normalizedPlanId = planId;
       if (typeof planId === 'string') {
+        // String ID'yi kontrol et - Firestore ID'si mi (alfanumerik) yoksa sayısal string mi?
         const numId = parseInt(planId, 10);
-        if (!isNaN(numId)) {
+        if (!isNaN(numId) && String(numId) === planId) {
+          // Sayısal string ise (örn: "123"), number'a çevir (IndexedDB için)
           normalizedPlanId = numId;
+          console.log('📥 Plan ID sayısal string olarak algılandı, number\'a çevriliyor:', normalizedPlanId);
         } else {
-          throw new Error(`Plan ID geçersiz format: "${planId}" (number'a çevrilemedi)`);
+          // Firestore ID'si (örn: "SYAMtaEPx9xyqU8TWWCy") - string olarak bırak
+          normalizedPlanId = planId;
+          console.log('📥 Plan ID Firestore formatında (string), olduğu gibi kullanılıyor:', normalizedPlanId);
         }
       } else if (typeof planId !== 'number') {
         throw new Error(`Plan ID geçersiz tip: ${typeof planId} (number veya string olmalı)`);
       }
       
-      console.log('📥 Normalize edilmiş Plan ID:', normalizedPlanId);
+      console.log('📥 Normalize edilmiş Plan ID:', normalizedPlanId, '(tip:', typeof normalizedPlanId + ')');
       
-      // Veritabanından planı al
+      // Veritabanından planı al - hem string hem number ID'leri destekler
       const plan = await db.getPlan(normalizedPlanId);
       if (!plan) {
         throw new Error(`Plan bulunamadı (ID: ${normalizedPlanId})`);
