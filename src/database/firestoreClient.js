@@ -68,7 +68,12 @@ class FirestoreClient {
    * Plan meta bilgilerini kaydet
    */
   async savePlan(planData) {
-    // DEBUG: Plan kaydetme başlangıcı
+    // DEBUG: Plan kaydetme başlangıcı - Console'a da yaz
+    console.log('💾 Firestore savePlan çağrıldı:', {
+      planName: planData?.name,
+      isDisabled: this.isDisabled,
+      dbIsMock: this.db?.mock
+    });
     logger.info('💾 Firestore savePlan çağrıldı:', {
       planName: planData?.name,
       isDisabled: this.isDisabled,
@@ -77,6 +82,7 @@ class FirestoreClient {
     
     const disabledResult = this._handleDisabledFirebase('savePlan', 'mock-plan-id');
     if (disabledResult) {
+      console.warn('⚠️ Firestore devre dışı, plan kaydedilmeyecek!');
       logger.warn('⚠️ Firestore devre dışı, plan kaydedilmeyecek!');
       return disabledResult;
     }
@@ -167,6 +173,8 @@ class FirestoreClient {
         await this.saveUnplacedStudents(planId, planData.data.yerlesilemeyenOgrenciler);
       }
       
+      console.log('✅ Firestore: Plan kaydedildi:', planId);
+      console.log('✅ Firestore: Plan kaydetme başarılı - Plan ID:', planId);
       logger.info('✅ Firestore: Plan kaydedildi:', planId);
       logger.info('✅ Firestore: Plan kaydetme başarılı - Plan ID:', planId);
       return planId;

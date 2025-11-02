@@ -97,7 +97,7 @@ class KelebekDatabase extends Dexie {
         donem: planData.donem || null,
         data: planData.data
       };
-
+      
       const id = await this.plans.add(plan);
       console.log('✅ Plan veritabanına kaydedildi:', id);
       return id;

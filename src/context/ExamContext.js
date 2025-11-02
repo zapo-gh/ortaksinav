@@ -168,17 +168,17 @@ const loadFromFirestore = async () => {
       
       if (indexedDBOgrenciler && indexedDBOgrenciler.length > 0) {
         console.log('✅ IndexedDB\'den öğrenciler yüklendi (fallback):', indexedDBOgrenciler.length, 'öğrenci');
-        return {
+      return {
           ogrenciler: indexedDBOgrenciler,
           ayarlar: indexedDBAyarlar || {
-            sinavAdi: '',
-            sinavTarihi: '',
-            sinavSaati: '',
-            dersler: []
-          },
+          sinavAdi: '',
+          sinavTarihi: '',
+          sinavSaati: '',
+          dersler: []
+        },
           salonlar: indexedDBSalonlar?.length > 0 ? indexedDBSalonlar : [],
-          yerlestirmeSonucu: yerlestirmeSonucu
-        };
+        yerlestirmeSonucu: yerlestirmeSonucu
+      };
       }
     } catch (indexedDBError) {
       console.debug('IndexedDB fallback hatası:', indexedDBError);

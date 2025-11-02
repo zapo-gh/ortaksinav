@@ -174,14 +174,14 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
     <AppBar position="static" sx={{ bgcolor: 'primary.main', boxShadow: 2 }}>
       <Toolbar sx={{ position: 'relative', minHeight: '64px !important' }}>
         {/* Sol taraf - Logo */}
-        <Box
+          <Box 
           onClick={onHomeClick}
-          sx={{
-            position: 'absolute',
-            left: 16,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            zIndex: 1,
+            sx={{ 
+              position: 'absolute', 
+              left: 16, 
+              top: '50%', 
+              transform: 'translateY(-50%)', 
+              zIndex: 1,
             width: 44,
             height: 44,
             borderRadius: '12px',
@@ -224,7 +224,7 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
               style={{ 
                 fontSize: 14, 
                 color: '#42a5f5',
-                position: 'absolute',
+              position: 'absolute', 
                 bottom: -4,
                 right: -4,
                 filter: 'drop-shadow(0 1px 2px rgba(66, 165, 245, 0.4))',
@@ -232,8 +232,8 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
                 borderRadius: '50%',
                 padding: '2px',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-              }} 
-            />
+            }} 
+          />
           </Box>
         </Box>
         

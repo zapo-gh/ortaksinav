@@ -107,6 +107,12 @@ class PlanManager {
         dataKeys: planPayload.data ? Object.keys(planPayload.data) : []
       });
       
+      console.log('💾 planManager: db.savePlan çağrılıyor...', {
+        dbType: typeof db,
+        hasSavePlan: typeof db?.savePlan === 'function',
+        dbConstructor: db?.constructor?.name
+      });
+      
       const savedPlan = await db.savePlan(planPayload);
       
       console.log('✅ planManager: Plan başarıyla kaydedildi:', savedPlan);

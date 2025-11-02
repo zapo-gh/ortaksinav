@@ -72,7 +72,12 @@ class DatabaseAdapter {
    */
   async savePlan(planData) {
     try {
-      // DEBUG: Plan kaydetme başlangıcı
+      // DEBUG: Plan kaydetme başlangıcı - Console'a da yaz
+      console.log('💾 DatabaseAdapter savePlan çağrıldı:', {
+        planName: planData?.name,
+        useFirestore: this.useFirestore,
+        planDataKeys: Object.keys(planData || {})
+      });
       logger.info('💾 DatabaseAdapter savePlan çağrıldı:', {
         planName: planData?.name,
         useFirestore: this.useFirestore,
@@ -83,6 +88,14 @@ class DatabaseAdapter {
       const payload = this.sanitizeForFirestore(planData);
       const db = await this.getActiveDB();
       
+      console.log('🔍 Aktif DB türü:', this.useFirestore ? 'Firestore' : 'IndexedDB');
+      console.log('🔍 DB objesi:', {
+        type: typeof db,
+        hasSavePlan: typeof db?.savePlan === 'function',
+        isFirestore: db?.constructor?.name === 'FirestoreClient' || db?.isDisabled !== undefined,
+        dbConstructor: db?.constructor?.name
+      });
+      
       logger.info('🔍 Aktif DB türü:', this.useFirestore ? 'Firestore' : 'IndexedDB');
       logger.info('🔍 DB objesi:', {
         type: typeof db,
@@ -91,6 +104,7 @@ class DatabaseAdapter {
       });
       
       const result = await db.savePlan(payload);
+      console.log('✅ DatabaseAdapter savePlan başarılı:', result);
       logger.info('✅ DatabaseAdapter savePlan başarılı:', result);
       return result;
     } catch (error) {
