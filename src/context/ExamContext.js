@@ -31,17 +31,23 @@ const _saveToStorage = async (key, value) => {
       await db.saveSalons(value);
       // try { localStorage.setItem('exam_salonlar', JSON.stringify(value)); } catch (e) { logger.debug('localStorage mirror failed (exam_salonlar):', e); }
     } else if (key === 'exam_yerlestirme') {
-      // Değer boş/null ise kaydetmeyi atla
+      // GEREKSIZ OTOMATIK PLAN KAYDETMEYI ENGELLE
+      // Yerleştirme sonucu sadece oturum için localStorage'da tutulmalı
+      // Kullanıcı "Kaydet" butonuna bastığında plan kaydedilmeli (handleSavePlan)
+      // Otomatik kaydetme gereksiz plan oluşturuyor ve kota sorunlarına yol açıyor
       if (!value) {
-        logger.debug('ℹ️ Yerleştirme sonucu boş, veritabanına kaydetme atlandı');
+        logger.debug('ℹ️ Yerleştirme sonucu boş, kaydetme atlandı');
         return; // Erken çıkış
-      } else {
-        // Firestore/IndexedDB: Yerleştirme planını veritabanına kaydet
-        await db.savePlan(value);
-        logger.debug('✅ Yerleştirme sonucu veritabanına kaydedildi (Firestore/IndexedDB)');
       }
-      // localStorage yedeği - sadece hata durumunda
-      // try { localStorage.setItem('exam_yerlestirme', JSON.stringify(value)); } catch (e) { logger.debug('localStorage mirror failed (exam_yerlestirme):', e); }
+      
+      // Sadece localStorage'a kaydet (oturum için), veritabanına kaydetme
+      // Kullanıcı açıkça "Kaydet" dediğinde planManager.savePlan çağrılacak
+      try { 
+        localStorage.setItem('exam_yerlestirme', JSON.stringify(value)); 
+        logger.debug('✅ Yerleştirme sonucu localStorage\'a kaydedildi (oturum için)');
+      } catch (e) { 
+        logger.debug('localStorage mirror failed (exam_yerlestirme):', e); 
+      }
     } else if (key === 'exam_aktif_tab') {
       // Sadece localStorage (basit string)
       try { localStorage.setItem('exam_aktif_tab', JSON.stringify(value)); } catch (e) { logger.debug('localStorage mirror failed (exam_aktif_tab):', e); }
