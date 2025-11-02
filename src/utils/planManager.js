@@ -55,11 +55,22 @@ class PlanManager {
       
       // Plan verisini temizle ve standardize et
       const cleanPlanData = this.cleanPlanData(planData);
-      // Kaydetme koruması: boş planları kaydetme
-      const isEmpty = (cleanPlanData.totalStudents || 0) === 0 && (cleanPlanData.tumSalonlar?.length || 0) === 0;
+      
+      // EK KORUMA: Çok az öğrenci/salon içeren planları engelle (test planları genellikle 1-5 öğrenci/salon içerir)
+      const totalStudents = cleanPlanData.totalStudents || 0;
+      const salonCount = cleanPlanData.tumSalonlar?.length || 0;
+      
+      // Boş plan kontrolü
+      const isEmpty = totalStudents === 0 && salonCount === 0;
       if (isEmpty) {
         console.warn('⚠️ Boş plan kaydetme atlandı (0 öğrenci, 0 salon).');
         return null;
+      }
+      
+      // Minimal test plan kontrolü: 5'ten az öğrenci VE 2'den az salon = muhtemelen test planı
+      if (totalStudents <= 5 && salonCount <= 2 && (totalStudents === 1 || salonCount === 1)) {
+        console.warn(`⚠️ Minimal test plan kaydetme engellendi (${totalStudents} öğrenci, ${salonCount} salon):`, normalizedPlanName);
+        return null; // Kaydetme
       }
       
       // Sınav tarihi-saati bilgilerini metadata'ya ekle (plan listesinde göstermek için)

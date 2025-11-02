@@ -90,6 +90,16 @@ class FirestoreClient {
         return null; // Kaydetme, null döndür (kota kullanımını engelle)
       }
       
+      // EK KORUMA: Çok az öğrenci/salon içeren planları engelle
+      const totalStudents = sanitizedPlanData?.totalStudents || 0;
+      const salonCount = sanitizedPlanData?.salonCount || 0;
+      
+      // Minimal test plan kontrolü: 5'ten az öğrenci VE 2'den az salon = muhtemelen test planı
+      if (totalStudents <= 5 && salonCount <= 2 && (totalStudents === 1 || salonCount === 1)) {
+        logger.warn(`⚠️ Firestore: Minimal test plan kaydetme engellendi (${totalStudents} öğrenci, ${salonCount} salon):`, planName);
+        return null; // Kaydetme, null döndür
+      }
+      
       logger.debug('💾 Firestore: Plan meta kaydediliyor...');
       
       const planRef = doc(collection(this.db, 'plans'));
