@@ -6,7 +6,8 @@
 
 // Environment variable to disable Firebase (set in .env.local)
 // TEMPORARY: Disabled to avoid quota exceeded errors
-const DISABLE_FIREBASE = true; // process.env.REACT_APP_DISABLE_FIREBASE === 'true';
+// Firestore aktif - planlar Firestore'a kaydedilecek
+const DISABLE_FIREBASE = false; // process.env.REACT_APP_DISABLE_FIREBASE === 'true';
 
 // Firebase configuration
 const firebaseConfig = {
