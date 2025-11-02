@@ -239,10 +239,14 @@ class FirestoreClient {
       const plans = [];
       plansSnap.forEach(doc => {
         const planData = doc.data();
-        // Test Plan'ları filtrele (gereksiz test planlarını Firestore'dan getirme)
+        // Test Plan'ları ve Valid Plan'ları filtrele (gereksiz test planlarını Firestore'dan getirme)
         const planName = String(planData?.name || '').trim();
-        if (planName === 'Test Plan' || planName.toLowerCase().includes('test plan')) {
-          logger.debug(`⚠️ Test Plan filtrelendi: ${doc.id} - ${planName}`);
+        const lowerName = planName.toLowerCase();
+        if (planName === 'Test Plan' || 
+            planName === 'Valid Plan' ||
+            lowerName.includes('test plan') ||
+            lowerName.includes('valid plan')) {
+          logger.debug(`⚠️ Test/Valid Plan filtrelendi: ${doc.id} - ${planName}`);
           return; // Bu planı atla
         }
         

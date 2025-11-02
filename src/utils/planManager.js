@@ -158,10 +158,14 @@ class PlanManager {
       // Geçerli ID'li ve boş olmayan planları filtrele
       const nonEmptyPlans = validIdPlans.filter(p => (p.totalStudents || 0) > 0 || (p.salonCount || 0) > 0);
       
-      // Test Plan'ları filtrele (DatabaseTest.js'den gelen gereksiz planlar)
+      // Test Plan'ları ve Valid Plan'ları filtrele (DatabaseTest.js ve test dosyalarından gelen gereksiz planlar)
       const withoutTestPlans = nonEmptyPlans.filter(p => {
         const planName = String(p.name || '').trim();
-        return planName !== 'Test Plan' && !planName.toLowerCase().includes('test plan');
+        const lowerName = planName.toLowerCase();
+        return planName !== 'Test Plan' && 
+               planName !== 'Valid Plan' &&
+               !lowerName.includes('test plan') &&
+               !lowerName.includes('valid plan');
       });
       
       if (nonEmptyPlans.length !== withoutTestPlans.length) {
