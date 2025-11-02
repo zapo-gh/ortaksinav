@@ -55,6 +55,17 @@ class FirestoreClient {
     if (disabledResult) return disabledResult;
     
     try {
+      // Test Plan ve Valid Plan kaydetmeyi engelle (Firestore kota sorununu önlemek için)
+      const planName = String(planData?.name || '').trim();
+      const lowerPlanName = planName.toLowerCase();
+      if (planName === 'Test Plan' || 
+          planName === 'Valid Plan' ||
+          lowerPlanName.includes('test plan') ||
+          lowerPlanName.includes('valid plan')) {
+        logger.warn('⚠️ Firestore: Test/Valid Plan kaydetme engellendi (kota koruması):', planName);
+        return null; // Kaydetme, null döndür (kota kullanımını engelle)
+      }
+      
       logger.debug('💾 Firestore: Plan meta kaydediliyor...');
       
       const planRef = doc(collection(this.db, 'plans'));

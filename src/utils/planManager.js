@@ -17,6 +17,17 @@ class PlanManager {
     try {
       console.log('💾 Plan kaydediliyor:', planName);
       
+      // Test Plan ve Valid Plan kaydetmeyi engelle (Firestore kota sorununu önlemek için)
+      const normalizedPlanName = String(planName || '').trim();
+      const lowerPlanName = normalizedPlanName.toLowerCase();
+      if (normalizedPlanName === 'Test Plan' || 
+          normalizedPlanName === 'Valid Plan' ||
+          lowerPlanName.includes('test plan') ||
+          lowerPlanName.includes('valid plan')) {
+        console.warn('⚠️ Test/Valid Plan kaydetme engellendi (Firestore kota koruması):', normalizedPlanName);
+        return null; // Kaydetme
+      }
+      
       // Plan verisini temizle ve standardize et
       const cleanPlanData = this.cleanPlanData(planData);
       // Kaydetme koruması: boş planları kaydetme
