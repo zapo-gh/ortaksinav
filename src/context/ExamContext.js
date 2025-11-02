@@ -86,21 +86,21 @@ const loadFromFirestore = async () => {
     // Lazy import db
     const { default: db } = await import('../database');
     
-    const [ogrenciler, ayarlar, salonlar, latestPlan] = await Promise.all([
+    // Firestore'dan verileri çek (birincil veritabanı)
+    const [firestoreOgrenciler, firestoreAyarlar, firestoreSalonlar, latestPlan] = await Promise.all([
       db.getAllStudents().catch(() => []),
       db.getSettings().catch(() => null),
       db.getAllSalons().catch(() => []),
       db.getLatestPlan().catch(() => null)
     ]);
     
-    console.log('🔍 Firestore\'dan yüklenen salonlar:', salonlar?.map(s => s.ad || s.salonAdi || 'İsimsiz') || []);
+    console.log('📥 Firestore\'dan yüklenen veriler:', {
+      ogrenciler: firestoreOgrenciler?.length || 0,
+      ayarlar: firestoreAyarlar ? Object.keys(firestoreAyarlar).length : 0,
+      salonlar: firestoreSalonlar?.length || 0
+    });
+    console.log('🔍 Firestore\'dan yüklenen salonlar:', firestoreSalonlar?.map(s => s.ad || s.salonAdi || 'İsimsiz') || []);
     console.log('🔍 Firestore\'dan yüklenen en son plan:', latestPlan ? latestPlan.name : 'Yok');
-    
-    // console.log('✅ IndexedDB\'den veriler yüklendi:', {
-    //   ogrenciler: ogrenciler?.length || 0,
-    //   ayarlar: ayarlar ? Object.keys(ayarlar).length : 0,
-    //   salonlar: salonlar?.length || 0
-    // });
     
     // Yerleştirme sonucunu en son plandan çıkar
     let yerlestirmeSonucu = null;
@@ -110,35 +110,63 @@ const loadFromFirestore = async () => {
       console.log('✅ Yerleştirme sonucu en son plandan yüklendi');
     }
     
-    // IndexedDB'de veri varsa onu kullan
-    if (ogrenciler && ogrenciler.length > 0) {
-      // console.log('✅ IndexedDB\'den öğrenciler yüklendi:', ogrenciler.length, 'öğrenci');
+    // Firestore'dan veri gelmişse onu kullan (birincil veritabanı)
+    if (firestoreOgrenciler && firestoreOgrenciler.length > 0) {
+      console.log('✅ Firestore\'dan öğrenciler yüklendi:', firestoreOgrenciler.length, 'öğrenci');
       return {
-        ogrenciler: ogrenciler,
-        ayarlar: ayarlar || {
+        ogrenciler: firestoreOgrenciler,
+        ayarlar: firestoreAyarlar || {
           sinavAdi: '',
           sinavTarihi: '',
           sinavSaati: '',
           dersler: []
         },
-        salonlar: salonlar?.length > 0 ? salonlar : [],
+        salonlar: firestoreSalonlar?.length > 0 ? firestoreSalonlar : [],
         yerlestirmeSonucu: yerlestirmeSonucu
       };
     }
     
-    // IndexedDB'de öğrenci yoksa ama ayarlar/salonlar varsa onları kullan
-    if ((ayarlar && Object.keys(ayarlar).length > 0) || (salonlar && salonlar.length > 0)) {
+    // Firestore'da öğrenci yoksa ama ayarlar/salonlar varsa onları kullan
+    if ((firestoreAyarlar && Object.keys(firestoreAyarlar).length > 0) || (firestoreSalonlar && firestoreSalonlar.length > 0)) {
+      console.log('⚠️ Firestore\'da öğrenci yok ama ayarlar/salonlar var, onlar yükleniyor');
       return {
         ogrenciler: [],
-        ayarlar: ayarlar || {
+        ayarlar: firestoreAyarlar || {
           sinavAdi: '',
           sinavTarihi: '',
           sinavSaati: '',
           dersler: []
         },
-        salonlar: salonlar?.length > 0 ? salonlar : [],
+        salonlar: firestoreSalonlar?.length > 0 ? firestoreSalonlar : [],
         yerlestirmeSonucu: yerlestirmeSonucu
       };
+    }
+    
+    // Firestore'da hiç veri yoksa IndexedDB fallback (offline/local persist için)
+    console.log('⚠️ Firestore\'da veri yok, IndexedDB fallback kontrol ediliyor...');
+    try {
+      const { default: indexedDB } = await import('../database/database');
+      await indexedDB.open();
+      const indexedDBOgrenciler = await indexedDB.getAllStudents().catch(() => []);
+      const indexedDBAyarlar = await indexedDB.getSettings().catch(() => null);
+      const indexedDBSalonlar = await indexedDB.getAllSalons().catch(() => []);
+      
+      if (indexedDBOgrenciler && indexedDBOgrenciler.length > 0) {
+        console.log('✅ IndexedDB\'den öğrenciler yüklendi (fallback):', indexedDBOgrenciler.length, 'öğrenci');
+        return {
+          ogrenciler: indexedDBOgrenciler,
+          ayarlar: indexedDBAyarlar || {
+            sinavAdi: '',
+            sinavTarihi: '',
+            sinavSaati: '',
+            dersler: []
+          },
+          salonlar: indexedDBSalonlar?.length > 0 ? indexedDBSalonlar : [],
+          yerlestirmeSonucu: yerlestirmeSonucu
+        };
+      }
+    } catch (indexedDBError) {
+      console.debug('IndexedDB fallback hatası:', indexedDBError);
     }
     
     // IndexedDB'de veri yoksa localStorage'dan yükle
