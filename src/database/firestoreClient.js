@@ -195,8 +195,25 @@ class FirestoreClient {
       for (let i = 0; i < salons.length; i += chunkSize) {
         const chunk = salons.slice(i, i + chunkSize);
         
-        chunk.forEach(salon => {
-          const salonRef = doc(this.db, 'plans', planId, 'salons', salon.salonId || salon.id);
+        chunk.forEach((salon, chunkIndex) => {
+          // Salon ID'sini string'e çevir ve fallback ekle
+          // Firestore path segment'leri her zaman string olmalı
+          const salonIdRaw = salon.salonId || salon.id;
+          let salonId = null;
+          
+          if (salonIdRaw !== undefined && salonIdRaw !== null) {
+            salonId = String(salonIdRaw);
+          } else {
+            // Fallback: index'e dayalı ID oluştur
+            const globalIndex = i + chunkIndex;
+            salonId = `salon_${globalIndex}`;
+            console.warn(`⚠️ Firestore: Salon ID bulunamadı, fallback ID kullanılıyor: ${salonId}`, salon);
+          }
+          
+          // Firestore path segment'leri için güvenli karakterler kullan (/, \ gibi karakterleri temizle)
+          salonId = salonId.replace(/[/\\]/g, '_');
+          
+          const salonRef = doc(this.db, 'plans', planId, 'salons', salonId);
           const sanitizedSalon = sanitizeForFirestore({
             ...salon,
             updatedAt: serverTimestamp()
