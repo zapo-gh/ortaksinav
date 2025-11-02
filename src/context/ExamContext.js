@@ -657,15 +657,8 @@ export const ExamProvider = ({ children }) => {
       // TEMİZLEME İŞLEMİ KALDIRILDI - Kullanıcı salonları korunuyor
       console.log('✅ Salon temizleme işlemi kaldırıldı, tüm salonlar korunuyor');
       try {
-        // Offline-first: IndexedDB'yi öncelikli yap
-        try {
-          const { default: db } = await import('../database');
-          if (db?.setDatabaseType) {
-            db.setDatabaseType(false);
-          }
-        } catch (e) {
-          console.warn('⚠️ Database type set failed:', e);
-        }
+        // Firestore birincil veritabanı olarak aktif olmalı
+        // NOT: setDatabaseType(false) KALDIRILDI - Firestore aktif kalmalı
         // console.log('🔄 ExamProvider: Veriler Firestore\'dan yükleniyor...');
         const data = await loadFromFirestore();
         
