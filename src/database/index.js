@@ -148,14 +148,23 @@ class DatabaseAdapter {
    */
   async getPlan(planId) {
     try {
-      // Firestore'da getPlan yok, direkt IndexedDB'den getPlan çağır
-      // IndexedDB'de getPlan metodu var ve daha spesifik
+      // Firestore ve IndexedDB için ID formatını kontrol et
+      // Firestore ID'leri string, IndexedDB ID'leri number olabilir
+      const db = await this.getActiveDB();
+      
+      // Firestore kullanılıyorsa loadPlan kullan (getPlan yok)
+      if (this.useFirestore && typeof planId === 'string' && isNaN(Number(planId))) {
+        // Firestore string ID'si - loadPlan kullan
+        return await db.loadPlan(planId);
+      }
+      
+      // IndexedDB veya sayısal ID için getPlan kullan
       const indexedDB = await this.getIndexedDB();
       return await indexedDB.getPlan(planId);
     } catch (error) {
       logger.error('❌ Plan getirme hatası:', error);
       
-      // Hata durumunda loadPlan'ı dene
+      // Hata durumunda loadPlan'ı dene (Firestore için)
       try {
         const db = await this.getActiveDB();
         if (db.loadPlan) {
