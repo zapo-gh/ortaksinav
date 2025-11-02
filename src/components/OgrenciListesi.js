@@ -54,6 +54,10 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
   const [aramaTerimi, setAramaTerimi] = useState('');
   const [aramaAcik, setAramaAcik] = useState(false);
   const aramaRef = useRef(null);
+  const aramaInputRef = useRef(null);
+  
+  // Normalize cache - component seviyesinde (performans için)
+  const normalizeCacheRef = useRef(new Map());
 
   // Yerleştirme planı kontrolü - memoize edildi
   const yerlesimPlaniVarMi = React.useMemo(() => {
@@ -83,16 +87,38 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
     };
   }, [aramaAcik, aramaTerimi]);
 
-  // Türkçe karakterleri normalize eden fonksiyon
+  // Arama açıldığında input'a focus et
+  useEffect(() => {
+    if (aramaAcik && aramaInputRef.current) {
+      // requestAnimationFrame kullanarak DOM güncellemesinden sonra focus et
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (aramaInputRef.current && aramaInputRef.current.focus) {
+            aramaInputRef.current.focus();
+          }
+        });
+      });
+    }
+  }, [aramaAcik]);
+
+  // Türkçe karakterleri normalize eden fonksiyon (performans için memoize)
   const normalizeText = useCallback((text) => {
+    if (!text || typeof text !== 'string') return '';
     return text
       .toLowerCase()
       .replace(/ğ/g, 'g')
+      .replace(/Ğ/g, 'g')
       .replace(/ü/g, 'u')
+      .replace(/Ü/g, 'u')
       .replace(/ş/g, 's')
+      .replace(/Ş/g, 's')
       .replace(/ı/g, 'i')
+      .replace(/İ/g, 'i')
+      .replace(/I/g, 'i')
       .replace(/ö/g, 'o')
-      .replace(/ç/g, 'c');
+      .replace(/Ö/g, 'o')
+      .replace(/ç/g, 'c')
+      .replace(/Ç/g, 'c');
   }, []);
   
   const [basarili, setBasarili] = useState(null);
@@ -104,40 +130,75 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
   const [tumunuSilDialogAcik, setTumunuSilDialogAcik] = useState(false);
   const [manualEklemeAcik, setManualEklemeAcik] = useState(false);
 
-  // Filtrelenmiş öğrenci listesi - sadece arama terimi varsa hesapla
+  // Debounced arama terimi (performans optimizasyonu - lag önleme)
+  const [debouncedAramaTerimi, setDebouncedAramaTerimi] = useState('');
+  
+  useEffect(() => {
+    // Boş arama terimi için anında güncelle (anında temizlik)
+    if (!aramaTerimi.trim()) {
+      setDebouncedAramaTerimi('');
+      return;
+    }
+    
+    // Arama terimi varsa debounce ile gecikme ekle (lag önleme)
+    const timer = setTimeout(() => {
+      setDebouncedAramaTerimi(aramaTerimi);
+    }, 100); // 350ms debounce - lag önleme (artırıldı)
+    
+    return () => clearTimeout(timer);
+  }, [aramaTerimi]);
+
+  // Filtrelenmiş öğrenci listesi - debounced arama terimi ile hesapla (performans optimizasyonu)
   const filtrelenmisOgrenciler = React.useMemo(() => {
     // Manuel ekleme dialog'u açıkken hesaplamayı atla (performans optimizasyonu)
     if (manualEklemeAcik) return ogrenciler;
     
-    if (!aramaTerimi.trim()) return ogrenciler;
+    if (!debouncedAramaTerimi.trim()) return ogrenciler;
     
     // Sayı kontrolü (numara araması)
-    const isNumber = /^\d+$/.test(aramaTerimi);
+    const isNumber = /^\d+$/.test(debouncedAramaTerimi);
     
     // Harf kontrolü (3. harften sonra arama)
-    const isText = !isNumber && aramaTerimi.length >= 3;
+    const isText = !isNumber && debouncedAramaTerimi.length >= 3;
     
     if (!isNumber && !isText) return ogrenciler;
     
-    const normalizedTerim = normalizeText(aramaTerimi);
+    const normalizedTerim = normalizeText(debouncedAramaTerimi);
+    const qLower = debouncedAramaTerimi.toLowerCase();
     
+    // Performans optimizasyonu - cache kullanarak normalize işlemini hızlandır
+    const cache = normalizeCacheRef.current;
+    const getNormalizedCached = (text) => {
+      if (!cache.has(text)) {
+        cache.set(text, normalizeText(text));
+      }
+      return cache.get(text);
+    };
+    
+    // Önce hızlı kontroller, sonra normalize
     return ogrenciler.filter(ogrenci => {
       const ad = ogrenci.ad || '';
       const soyad = ogrenci.soyad || '';
       const numara = ogrenci.numara?.toString() || '';
       
-      // Normalize edilmiş metinlerle karşılaştır
-      const normalizedAd = normalizeText(ad);
-      const normalizedSoyad = normalizeText(soyad);
+      // Önce numara kontrolü (en hızlı - string include)
+      if (numara.includes(debouncedAramaTerimi)) return true;
       
-      // Hem normalize edilmiş hem de orijinal metinlerle arama yap
-      return normalizedAd.includes(normalizedTerim) || 
-             normalizedSoyad.includes(normalizedTerim) ||
-             ad.toLowerCase().includes(aramaTerimi.toLowerCase()) ||
-             soyad.toLowerCase().includes(aramaTerimi.toLowerCase()) ||
-             numara.includes(aramaTerimi);
+      // Sonra normalize edilmiş metinlerle arama (Türkçe karakter desteği - cache kullanarak)
+      const normalizedAd = getNormalizedCached(ad);
+      const normalizedSoyad = getNormalizedCached(soyad);
+      
+      if (normalizedAd.includes(normalizedTerim) || normalizedSoyad.includes(normalizedTerim)) {
+        return true;
+      }
+      
+      // Son çare: orijinal metinlerle lowercase karşılaştırma (daha yavaş ama kapsamlı)
+      const adLower = ad.toLowerCase();
+      const soyadLower = soyad.toLowerCase();
+      
+      return adLower.includes(qLower) || soyadLower.includes(qLower);
     });
-  }, [ogrenciler, aramaTerimi, normalizeText, manualEklemeAcik]);
+  }, [ogrenciler, debouncedAramaTerimi, normalizeText, manualEklemeAcik]);
   const [manuelOgrenci, setManuelOgrenci] = useState({
     ad: '',
     soyad: '',
@@ -1058,20 +1119,26 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
             }}
           >
             <TextField
+              inputRef={aramaInputRef}
               size="small"
               placeholder={aramaAcik ? "Öğrenci ara (3+ harf veya numara)..." : ""}
               value={aramaTerimi}
-              onChange={(e) => setAramaTerimi(e.target.value)}
+              onChange={(e) => {
+                // Throttle ile performans iyileştirmesi
+                const value = e.target.value;
+                setAramaTerimi(value);
+              }}
               onFocus={() => setAramaAcik(true)}
+              autoComplete="off"
               sx={{ 
                 width: aramaAcik ? 280 : 40,
                 height: 40,
-                transition: 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                transition: 'all 0.2s ease',
                 '& .MuiOutlinedInput-root': {
                   height: 40,
                   borderRadius: '50px',
                   bgcolor: 'white',
-                  transition: 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                  transition: 'all 0.2s ease',
                   '& fieldset': {
                     borderColor: aramaAcik ? 'primary.main' : 'grey.300',
                     transition: 'all 0.3s ease'
@@ -1081,7 +1148,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
                   },
                   '&.Mui-focused fieldset': {
                     borderColor: 'primary.main',
-                    boxShadow: '0 0 0 4px rgba(25, 118, 210, 0.15)'
+                    boxShadow: 'none'
                   }
                 }
               }}
@@ -1100,7 +1167,17 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
                         transition: 'all 0.3s ease',
                         cursor: 'pointer'
                       }}
-                      onClick={() => !aramaAcik && setAramaAcik(true)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (!aramaAcik) {
+                          setAramaAcik(true);
+                          // Focus işlemi useEffect'te yapılıyor (requestAnimationFrame ile)
+                        } else if (aramaInputRef.current) {
+                          // Zaten açıksa direkt focus et
+                          aramaInputRef.current.focus();
+                        }
+                      }}
                     >
                       <SearchIcon 
                         color={aramaAcik ? "primary" : "action"}

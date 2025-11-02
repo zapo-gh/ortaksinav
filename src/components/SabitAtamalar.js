@@ -8,6 +8,19 @@ const SabitAtamalar = () => {
   const [selectedStudentId, setSelectedStudentId] = React.useState('');
   const [selectedSalonId, setSelectedSalonId] = React.useState('');
 
+  // Türkçe karakterleri normalize eden fonksiyon
+  const normalizeText = React.useCallback((text) => {
+    if (!text) return '';
+    return text
+      .toLowerCase()
+      .replace(/ğ/g, 'g')
+      .replace(/ü/g, 'u')
+      .replace(/ş/g, 's')
+      .replace(/ı/g, 'i')
+      .replace(/ö/g, 'o')
+      .replace(/ç/g, 'c');
+  }, []);
+
   const selectedClasses = React.useMemo(() => {
     try {
       const dersler = Array.isArray(ayarlar?.dersler) ? ayarlar.dersler : [];
@@ -22,13 +35,32 @@ const SabitAtamalar = () => {
   }, [ayarlar]);
 
   const filteredStudents = React.useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = query.trim();
     const base = (!selectedClasses || selectedClasses.length === 0)
       ? ogrenciler
       : ogrenciler.filter(o => selectedClasses.includes(o.sinif));
     if (!q) return base;
-    return base.filter(o => `${o.ad} ${o.soyad}`.toLowerCase().includes(q) || String(o.numara || '').includes(q));
-  }, [ogrenciler, query, selectedClasses]);
+    
+    const normalizedQuery = normalizeText(q);
+    const qLower = q.toLowerCase();
+    
+    return base.filter(o => {
+      const ad = o.ad || '';
+      const soyad = o.soyad || '';
+      const numara = String(o.numara || '');
+      
+      // Normalize edilmiş metinlerle karşılaştır
+      const normalizedAd = normalizeText(ad);
+      const normalizedSoyad = normalizeText(soyad);
+      
+      // Hem normalize edilmiş hem de orijinal metinlerle arama yap
+      return normalizedAd.includes(normalizedQuery) || 
+             normalizedSoyad.includes(normalizedQuery) ||
+             ad.toLowerCase().includes(qLower) ||
+             soyad.toLowerCase().includes(qLower) ||
+             numara.includes(q);
+    });
+  }, [ogrenciler, query, selectedClasses, normalizeText]);
 
   const handlePin = () => {
     if (!selectedStudentId || !selectedSalonId) return;

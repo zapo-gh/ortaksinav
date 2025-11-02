@@ -301,3 +301,4 @@ const applySolution = (solution, plan2D, emptySeats) => {
 
 
 
+
