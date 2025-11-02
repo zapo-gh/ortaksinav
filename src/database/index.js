@@ -8,9 +8,11 @@ import logger from '../utils/logger';
  */
 class DatabaseAdapter {
   constructor() {
-    this.useFirestore = true; // Sadece Firestore kullan
-    this.firestore = firestoreClient;
-    this.indexedDB = null; // IndexedDB pasif
+    // Firestore kota sorunları nedeniyle varsayılan olarak DEVRE DIŞI
+    // Sadece IndexedDB kullan (kota sorunu yok, tarayıcıda çalışır)
+    this.useFirestore = false; // Firestore devre dışı - IndexedDB kullan
+    this.firestore = firestoreClient; // Lazy import için hazır tut
+    this.indexedDB = null; // IndexedDB lazy load
   }
 
   /**
@@ -54,10 +56,11 @@ class DatabaseAdapter {
   }
 
   /**
-   * Aktif veritabanını döndür - SADECE FIRESTORE
+   * Aktif veritabanını döndür - Varsayılan olarak IndexedDB
    */
   async getActiveDB() {
     // Seçili veritabanını döndür
+    // Firestore kota sorunları nedeniyle varsayılan olarak IndexedDB kullanıyoruz
     if (this.useFirestore) {
       return this.firestore;
     }
@@ -69,9 +72,10 @@ class DatabaseAdapter {
    */
   async savePlan(planData) {
     try {
-      const payload = this.sanitizeForFirestore(planData);
+      // IndexedDB kullanıyoruz (Firestore devre dışı)
       const db = await this.getActiveDB();
-      return await db.savePlan(payload);
+      // IndexedDB için sanitize gerekmez
+      return await db.savePlan(planData);
     } catch (error) {
       logger.error('❌ Plan kaydetme hatası:', error);
       
@@ -181,17 +185,10 @@ class DatabaseAdapter {
    */
   async saveStudents(students) {
     try {
-      const payload = this.sanitizeForFirestore(students);
+      // IndexedDB kullanıyoruz (Firestore devre dışı)
       const db = await this.getActiveDB();
-      const result = await db.saveStudents(payload);
-      // Mirror to IndexedDB to guarantee offline persistence and refresh restore
-      try {
-        const indexedDB = await this.getIndexedDB();
-        await indexedDB.saveStudents(students);
-      } catch (mirrorError) {
-        logger.debug('IndexedDB mirror failed for students:', mirrorError);
-      }
-      return result;
+      // IndexedDB için sanitize gerekmez
+      return await db.saveStudents(students);
     } catch (error) {
       logger.error('❌ Öğrenci kaydetme hatası:', error);
       
@@ -211,21 +208,9 @@ class DatabaseAdapter {
    */
   async getAllStudents() {
     try {
+      // IndexedDB kullanıyoruz (Firestore devre dışı)
       const db = await this.getActiveDB();
-      const students = await db.getAllStudents();
-      // Firestore boş dönerse IndexedDB'den de kontrol et (offline/local persist için)
-      if (this.useFirestore && Array.isArray(students) && students.length === 0) {
-        try {
-          const indexedDB = await this.getIndexedDB();
-          const localStudents = await indexedDB.getAllStudents();
-          if (Array.isArray(localStudents) && localStudents.length > 0) {
-            return localStudents;
-          }
-        } catch (_) {
-          // IndexedDB erişimi başarısızsa sessizce devam et
-        }
-      }
-      return students;
+      return await db.getAllStudents();
     } catch (error) {
       logger.error('❌ Öğrenci yükleme hatası:', error);
       
@@ -245,17 +230,10 @@ class DatabaseAdapter {
    */
   async saveSettings(settings) {
     try {
-      const payload = this.sanitizeForFirestore(settings);
+      // IndexedDB kullanıyoruz (Firestore devre dışı)
       const db = await this.getActiveDB();
-      const result = await db.saveSettings(payload);
-      // Mirror to IndexedDB
-      try {
-        const indexedDB = await this.getIndexedDB();
-        await indexedDB.saveSettings(settings);
-      } catch (mirrorError) {
-        logger.debug('IndexedDB mirror failed for settings:', mirrorError);
-      }
-      return result;
+      // IndexedDB için sanitize gerekmez
+      return await db.saveSettings(settings);
     } catch (error) {
       logger.error('❌ Ayar kaydetme hatası:', error);
       
@@ -296,17 +274,10 @@ class DatabaseAdapter {
    */
   async saveSalons(salons) {
     try {
-      const payload = this.sanitizeForFirestore(salons);
+      // IndexedDB kullanıyoruz (Firestore devre dışı)
       const db = await this.getActiveDB();
-      const result = await db.saveSalons(payload);
-      // Mirror to IndexedDB
-      try {
-        const indexedDB = await this.getIndexedDB();
-        await indexedDB.saveSalons(salons);
-      } catch (mirrorError) {
-        logger.debug('IndexedDB mirror failed for salons:', mirrorError);
-      }
-      return result;
+      // IndexedDB için sanitize gerekmez
+      return await db.saveSalons(salons);
     } catch (error) {
       logger.error('❌ Salon kaydetme hatası:', error);
       
@@ -326,20 +297,9 @@ class DatabaseAdapter {
    */
   async getAllSalons() {
     try {
+      // IndexedDB kullanıyoruz (Firestore devre dışı)
       const db = await this.getActiveDB();
-      const salons = await db.getAllSalons();
-      if (this.useFirestore && Array.isArray(salons) && salons.length === 0) {
-        try {
-          const indexedDB = await this.getIndexedDB();
-          const localSalons = await indexedDB.getAllSalons();
-          if (Array.isArray(localSalons) && localSalons.length > 0) {
-            return localSalons;
-          }
-        } catch (fallbackError) {
-          logger.debug('IndexedDB fallback for salons failed:', fallbackError);
-        }
-      }
-      return salons;
+      return await db.getAllSalons();
     } catch (error) {
       logger.error('❌ Salon yükleme hatası:', error);
       
