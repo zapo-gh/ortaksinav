@@ -157,10 +157,21 @@ class PlanManager {
       
       // Geçerli ID'li ve boş olmayan planları filtrele
       const nonEmptyPlans = validIdPlans.filter(p => (p.totalStudents || 0) > 0 || (p.salonCount || 0) > 0);
-      console.log('✅ Tüm planlar yüklendi:', nonEmptyPlans.length, 'geçerli plan');
-      console.log('📋 Plan detayları:', nonEmptyPlans.map(p => ({ id: p.id, name: p.name, date: p.date })));
       
-      const mappedPlans = nonEmptyPlans.map(plan => ({
+      // Test Plan'ları filtrele (DatabaseTest.js'den gelen gereksiz planlar)
+      const withoutTestPlans = nonEmptyPlans.filter(p => {
+        const planName = String(p.name || '').trim();
+        return planName !== 'Test Plan' && !planName.toLowerCase().includes('test plan');
+      });
+      
+      if (nonEmptyPlans.length !== withoutTestPlans.length) {
+        console.warn(`⚠️ ${nonEmptyPlans.length - withoutTestPlans.length} test plan filtrelendi`);
+      }
+      
+      console.log('✅ Tüm planlar yüklendi:', withoutTestPlans.length, 'geçerli plan');
+      console.log('📋 Plan detayları:', withoutTestPlans.map(p => ({ id: p.id, name: p.name, date: p.date })));
+      
+      const mappedPlans = withoutTestPlans.map(plan => ({
         id: plan.id,
         name: plan.name,
         date: plan.date,

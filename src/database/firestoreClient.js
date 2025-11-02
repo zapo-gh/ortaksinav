@@ -225,16 +225,44 @@ class FirestoreClient {
       logger.debug('🔍 Firestore: Planlar listeleniyor...');
       
       const plansRef = collection(this.db, 'plans');
-      const q = query(plansRef, orderBy('updatedAt', 'desc'));
+      
+      // orderBy('updatedAt', 'desc') index gerektirebilir, önce basit sorgu deneyelim
+      // Eğer hata verirse, orderBy olmadan sorgula
+      let q;
+      try {
+        q = query(plansRef, orderBy('updatedAt', 'desc'));
+      } catch (indexError) {
+        logger.warn('⚠️ Firestore index hatası, orderBy olmadan sorgulanıyor:', indexError);
+        // Index yoksa orderBy olmadan sorgula
+        q = query(plansRef);
+      }
+      
       const plansSnap = await getDocs(q);
       
       const plans = [];
       plansSnap.forEach(doc => {
+        const planData = doc.data();
+        // Test Plan'ları filtrele (gereksiz test planlarını Firestore'dan getirme)
+        const planName = String(planData?.name || '').trim();
+        if (planName === 'Test Plan' || planName.toLowerCase().includes('test plan')) {
+          logger.debug(`⚠️ Test Plan filtrelendi: ${doc.id} - ${planName}`);
+          return; // Bu planı atla
+        }
+        
         plans.push({
           id: doc.id,
-          ...doc.data()
+          ...planData
         });
       });
+      
+      // Eğer orderBy kullanılamadıysa, client-side sırala
+      if (plans.length > 0 && !q._queryConstraints?.some(c => c.type === 'orderBy')) {
+        plans.sort((a, b) => {
+          const dateA = a.updatedAt?.toMillis?.() || new Date(a.date || a.createdAt || 0).getTime();
+          const dateB = b.updatedAt?.toMillis?.() || new Date(b.date || b.createdAt || 0).getTime();
+          return dateB - dateA; // Yeni tarihler önce
+        });
+      }
       
       logger.debug('✅ Firestore: Planlar yüklendi:', plans.length);
       return plans;
@@ -514,3 +542,4 @@ class FirestoreClient {
 // Singleton instance
 const firestoreClient = new FirestoreClient();
 export default firestoreClient;
+

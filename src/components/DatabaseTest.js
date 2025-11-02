@@ -40,24 +40,9 @@ const DatabaseTest = () => {
       await db.open();
       addTestResult('DB Connection', 'success', 'Veritabanı bağlantısı başarılı');
 
-      // Test 2: Plan kaydetme
-      addTestResult('Save Plan', 'running', 'Plan kaydetme test ediliyor...');
-      const testPlan = {
-        name: 'Test Plan',
-        date: new Date().toISOString(),
-        totalStudents: 5,
-        salonCount: 1,
-        data: {
-          salon: { id: 1, name: 'Test Salon', masalar: [] },
-          tumSalonlar: [{ id: 1, name: 'Test Salon', masalar: [] }],
-          kalanOgrenciler: [],
-          yerlesilemeyenOgrenciler: [],
-          istatistikler: { toplamOgrenci: 5, yerlesenOgrenci: 5 }
-        }
-      };
-      
-      const savedPlan = await db.savePlan(testPlan);
-      addTestResult('Save Plan', 'success', `Plan kaydedildi (ID: ${savedPlan})`, testPlan);
+      // Test 2: Plan kaydetme - DEVRE DIŞI (gereksiz test planı oluşturmayı engelle)
+      // Gereksiz test planları Firestore'da birikmesin diye test plan kaydetme özelliği kapatıldı
+      addTestResult('Save Plan', 'skipped', 'Plan kaydetme testi atlandı (gereksiz test planı oluşturmayı önlemek için)');
 
       // Test 3: Plan yükleme
       addTestResult('Load Plan', 'running', 'Plan yükleme test ediliyor...');
