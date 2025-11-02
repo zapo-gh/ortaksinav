@@ -117,7 +117,15 @@ class FirestoreClient {
         return null; // Kaydetme, null döndür (kota kullanımını engelle)
       }
       
-      // EK KORUMA: Çok az öğrenci/salon içeren planları engelle
+      logger.debug('💾 Firestore: Plan meta kaydediliyor...');
+      
+      const planRef = doc(collection(this.db, 'plans'));
+      const planId = planRef.id;
+      
+      // Veriyi sanitize et (ÖNCE sanitize et, SONRA kontrol yap)
+      const sanitizedPlanData = sanitizeForFirestore(planData);
+      
+      // EK KORUMA: Çok az öğrenci/salon içeren planları engelle (sanitize edilmiş veriyle kontrol)
       const totalStudents = sanitizedPlanData?.totalStudents || 0;
       const salonCount = sanitizedPlanData?.salonCount || 0;
       
@@ -126,14 +134,6 @@ class FirestoreClient {
         logger.warn(`⚠️ Firestore: Minimal test plan kaydetme engellendi (${totalStudents} öğrenci, ${salonCount} salon):`, planName);
         return null; // Kaydetme, null döndür
       }
-      
-      logger.debug('💾 Firestore: Plan meta kaydediliyor...');
-      
-      const planRef = doc(collection(this.db, 'plans'));
-      const planId = planRef.id;
-      
-      // Veriyi sanitize et
-      const sanitizedPlanData = sanitizeForFirestore(planData);
       
       const planMeta = {
         name: sanitizedPlanData?.name || 'İsimsiz Plan',
