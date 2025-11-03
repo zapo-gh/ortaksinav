@@ -124,6 +124,13 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
   };
 
   const handlePlanSil = async (planId, onCloseCallback) => {
+    // Modal'ı hemen kapat - silme işlemi arka planda devam edecek
+    setDeleteDialogOpen(false);
+    setPlanToDelete(null);
+    if (onCloseCallback) {
+      onCloseCallback();
+    }
+
     try {
       // planId validation
       if (planId === null || planId === undefined || planId === '') {
@@ -132,17 +139,8 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
       
       await planManager.deletePlan(planId);
       
-      // Modal'ı kapat
-      setDeleteDialogOpen(false);
-      setPlanToDelete(null);
-      if (onCloseCallback) {
-        onCloseCallback();
-      }
-      
-      // Sonra success mesajını göster (modal kapandıktan sonra)
-      setTimeout(() => {
-        showSuccess('Plan başarıyla silindi!');
-      }, 100);
+      // Success mesajını göster (modal zaten kapatıldı)
+      showSuccess('Plan başarıyla silindi!');
       
       // Planları yenile
       await loadPlans();
@@ -150,17 +148,8 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
       logger.error('❌ Plan silme hatası:', error);
       const errorMessage = error.message || 'Plan silinirken hata oluştu!';
       
-      // Hata durumunda da modal'ı kapat
-      setDeleteDialogOpen(false);
-      setPlanToDelete(null);
-      if (onCloseCallback) {
-        onCloseCallback();
-      }
-      
-      // Hata mesajını göster (modal kapandıktan sonra)
-      setTimeout(() => {
-        showError(`Plan silinirken hata oluştu: ${errorMessage}`);
-      }, 100);
+      // Hata mesajını göster (modal zaten kapatıldı)
+      showError(`Plan silinirken hata oluştu: ${errorMessage}`);
     }
   };
 

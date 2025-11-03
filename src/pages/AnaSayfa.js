@@ -444,6 +444,12 @@ const AnaSayfaContent = React.memo(() => {
       return;
     }
 
+    // Modal'ı hemen kapat - kaydetme işlemi arka planda devam edecek
+    if (onCloseCallback) {
+      onCloseCallback();
+    }
+    setSaveDialogOpen(false);
+
     try {
       // Plan verisini hazırla - Ayarları derin kopyala (referans sorununu önlemek için)
       const ayarlarKopya = JSON.parse(JSON.stringify(ayarlar || {}));
@@ -584,33 +590,18 @@ const AnaSayfaContent = React.memo(() => {
         logger.warn('⚠️ Plan IndexedDB\'ye kaydedildi (Firestore devre dışı). Plan ID:', planId);
       }
       
-      // Modal'ı kapat - kesin kapanması için hem state hem callback
-      if (onCloseCallback) {
-        onCloseCallback();
+      // Success mesajını göster (modal zaten kapatıldı)
+      if (isFirestore) {
+        showSuccess(`Plan "${planAdi.trim()}" başarıyla Firestore'a kaydedildi/güncellendi!`);
+      } else {
+        showSuccess(`Plan "${planAdi.trim()}" başarıyla kaydedildi/güncellendi! (IndexedDB)`);
       }
-      setSaveDialogOpen(false);
-      
-      // Sonra success mesajını göster (modal kapandıktan sonra)
-      setTimeout(() => {
-        if (isFirestore) {
-          showSuccess(`Plan "${planAdi.trim()}" başarıyla Firestore'a kaydedildi/güncellendi!`);
-        } else {
-          showSuccess(`Plan "${planAdi.trim()}" başarıyla kaydedildi/güncellendi! (IndexedDB)`);
-        }
-      }, 100);
       
     } catch (error) {
       logger.error('❌ Plan kaydetme hatası:', error);
       
-      // Hata durumunda modal'ı kapat ve sonra hata mesajını göster
-      if (onCloseCallback) {
-        onCloseCallback();
-      }
-      setSaveDialogOpen(false);
-      
-      setTimeout(() => {
-        showError(`Plan kaydedilirken hata oluştu: ${error.message}`);
-      }, 100);
+      // Hata mesajını göster (modal zaten kapatıldı)
+      showError(`Plan kaydedilirken hata oluştu: ${error.message}`);
     }
   }, [yerlestirmeSonucu, salonlar, ayarlar, showError, showSuccess]);
 
