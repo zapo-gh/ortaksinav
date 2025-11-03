@@ -123,7 +123,7 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
     }
   };
 
-  const handlePlanSil = async (planId) => {
+  const handlePlanSil = async (planId, onCloseCallback) => {
     try {
       // planId validation
       if (planId === null || planId === undefined || planId === '') {
@@ -132,9 +132,12 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
       
       await planManager.deletePlan(planId);
       
-      // Önce modal'ı kapat
+      // Modal'ı kapat
       setDeleteDialogOpen(false);
       setPlanToDelete(null);
+      if (onCloseCallback) {
+        onCloseCallback();
+      }
       
       // Sonra success mesajını göster (modal kapandıktan sonra)
       setTimeout(() => {
@@ -150,6 +153,9 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
       // Hata durumunda da modal'ı kapat
       setDeleteDialogOpen(false);
       setPlanToDelete(null);
+      if (onCloseCallback) {
+        onCloseCallback();
+      }
       
       // Hata mesajını göster (modal kapandıktan sonra)
       setTimeout(() => {
@@ -357,7 +363,18 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
             İptal
           </Button>
           <Button
-            onClick={() => handlePlanSil(planToDelete)}
+            onClick={async () => {
+              const closeDialog = () => {
+                setDeleteDialogOpen(false);
+                setPlanToDelete(null);
+              };
+              try {
+                await handlePlanSil(planToDelete, closeDialog);
+              } catch (error) {
+                // handlePlanSil içinde zaten hata yakalanıyor ve modal kapatılıyor
+                closeDialog();
+              }
+            }}
             color="error"
             variant="contained"
           >

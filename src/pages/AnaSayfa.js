@@ -103,12 +103,15 @@ const PlanKaydetmeDialog = React.memo(({
     try {
       await onSave(planAdi);
       setPlanAdi('');
-      // Modal kapanması handleSavePlan içinde yapılıyor
+      // Modal'ı kesinlikle kapat
+      onClose();
     } catch (error) {
-      // Hata durumunda modal açık kalsın, hata mesajı gösterilecek
+      // Hata durumunda da modal'ı kapat (hata mesajı handleSavePlan'den gösterilecek)
       console.error('Plan kaydetme hatası:', error);
+      setPlanAdi('');
+      onClose(); // Modal'ı kapat
     }
-  }, [onSave, planAdi]);
+  }, [onSave, onClose, planAdi]);
   
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
@@ -430,7 +433,7 @@ const AnaSayfaContent = React.memo(() => {
     setSaveDialogOpen(false);
   };
 
-  const handleSavePlan = useCallback(async (planAdi) => {
+  const handleSavePlan = useCallback(async (planAdi, onCloseCallback) => {
     if (!planAdi.trim()) {
       showError('Lütfen plan adı giriniz.');
       return;
@@ -581,7 +584,10 @@ const AnaSayfaContent = React.memo(() => {
         logger.warn('⚠️ Plan IndexedDB\'ye kaydedildi (Firestore devre dışı). Plan ID:', planId);
       }
       
-      // Önce modal'ı kapat
+      // Modal'ı kapat - kesin kapanması için hem state hem callback
+      if (onCloseCallback) {
+        onCloseCallback();
+      }
       setSaveDialogOpen(false);
       
       // Sonra success mesajını göster (modal kapandıktan sonra)
@@ -597,6 +603,9 @@ const AnaSayfaContent = React.memo(() => {
       logger.error('❌ Plan kaydetme hatası:', error);
       
       // Hata durumunda modal'ı kapat ve sonra hata mesajını göster
+      if (onCloseCallback) {
+        onCloseCallback();
+      }
       setSaveDialogOpen(false);
       
       setTimeout(() => {
@@ -1806,7 +1815,7 @@ const AnaSayfaContent = React.memo(() => {
       <PlanKaydetmeDialog
         open={saveDialogOpen}
         onClose={handleSaveDialogClose}
-        onSave={handleSavePlan}
+        onSave={(planAdi) => handleSavePlan(planAdi, handleSaveDialogClose)}
       />
     </DndProvider>
   );
