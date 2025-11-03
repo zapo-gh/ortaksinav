@@ -508,12 +508,23 @@ const AnaSayfaContent = React.memo(() => {
       console.log('✅ Plan başarıyla Firestore\'a kaydedildi/güncellendi. Plan ID:', planId);
       logger.info('✅ Plan başarıyla Firestore\'a kaydedildi/güncellendi. Plan ID:', planId);
       
-      showSuccess(`Plan "${planAdi.trim()}" başarıyla Firestore'a kaydedildi/güncellendi!`);
+      // Önce modal'ı kapat
       setSaveDialogOpen(false);
+      
+      // Sonra success mesajını göster (modal kapandıktan sonra)
+      setTimeout(() => {
+        showSuccess(`Plan "${planAdi.trim()}" başarıyla Firestore'a kaydedildi/güncellendi!`);
+      }, 100);
       
     } catch (error) {
       logger.error('❌ Plan kaydetme hatası:', error);
-      showError(`Plan kaydedilirken hata oluştu: ${error.message}`);
+      
+      // Hata durumunda modal'ı kapat ve sonra hata mesajını göster
+      setSaveDialogOpen(false);
+      
+      setTimeout(() => {
+        showError(`Plan kaydedilirken hata oluştu: ${error.message}`);
+      }, 100);
     }
   }, [yerlestirmeSonucu, salonlar, ayarlar, showError, showSuccess]);
 

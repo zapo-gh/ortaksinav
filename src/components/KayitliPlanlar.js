@@ -131,13 +131,24 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
       }
       
       await planManager.deletePlan(planId);
-      showSuccess('Plan silindi!');
-      loadPlans();
+      
+      // Önce modal'ı kapat
       setDeleteDialogOpen(false);
       setPlanToDelete(null);
+      
+      // Sonra success mesajını göster ve planları yenile
+      showSuccess('Plan başarıyla silindi!');
+      
+      // Planları yenile
+      await loadPlans();
     } catch (error) {
       logger.error('❌ Plan silme hatası:', error);
       const errorMessage = error.message || 'Plan silinirken hata oluştu!';
+      
+      // Hata durumunda da modal'ı kapat
+      setDeleteDialogOpen(false);
+      setPlanToDelete(null);
+      
       showError(`Plan silinirken hata oluştu: ${errorMessage}`);
     }
   };
