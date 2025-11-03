@@ -103,15 +103,12 @@ const PlanKaydetmeDialog = React.memo(({
     try {
       await onSave(planAdi);
       setPlanAdi('');
-      // Modal kapanması handleSavePlan içinde yapılıyor, ama emin olmak için onClose da çağrılıyor
-      onClose();
+      // Modal kapanması handleSavePlan içinde yapılıyor
     } catch (error) {
-      // Hata durumunda modal kapatılsın (handleSavePlan içinde zaten hata mesajı gösteriliyor)
+      // Hata durumunda modal açık kalsın, hata mesajı gösterilecek
       console.error('Plan kaydetme hatası:', error);
-      setPlanAdi('');
-      onClose(); // Modal'ı kapat, hata mesajı handleSavePlan'den gösterilecek
     }
-  }, [onSave, onClose, planAdi]);
+  }, [onSave, planAdi]);
   
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
