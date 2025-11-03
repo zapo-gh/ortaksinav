@@ -5,6 +5,7 @@ import {
   setDoc, 
   getDoc, 
   getDocs, 
+  getDocsFromServer,
   deleteDoc, 
   updateDoc,
   writeBatch,
@@ -670,24 +671,39 @@ class FirestoreClient {
     }
     
     try {
-      logger.info('📥 Firestore: Öğrenciler yükleniyor...');
+      logger.info('📥 Firestore: Öğrenciler yükleniyor (SERVER\'dan - cache bypass)...');
       
       const studentsRef = collection(this.db, 'students');
-      const studentsSnap = await getDocs(studentsRef);
+      // getDocsFromServer kullanarak cache'i bypass et ve server'dan güncel verileri çek
+      const studentsSnap = await getDocsFromServer(studentsRef);
       
       const students = [];
       studentsSnap.forEach(doc => {
         students.push({ id: doc.id, ...doc.data() });
       });
       
-      logger.info('✅ Firestore: Öğrenciler yüklendi:', students.length, 'öğrenci');
+      logger.info('✅ Firestore: Öğrenciler yüklendi (SERVER):', students.length, 'öğrenci');
       if (students.length > 0) {
         logger.info('📋 İlk öğrenci:', students[0]);
       }
       return students;
     } catch (error) {
       logger.error('❌ Firestore: Öğrenci yükleme hatası:', error);
-      return [];
+      // Hata durumunda cache'den yükle (fallback)
+      try {
+        logger.warn('⚠️ Server yükleme başarısız, cache\'den yükleniyor...');
+        const studentsRef = collection(this.db, 'students');
+        const studentsSnap = await getDocs(studentsRef);
+        const students = [];
+        studentsSnap.forEach(doc => {
+          students.push({ id: doc.id, ...doc.data() });
+        });
+        logger.warn('⚠️ Cache\'den yüklendi:', students.length, 'öğrenci');
+        return students;
+      } catch (cacheError) {
+        logger.error('❌ Cache yükleme de başarısız:', cacheError);
+        return [];
+      }
     }
   }
 
@@ -728,21 +744,36 @@ class FirestoreClient {
     if (disabledResult) return disabledResult;
     
     try {
-      logger.debug('📥 Firestore: Ayarlar yükleniyor...');
+      logger.debug('📥 Firestore: Ayarlar yükleniyor (SERVER\'dan - cache bypass)...');
       
       const settingsRef = collection(this.db, 'settings');
-      const settingsSnap = await getDocs(settingsRef);
+      // getDocsFromServer kullanarak cache'i bypass et ve server'dan güncel verileri çek
+      const settingsSnap = await getDocsFromServer(settingsRef);
       
       const settings = {};
       settingsSnap.forEach(doc => {
         settings[doc.id] = doc.data().value;
       });
       
-      logger.debug('✅ Firestore: Ayarlar yüklendi:', Object.keys(settings).length);
+      logger.debug('✅ Firestore: Ayarlar yüklendi (SERVER):', Object.keys(settings).length);
       return settings;
     } catch (error) {
       logger.error('❌ Firestore: Ayar yükleme hatası:', error);
-      return {};
+      // Hata durumunda cache'den yükle (fallback)
+      try {
+        logger.warn('⚠️ Server yükleme başarısız, cache\'den yükleniyor...');
+        const settingsRef = collection(this.db, 'settings');
+        const settingsSnap = await getDocs(settingsRef);
+        const settings = {};
+        settingsSnap.forEach(doc => {
+          settings[doc.id] = doc.data().value;
+        });
+        logger.warn('⚠️ Cache\'den yüklendi:', Object.keys(settings).length, 'ayar');
+        return settings;
+      } catch (cacheError) {
+        logger.error('❌ Cache yükleme de başarısız:', cacheError);
+        return {};
+      }
     }
   }
 
@@ -796,10 +827,11 @@ class FirestoreClient {
     }
     
     try {
-      logger.info('📥 Firestore: Salonlar yükleniyor...');
+      logger.info('📥 Firestore: Salonlar yükleniyor (SERVER\'dan - cache bypass)...');
       
       const salonsRef = collection(this.db, 'salons');
-      const salonsSnap = await getDocs(salonsRef);
+      // getDocsFromServer kullanarak cache'i bypass et ve server'dan güncel verileri çek
+      const salonsSnap = await getDocsFromServer(salonsRef);
       
       logger.info('📊 Firestore salonsSnap.size:', salonsSnap.size);
       
@@ -815,14 +847,34 @@ class FirestoreClient {
         return aId - bId;
       });
       
-      logger.info('✅ Firestore: Salonlar yüklendi:', salons.length, 'salon');
+      logger.info('✅ Firestore: Salonlar yüklendi (SERVER):', salons.length, 'salon');
       if (salons.length > 0) {
         logger.info('📋 İlk salon:', salons[0]);
       }
       return salons;
     } catch (error) {
       logger.error('❌ Firestore: Salon yükleme hatası:', error);
-      return [];
+      // Hata durumunda cache'den yükle (fallback)
+      try {
+        logger.warn('⚠️ Server yükleme başarısız, cache\'den yükleniyor...');
+        const salonsRef = collection(this.db, 'salons');
+        const salonsSnap = await getDocs(salonsRef);
+        const salons = [];
+        salonsSnap.forEach(doc => {
+          salons.push({ id: doc.id, ...doc.data() });
+        });
+        // Salonları sayısal ID'ye göre sırala
+        salons.sort((a, b) => {
+          const aId = parseInt(a.id || a.salonId || 0, 10);
+          const bId = parseInt(b.id || b.salonId || 0, 10);
+          return aId - bId;
+        });
+        logger.warn('⚠️ Cache\'den yüklendi:', salons.length, 'salon');
+        return salons;
+      } catch (cacheError) {
+        logger.error('❌ Cache yükleme de başarısız:', cacheError);
+        return [];
+      }
     }
   }
 
