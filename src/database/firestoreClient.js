@@ -82,9 +82,9 @@ class FirestoreClient {
     
     const disabledResult = this._handleDisabledFirebase('savePlan', 'mock-plan-id');
     if (disabledResult) {
-      console.warn('⚠️ Firestore devre dışı, plan kaydedilmeyecek!');
-      logger.warn('⚠️ Firestore devre dışı, plan kaydedilmeyecek!');
-      return disabledResult;
+      console.error('❌ Firestore devre dışı, plan kaydedilemez!');
+      logger.error('❌ Firestore devre dışı, plan kaydedilemez!');
+      throw new Error('Firestore devre dışı. Plan kaydedilemez. Lütfen Firestore\'u aktif edin.');
     }
     
     try {
@@ -482,6 +482,92 @@ class FirestoreClient {
   }
 
   /**
+   * Plan güncelleme
+   */
+  async updatePlan(planId, planData) {
+    const disabledResult = this._handleDisabledFirebase('updatePlan', null);
+    if (disabledResult) {
+      throw new Error('Firestore devre dışı. Plan güncellenemez.');
+    }
+    
+    try {
+      logger.debug('🔄 Firestore: Plan güncelleniyor:', planId);
+      
+      const planRef = doc(this.db, 'plans', planId);
+      
+      // Planın var olup olmadığını kontrol et
+      const planSnap = await getDoc(planRef);
+      if (!planSnap.exists()) {
+        throw new Error(`Plan bulunamadı: ${planId}`);
+      }
+      
+      // Veriyi sanitize et
+      const sanitizedPlanData = sanitizeForFirestore(planData);
+      
+      const planMeta = {
+        name: sanitizedPlanData?.name || 'İsimsiz Plan',
+        date: sanitizedPlanData?.date || null,
+        totalStudents: sanitizedPlanData?.totalStudents || null,
+        salonCount: sanitizedPlanData?.salonCount || null,
+        // Sınav bilgilerini metadata'ya ekle
+        sinavTarihi: sanitizedPlanData?.sinavTarihi || null,
+        sinavSaati: sanitizedPlanData?.sinavSaati || null,
+        sinavDonemi: sanitizedPlanData?.sinavDonemi || null,
+        donem: sanitizedPlanData?.donem || null,
+        updatedAt: serverTimestamp()
+      };
+      
+      // Veri boyutunu kontrol et
+      const sizeCheck = checkDataSize(planMeta);
+      if (!sizeCheck.isValid) {
+        throw new Error(`Plan meta verisi çok büyük: ${sizeCheck.sizeInMB.toFixed(2)}MB`);
+      }
+      
+      // Plan meta bilgilerini güncelle
+      await updateDoc(planRef, planMeta);
+      
+      // Salonları güncelle (önce eski salonları sil, sonra yenilerini ekle)
+      if (planData?.data?.tumSalonlar) {
+        // Eski salonları sil
+        const salonsRef = collection(this.db, 'plans', planId, 'salons');
+        const salonsSnap = await getDocs(salonsRef);
+        const batch = writeBatch(this.db);
+        
+        salonsSnap.forEach(doc => {
+          batch.delete(doc.ref);
+        });
+        await batch.commit();
+        
+        // Yeni salonları ekle
+        await this.savePlanSalons(planId, planData.data.tumSalonlar);
+      }
+      
+      // Yerleşmeyen öğrencileri güncelle
+      if (planData?.data?.yerlesilemeyenOgrenciler) {
+        // Eski unplaced öğrencileri sil
+        const unplacedRef = collection(this.db, 'plans', planId, 'unplaced');
+        const unplacedSnap = await getDocs(unplacedRef);
+        const batch = writeBatch(this.db);
+        
+        unplacedSnap.forEach(doc => {
+          batch.delete(doc.ref);
+        });
+        await batch.commit();
+        
+        // Yeni unplaced öğrencileri ekle
+        await this.saveUnplacedStudents(planId, planData.data.yerlesilemeyenOgrenciler);
+      }
+      
+      console.log('✅ Firestore: Plan güncellendi:', planId);
+      logger.info('✅ Firestore: Plan güncellendi:', planId);
+      return planId;
+    } catch (error) {
+      logger.error('❌ Firestore: Plan güncelleme hatası:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Plan silme
    */
   async deletePlan(planId) {
@@ -706,6 +792,13 @@ class FirestoreClient {
       const salons = [];
       salonsSnap.forEach(doc => {
         salons.push({ id: doc.id, ...doc.data() });
+      });
+      
+      // Salonları sayısal ID'ye göre sırala (string sıralama yerine)
+      salons.sort((a, b) => {
+        const aId = parseInt(a.id || a.salonId || 0, 10);
+        const bId = parseInt(b.id || b.salonId || 0, 10);
+        return aId - bId;
       });
       
       logger.info('✅ Firestore: Salonlar yüklendi:', salons.length, 'salon');

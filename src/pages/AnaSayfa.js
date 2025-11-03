@@ -497,10 +497,18 @@ const AnaSayfaContent = React.memo(() => {
         logger.debug('Plan kaydediliyor - İlk salon masaları: ' + (planData.tumSalonlar[0]?.masalar?.length || 0));
       }
 
-      // PlanManager ile kaydet
-      await planManager.savePlan(planAdi.trim(), planData);
+      // PlanManager ile kaydet - Firestore'a kayıt yap
+      console.log('💾 Plan kaydetme başlatılıyor - Firestore\'a kaydedilecek:', planAdi.trim());
+      const planId = await planManager.savePlan(planAdi.trim(), planData);
       
-      showSuccess('Plan başarıyla kaydedildi!');
+      if (!planId) {
+        throw new Error('Plan kaydedilemedi. Plan ID alınamadı.');
+      }
+      
+      console.log('✅ Plan başarıyla Firestore\'a kaydedildi/güncellendi. Plan ID:', planId);
+      logger.info('✅ Plan başarıyla Firestore\'a kaydedildi/güncellendi. Plan ID:', planId);
+      
+      showSuccess(`Plan "${planAdi.trim()}" başarıyla Firestore'a kaydedildi/güncellendi!`);
       setSaveDialogOpen(false);
       
     } catch (error) {
@@ -610,9 +618,20 @@ const AnaSayfaContent = React.memo(() => {
       }
 
       // Plan verisini yerlestirmeSonucu formatına dönüştür
+      let tumSalonlarSirali = planData.tumSalonlar;
+      
+      // Salonları sayısal ID'ye göre sırala (string sıralama yerine)
+      if (Array.isArray(tumSalonlarSirali) && tumSalonlarSirali.length > 0) {
+        tumSalonlarSirali = [...tumSalonlarSirali].sort((a, b) => {
+          const aId = parseInt(a.id || a.salonId || 0, 10);
+          const bId = parseInt(b.id || b.salonId || 0, 10);
+          return aId - bId;
+        });
+      }
+      
       const yerlestirmeFormatinda = {
         salon: planData.salon,
-        tumSalonlar: planData.tumSalonlar,
+        tumSalonlar: tumSalonlarSirali,
         kalanOgrenciler: planData.kalanOgrenciler,
         yerlesilemeyenOgrenciler: planData.yerlesilemeyenOgrenciler,
         istatistikler: planData.istatistikler

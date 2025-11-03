@@ -135,6 +135,44 @@ class KelebekDatabase extends Dexie {
       throw error;
     }
   }
+
+  /**
+   * Plan güncelleme
+   */
+  async updatePlan(planId, planData) {
+    try {
+      const normalizedPlanId = parseInt(planId, 10);
+      if (isNaN(normalizedPlanId)) {
+        throw new Error('Geçersiz plan ID');
+      }
+      
+      // Planın var olup olmadığını kontrol et
+      const existingPlan = await this.plans.get(normalizedPlanId);
+      if (!existingPlan) {
+        throw new Error(`Plan bulunamadı: ${planId}`);
+      }
+      
+      const updateData = {
+        name: planData.name,
+        date: planData.date || new Date().toISOString(),
+        totalStudents: planData.totalStudents || 0,
+        salonCount: planData.salonCount || 0,
+        sinavTarihi: planData.sinavTarihi || null,
+        sinavSaati: planData.sinavSaati || null,
+        sinavDonemi: planData.sinavDonemi || null,
+        donem: planData.donem || null,
+        data: planData.data,
+        updatedAt: new Date()
+      };
+      
+      await this.plans.update(normalizedPlanId, updateData);
+      console.log('✅ Plan güncellendi:', normalizedPlanId);
+      return normalizedPlanId;
+    } catch (error) {
+      console.error('❌ Plan güncelleme hatası:', error);
+      throw error;
+    }
+  }
   
   /**
    * Plan yükleme - sıkıştırmasız
@@ -561,10 +599,19 @@ class KelebekDatabase extends Dexie {
       const salons = await this.salons.toArray();
       console.log('✅ Salonlar yüklendi:', salons.length);
       // Kullanım kolaylığı için 'id' alanını geri eşle
-      return salons.map((s) => ({
+      const mappedSalons = salons.map((s) => ({
         id: s.salonId || s.id,
         ...s
       }));
+      
+      // Salonları sayısal ID'ye göre sırala (string sıralama yerine)
+      mappedSalons.sort((a, b) => {
+        const aId = parseInt(a.id || a.salonId || 0, 10);
+        const bId = parseInt(b.id || b.salonId || 0, 10);
+        return aId - bId;
+      });
+      
+      return mappedSalons;
     } catch (error) {
       console.error('❌ Salon yükleme hatası:', error);
       return [];

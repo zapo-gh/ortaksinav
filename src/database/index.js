@@ -68,6 +68,51 @@ class DatabaseAdapter {
   }
 
   /**
+   * Plan güncelleme
+   */
+  async updatePlan(planId, planData) {
+    try {
+      console.log('🔄 DatabaseAdapter updatePlan çağrıldı:', {
+        planId,
+        planName: planData?.name,
+        useFirestore: this.useFirestore
+      });
+      logger.info('🔄 DatabaseAdapter updatePlan çağrıldı:', {
+        planId,
+        planName: planData?.name,
+        useFirestore: this.useFirestore
+      });
+      
+      // Firestore birincil - veriyi sanitize et
+      const payload = this.sanitizeForFirestore(planData);
+      const db = await this.getActiveDB();
+      
+      if (!db.updatePlan) {
+        throw new Error('Veritabanı güncelleme desteği yok');
+      }
+      
+      const result = await db.updatePlan(planId, payload);
+      console.log('✅ DatabaseAdapter updatePlan başarılı:', result);
+      logger.info('✅ DatabaseAdapter updatePlan başarılı:', result);
+      return result;
+    } catch (error) {
+      logger.error('❌ Plan güncelleme hatası:', error);
+      
+      // Firestore hatası durumunda IndexedDB'ye geç
+      if (this.useFirestore) {
+        logger.info('🔄 Firestore hatası, IndexedDB\'ye geçiliyor...');
+        this.useFirestore = false;
+        const indexedDB = await this.getIndexedDB();
+        if (indexedDB.updatePlan) {
+          return await indexedDB.updatePlan(planId, planData);
+        }
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
    * Plan kaydetme
    */
   async savePlan(planData) {

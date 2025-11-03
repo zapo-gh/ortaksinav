@@ -12,16 +12,33 @@ class PlanManager {
   }
 
   /**
-   * Plan kaydetme - Basit ve güvenilir
+   * Plan kaydetme - Aynı isimde plan varsa güncelleme, yoksa yeni plan oluşturma
    */
   async savePlan(planName, planData) {
     try {
       console.log('💾 Plan kaydediliyor:', planName);
       
-      // TÜM TEST PLANLARINI ENGelle (Firestore kota sorununu önlemek için)
-      // Test dosyalarından gelen tüm plan isimlerini engelle
       const normalizedPlanName = String(planName || '').trim();
       const lowerPlanName = normalizedPlanName.toLowerCase();
+      
+      // Aynı isimde plan var mı kontrol et
+      try {
+        const allPlans = await db.getAllPlans();
+        const existingPlan = allPlans.find(plan => {
+          const existingName = String(plan.name || '').trim();
+          return existingName.toLowerCase() === lowerPlanName;
+        });
+        
+        if (existingPlan) {
+          console.log('🔄 Aynı isimde plan bulundu, güncelleme yapılıyor:', existingPlan.id);
+          return await this.updatePlan(existingPlan.id, planName, planData);
+        }
+      } catch (error) {
+        console.warn('⚠️ Plan kontrolü sırasında hata (yeni plan oluşturulacak):', error.message);
+      }
+      
+      // TÜM TEST PLANLARINI ENGelle (Firestore kota sorununu önlemek için)
+      // Test dosyalarından gelen tüm plan isimlerini engelle
       
       // Test plan isimleri listesi (genişletilmiş)
       const testPlanNames = [
