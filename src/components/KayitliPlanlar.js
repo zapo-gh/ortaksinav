@@ -357,7 +357,16 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
             İptal
           </Button>
           <Button
-            onClick={() => handlePlanSil(planToDelete)}
+            onClick={async () => {
+              try {
+                await handlePlanSil(planToDelete);
+              } catch (error) {
+                // handlePlanSil içinde zaten hata yakalanıyor ve modal kapatılıyor
+                // Ama ekstra güvenlik için burada da modal kapatıyoruz
+                setDeleteDialogOpen(false);
+                setPlanToDelete(null);
+              }
+            }}
             color="error"
             variant="contained"
           >
