@@ -37,7 +37,15 @@ class FirestoreClient {
     const isMockDb = db?.mock === true;
     this.isDisabled = DISABLE_FIREBASE || isMockDb;
     
-    // DEBUG: Durum logları
+    // DEBUG: Durum logları - Console'a da yaz
+    console.log('🔥 FirestoreClient constructor:', {
+      DISABLE_FIREBASE,
+      dbIsMock: isMockDb,
+      isDisabled: this.isDisabled,
+      dbType: typeof db,
+      dbHasMock: 'mock' in (db || {}),
+      dbMockValue: db?.mock
+    });
     logger.debug('🔥 FirestoreClient constructor:', {
       DISABLE_FIREBASE,
       dbIsMock: isMockDb,
@@ -47,8 +55,14 @@ class FirestoreClient {
     });
     
     if (this.isDisabled) {
+      console.warn('⚠️ Firestore DEVRE DIŞI - veriler Firestore\'a kaydedilmeyecek!');
+      console.warn('⚠️ Sebep:', {
+        DISABLE_FIREBASE,
+        dbIsMock: isMockDb
+      });
       logger.warn('⚠️ Firestore DEVRE DIŞI - veriler Firestore\'a kaydedilmeyecek!');
     } else {
+      console.log('✅ Firestore AKTIF - veriler Firestore\'a kaydedilecek');
       logger.info('✅ Firestore AKTIF - veriler Firestore\'a kaydedilecek');
     }
   }
@@ -59,7 +73,7 @@ class FirestoreClient {
   _handleDisabledFirebase(operation, defaultValue = null) {
     if (this.isDisabled) {
       logger.warn(`🔧 Firebase disabled - ${operation} skipped, using localStorage fallback`);
-      return Promise.resolve(defaultValue);
+      return { isDisabled: true, defaultValue };
     }
     return null;
   }
@@ -81,7 +95,7 @@ class FirestoreClient {
     });
     
     const disabledResult = this._handleDisabledFirebase('savePlan', 'mock-plan-id');
-    if (disabledResult) {
+    if (disabledResult && disabledResult.isDisabled) {
       console.error('❌ Firestore devre dışı, plan kaydedilemez!');
       logger.error('❌ Firestore devre dışı, plan kaydedilemez!');
       throw new Error('Firestore devre dışı. Plan kaydedilemez. Lütfen Firestore\'u aktif edin.');

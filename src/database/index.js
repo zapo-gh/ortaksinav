@@ -151,16 +151,36 @@ class DatabaseAdapter {
       const result = await db.savePlan(payload);
       console.log('✅ DatabaseAdapter savePlan başarılı:', result);
       logger.info('✅ DatabaseAdapter savePlan başarılı:', result);
+      
+      // Firestore'a kaydedildiğinden emin ol
+      if (this.useFirestore && result && typeof result === 'string') {
+        console.log('✅ Plan Firestore\'a kaydedildi. Plan ID:', result);
+        logger.info('✅ Plan Firestore\'a kaydedildi. Plan ID:', result);
+      } else if (result && typeof result === 'number') {
+        console.warn('⚠️ Plan IndexedDB\'ye kaydedildi (Firestore devre dışı veya hata). Plan ID:', result);
+        logger.warn('⚠️ Plan IndexedDB\'ye kaydedildi (Firestore devre dışı veya hata). Plan ID:', result);
+      }
+      
       return result;
     } catch (error) {
       logger.error('❌ Plan kaydetme hatası:', error);
+      console.error('❌ DatabaseAdapter savePlan hatası:', error);
       
       // Firestore hatası durumunda IndexedDB'ye geç
       if (this.useFirestore) {
-        logger.info('🔄 Firestore hatası, IndexedDB\'ye geçiliyor...');
-        this.useFirestore = false;
-        const indexedDB = await this.getIndexedDB();
-        return await indexedDB.savePlan(planData);
+        console.warn('⚠️ Firestore hatası, IndexedDB\'ye geçiliyor...');
+        logger.warn('⚠️ Firestore hatası, IndexedDB\'ye geçiliyor...');
+        try {
+          this.useFirestore = false;
+          const indexedDB = await this.getIndexedDB();
+          const indexedResult = await indexedDB.savePlan(planData);
+          console.warn('⚠️ Plan IndexedDB\'ye kaydedildi (Firestore hatası). Plan ID:', indexedResult);
+          logger.warn('⚠️ Plan IndexedDB\'ye kaydedildi (Firestore hatası). Plan ID:', indexedResult);
+          return indexedResult;
+        } catch (indexedError) {
+          logger.error('❌ IndexedDB kaydetme hatası:', indexedError);
+          throw new Error(`Plan kaydedilemedi. Firestore hatası: ${error.message}, IndexedDB hatası: ${indexedError.message}`);
+        }
       }
       
       throw error;

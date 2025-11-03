@@ -96,9 +96,18 @@ const PlanKaydetmeDialog = React.memo(({
   }, [onClose]);
   
   // Kaydetme işlemi
-  const handleSave = useCallback(() => {
-    onSave(planAdi);
-    setPlanAdi('');
+  const handleSave = useCallback(async () => {
+    if (!planAdi.trim()) {
+      return; // Boş plan adı için hiçbir şey yapma
+    }
+    try {
+      await onSave(planAdi);
+      setPlanAdi('');
+      // Modal kapanması handleSavePlan içinde yapılıyor
+    } catch (error) {
+      // Hata durumunda modal açık kalsın, hata mesajı gösterilecek
+      console.error('Plan kaydetme hatası:', error);
+    }
   }, [onSave, planAdi]);
   
   return (
@@ -534,21 +543,54 @@ const AnaSayfaContent = React.memo(() => {
 
       // PlanManager ile kaydet - Firestore'a kayıt yap
       console.log('💾 Plan kaydetme başlatılıyor - Firestore\'a kaydedilecek:', planAdi.trim());
+      
+      // DEBUG: DatabaseAdapter durumunu kontrol et
+      const dbAdapter = await import('../database/index');
+      const dbStatus = {
+        useFirestore: dbAdapter.default.useFirestore,
+        firestoreIsDisabled: dbAdapter.default.firestore?.isDisabled,
+        dbType: dbAdapter.default.getDatabaseType(),
+        firestoreDbMock: dbAdapter.default.firestore?.db?.mock
+      };
+      console.log('🔍 DatabaseAdapter durumu:', dbStatus);
+      logger.info('🔍 DatabaseAdapter durumu:', dbStatus);
+      
+      // Firestore devre dışıysa kullanıcıya bilgi ver
+      if (dbAdapter.default.firestore?.isDisabled) {
+        console.warn('⚠️ Firestore devre dışı - Plan IndexedDB\'ye kaydedilecek');
+        logger.warn('⚠️ Firestore devre dışı - Plan IndexedDB\'ye kaydedilecek');
+      }
+      
       const planId = await planManager.savePlan(planAdi.trim(), planData);
       
       if (!planId) {
-        throw new Error('Plan kaydedilemedi. Plan ID alınamadı.');
+        // planId null dönerse, muhtemelen test plan filtresi veya Firestore devre dışı
+        console.warn('⚠️ Plan ID null döndü - muhtemelen test plan filtresi veya Firestore devre dışı');
+        throw new Error('Plan kaydedilemedi. Plan ID alınamadı. Firestore aktif mi kontrol edin.');
       }
       
-      console.log('✅ Plan başarıyla Firestore\'a kaydedildi/güncellendi. Plan ID:', planId);
-      logger.info('✅ Plan başarıyla Firestore\'a kaydedildi/güncellendi. Plan ID:', planId);
+      // Plan ID tipine göre hangi veritabanına kaydedildiğini belirle
+      const isFirestore = typeof planId === 'string' && isNaN(Number(planId));
+      const isIndexedDB = typeof planId === 'number' || (typeof planId === 'string' && !isNaN(Number(planId)));
+      
+      if (isFirestore) {
+        console.log('✅ Plan başarıyla Firestore\'a kaydedildi/güncellendi. Plan ID:', planId);
+        logger.info('✅ Plan başarıyla Firestore\'a kaydedildi/güncellendi. Plan ID:', planId);
+      } else if (isIndexedDB) {
+        console.warn('⚠️ Plan IndexedDB\'ye kaydedildi (Firestore devre dışı). Plan ID:', planId);
+        logger.warn('⚠️ Plan IndexedDB\'ye kaydedildi (Firestore devre dışı). Plan ID:', planId);
+      }
       
       // Önce modal'ı kapat
       setSaveDialogOpen(false);
       
       // Sonra success mesajını göster (modal kapandıktan sonra)
       setTimeout(() => {
-        showSuccess(`Plan "${planAdi.trim()}" başarıyla Firestore'a kaydedildi/güncellendi!`);
+        if (isFirestore) {
+          showSuccess(`Plan "${planAdi.trim()}" başarıyla Firestore'a kaydedildi/güncellendi!`);
+        } else {
+          showSuccess(`Plan "${planAdi.trim()}" başarıyla kaydedildi/güncellendi! (IndexedDB)`);
+        }
       }, 100);
       
     } catch (error) {

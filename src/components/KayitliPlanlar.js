@@ -136,8 +136,10 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
       setDeleteDialogOpen(false);
       setPlanToDelete(null);
       
-      // Sonra success mesajını göster ve planları yenile
-      showSuccess('Plan başarıyla silindi!');
+      // Sonra success mesajını göster (modal kapandıktan sonra)
+      setTimeout(() => {
+        showSuccess('Plan başarıyla silindi!');
+      }, 100);
       
       // Planları yenile
       await loadPlans();
@@ -149,7 +151,10 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
       setDeleteDialogOpen(false);
       setPlanToDelete(null);
       
-      showError(`Plan silinirken hata oluştu: ${errorMessage}`);
+      // Hata mesajını göster (modal kapandıktan sonra)
+      setTimeout(() => {
+        showError(`Plan silinirken hata oluştu: ${errorMessage}`);
+      }, 100);
     }
   };
 
