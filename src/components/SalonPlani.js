@@ -633,24 +633,26 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
     }
     
     // Eğer sinif.siraTipi ve sinif.gruplar varsa, grup bazlı düzen oluştur
-    if (sinif.siraTipi && sinif.gruplar) {
+    if (sinif.siraTipi && sinif.gruplar && Array.isArray(sinif.gruplar) && sinif.gruplar.length > 0) {
       const { siraTipi, gruplar } = sinif;
       const masalar = [];
       let masaIndex = 0;
       
-      // En fazla sıra sayısını bul
-      const maxSiraSayisi = Math.max(...gruplar.map(g => g.siraSayisi));
+      // En fazla sıra sayısını bul - gruplar boş veya geçersizse varsayılan değer kullan
+      const siraSayilari = gruplar.map(g => g?.siraSayisi || 0).filter(s => s > 0);
+      const maxSiraSayisi = siraSayilari.length > 0 ? Math.max(...siraSayilari) : 6;
       
       // Grup bazlı masa düzeni oluştur (yerleştirme algoritması ile aynı)
       for (let satir = 0; satir < maxSiraSayisi; satir++) {
         gruplar.forEach((grup, grupIndex) => {
-          if (satir < grup.siraSayisi) {
+          const grupSiraSayisi = grup?.siraSayisi || 0;
+          if (grupSiraSayisi > 0 && satir < grupSiraSayisi) {
             if (siraTipi === 'tekli') {
               masalar.push({
                 id: masaIndex++,
                 satir: satir,
                 sutun: grupIndex,
-                grup: grup.id,
+                grup: grup?.id || (grupIndex + 1),
                 koltukTipi: 'tekli',
                 grupSira: grupIndex,
                 ogrenci: ogrenciler[masaIndex - 1] || null,
@@ -662,7 +664,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                 id: masaIndex++,
                 satir: satir,
                 sutun: grupIndex * 2,
-                grup: grup.id,
+                grup: grup?.id || (grupIndex + 1),
                 koltukTipi: 'ikili-sol',
                 grupSira: grupIndex,
                 ogrenci: ogrenciler[masaIndex - 1] || null,
@@ -674,7 +676,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                 id: masaIndex++,
                 satir: satir,
                 sutun: grupIndex * 2 + 1,
-                grup: grup.id,
+                grup: grup?.id || (grupIndex + 1),
                 koltukTipi: 'ikili-sag',
                 grupSira: grupIndex,
                 ogrenci: ogrenciler[masaIndex - 1] || null,
@@ -731,7 +733,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
     // Grup bazlı masa numaralarını hesapla
     const masalarWithGroupNumbers = calculateGroupBasedDeskNumbers(masalar);
     
-    return { satirSayisi, sutunSayisi, masalar: masalarWithGroupNumbers };
+      return { satirSayisi, sutunSayisi, masalar: masalarWithGroupNumbers };
   }, [sinif, ogrenciler]);
 
 
@@ -866,6 +868,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
         </Card>
     );
   }
+
 
   // Bu kısım kaldırıldı - ana salon planı render edilecek
 

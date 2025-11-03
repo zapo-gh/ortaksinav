@@ -256,6 +256,41 @@ const AnaSayfaContent = React.memo(() => {
     }
   }, []);
 
+  // Plan varsa ilk salonu otomatik seç - sadece bir kez çalışsın (useRef ile kontrol)
+  const ilkSalonSecildiRef = useRef(false);
+  useEffect(() => {
+    if (yerlestirmeSonucu && yerlestirmeSonucu.tumSalonlar && yerlestirmeSonucu.tumSalonlar.length > 0) {
+      if (ilkSalonSecildiRef.current) return; // Zaten seçilmişse tekrar seçme
+      
+      // Eğer seciliSalonId null ise veya seçili salon tumSalonlar içinde yoksa, ilk salonu seç
+      const aktifTumSalonlar = yerlestirmeSonucu.tumSalonlar.filter(salon => salon.aktif !== false);
+      if (aktifTumSalonlar.length > 0) {
+        const seciliSalonMevcutMu = seciliSalonId && aktifTumSalonlar.some(salon => 
+          salon.salonId === seciliSalonId || salon.id === seciliSalonId
+        );
+        
+        if (!seciliSalonMevcutMu) {
+          const ilkSalon = aktifTumSalonlar[0];
+          const ilkSalonId = ilkSalon.salonId || ilkSalon.id;
+          if (ilkSalonId) {
+            ilkSalonSecildiRef.current = true;
+            setSeciliSalonId(ilkSalonId);
+            // Ana salonu da güncelle - sadece ilk seferinde
+            if (yerlestirmeGuncelle && !yerlestirmeSonucu.salon) {
+              yerlestirmeGuncelle({ salon: ilkSalon });
+            }
+          }
+        } else {
+          ilkSalonSecildiRef.current = true;
+        }
+      }
+    } else {
+      // Plan yoksa ref'i sıfırla
+      ilkSalonSecildiRef.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [yerlestirmeSonucu?.tumSalonlar?.length]);
+
 
   // Giriş sayfasından ana sisteme geçiş
   const handleStartSystem = useCallback(() => {
@@ -1179,13 +1214,25 @@ const AnaSayfaContent = React.memo(() => {
         // Sadece aktif salonları göster
         const aktifSalonlar = salonlar?.filter(salon => salon.aktif !== false) || [];
         
+        // NOT: seciliSalonId seçimi useEffect'te yapılıyor - render sırasında state güncellemesi yapmayalım
         if (aktifSalonlar.length > 0 && !yerlestirmeSonucu) {
-          // İlk aktif salonu seç (eğer seçili salon yoksa)
-          if (!seciliSalonId && aktifSalonlar.length > 0) {
-            setSeciliSalonId(aktifSalonlar[0].id);
-          }
           
           const seciliSalon = aktifSalonlar.find(salon => salon.id === seciliSalonId) || aktifSalonlar[0];
+          
+          // Kapasite bilgisini doğru şekilde al - 0 ise varsayılan değer kullan
+          const salonKapasite = seciliSalon.kapasite || 30;
+          
+          // Satır ve sütun sayılarını hesapla - eksikse kapasiteden hesapla
+          const defaultSatir = seciliSalon.satir || (salonKapasite > 0 ? Math.ceil(Math.sqrt(salonKapasite)) : 6);
+          const defaultSutun = seciliSalon.sutun || (salonKapasite > 0 ? Math.ceil(salonKapasite / defaultSatir) : 5);
+          
+          // Grup bazlı düzen için varsayılan gruplar
+          const defaultGruplar = seciliSalon.gruplar || [
+            { id: 1, siraSayisi: Math.ceil(defaultSatir / 2) },
+            { id: 2, siraSayisi: Math.ceil(defaultSatir / 2) },
+            { id: 3, siraSayisi: Math.ceil(defaultSatir / 2) },
+            { id: 4, siraSayisi: Math.ceil(defaultSatir / 2) }
+          ];
           
           return (
             <ErrorBoundary componentName="SalonPlani">
@@ -1195,12 +1242,17 @@ const AnaSayfaContent = React.memo(() => {
                 sinif={{
                   id: seciliSalon.id,
                   salonAdi: seciliSalon.salonAdi || seciliSalon.ad,
-                  kapasite: seciliSalon.kapasite,
-                  siraTipi: seciliSalon.siraTipi,
+                  kapasite: salonKapasite,
+                  siraTipi: seciliSalon.siraTipi || 'ikili',
                   grupSayisi: seciliSalon.grupSayisi,
-                  gruplar: seciliSalon.gruplar,
+                  gruplar: defaultGruplar,
                   masalar: [], // Boş masa listesi
-                  ogrenciler: [] // Boş öğrenci listesi
+                  ogrenciler: [], // Boş öğrenci listesi
+                  // Fallback için eski veri yapısı
+                  siraDizilimi: {
+                    satir: defaultSatir,
+                    sutun: defaultSutun
+                  }
                 }}
                 ogrenciler={[]}
                 ayarlar={ayarlar}
@@ -1310,8 +1362,20 @@ const AnaSayfaContent = React.memo(() => {
                     const seciliSalon = salonlar.find(salon => salon.id === (seciliSalonId || salonlar[0]?.id));
                     if (!seciliSalon) return null;
                     
-                    // Kapasite bilgisini doğru şekilde al
-                    const salonKapasite = seciliSalon.kapasite || 0;
+                    // Kapasite bilgisini doğru şekilde al - 0 ise varsayılan değer kullan
+                    const salonKapasite = seciliSalon.kapasite || 30;
+                    
+                    // Satır ve sütun sayılarını hesapla - eksikse kapasiteden hesapla
+                    const defaultSatir = seciliSalon.satir || (salonKapasite > 0 ? Math.ceil(Math.sqrt(salonKapasite)) : 6);
+                    const defaultSutun = seciliSalon.sutun || (salonKapasite > 0 ? Math.ceil(salonKapasite / defaultSatir) : 5);
+                    
+                    // Grup bazlı düzen için varsayılan gruplar
+                    const defaultGruplar = seciliSalon.gruplar || [
+                          { id: 1, siraSayisi: Math.ceil(defaultSatir / 2) },
+                          { id: 2, siraSayisi: Math.ceil(defaultSatir / 2) },
+                          { id: 3, siraSayisi: Math.ceil(defaultSatir / 2) },
+                          { id: 4, siraSayisi: Math.ceil(defaultSatir / 2) }
+                        ];
                     
                     return (
                       <SalonPlaniLazy 
@@ -1321,16 +1385,11 @@ const AnaSayfaContent = React.memo(() => {
                         ad: seciliSalon.salonAdi || seciliSalon.ad,
                         // SalonFormu formatından gelen veriyi kullan
                         siraTipi: seciliSalon.siraTipi || 'ikili',
-                        gruplar: seciliSalon.gruplar || [
-                          { id: 1, siraSayisi: Math.ceil((seciliSalon.satir || 6) / 2) },
-                          { id: 2, siraSayisi: Math.ceil((seciliSalon.satir || 6) / 2) },
-                          { id: 3, siraSayisi: Math.ceil((seciliSalon.satir || 6) / 2) },
-                          { id: 4, siraSayisi: Math.ceil((seciliSalon.satir || 6) / 2) }
-                        ],
+                        gruplar: defaultGruplar,
                         // Fallback için eski veri yapısı
                         siraDizilimi: {
-                          satir: seciliSalon.satir || Math.ceil(Math.sqrt(salonKapasite)),
-                          sutun: seciliSalon.sutun || Math.ceil(salonKapasite / Math.ceil(Math.sqrt(salonKapasite)))
+                          satir: defaultSatir,
+                          sutun: defaultSutun
                         }
                       }}
                       ogrenciler={[]}
