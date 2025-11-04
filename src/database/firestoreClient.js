@@ -623,6 +623,7 @@ class FirestoreClient {
 
   /**
    * Öğrencileri kaydet
+   * Önce mevcut öğrencileri alır, yeni listede olmayanları siler, sonra yeni listeyi kaydeder
    */
   async saveStudents(students) {
     const disabledResult = this._handleDisabledFirebase('saveStudents', null);
@@ -631,23 +632,90 @@ class FirestoreClient {
     try {
       logger.debug('💾 Firestore: Öğrenciler kaydediliyor...');
       
-      const batch = writeBatch(this.db);
+      // Önce mevcut tüm öğrencileri al
+      const studentsRef = collection(this.db, 'students');
+      const existingStudentsSnap = await getDocs(studentsRef);
+      
+      // Yeni listedeki öğrenci ID'lerini bir Set'e al (hızlı lookup için)
+      const newStudentIds = new Set(students.map(s => s.id?.toString()));
+      
+      // Duplicate kontrolü: aynı numara veya ID'ye sahip öğrencileri filtrele
+      const seenIds = new Set();
+      const seenNumbers = new Map(); // numara -> öğrenci ID mapping
+      const uniqueStudents = students.filter(student => {
+        const studentId = student.id?.toString();
+        const studentNumber = student.numara?.toString();
+        
+        // ID duplicate kontrolü
+        if (studentId && seenIds.has(studentId)) {
+          logger.warn(`⚠️ Firestore: Duplicate ID tespit edildi ve filtrelendi: ${studentId} - ${student.ad} ${student.soyad}`);
+          return false;
+        }
+        if (studentId) seenIds.add(studentId);
+        
+        // Numara duplicate kontrolü (aynı numara farklı ID'lerle kaydedilmiş olabilir)
+        if (studentNumber) {
+          if (seenNumbers.has(studentNumber)) {
+            const existingId = seenNumbers.get(studentNumber);
+            logger.warn(`⚠️ Firestore: Duplicate numara tespit edildi: ${studentNumber} (mevcut ID: ${existingId}, yeni ID: ${studentId}) - ${student.ad} ${student.soyad}`);
+            // Aynı numaraya sahip öğrenciyi filtrele (ilkini tut)
+            return false;
+          }
+          seenNumbers.set(studentNumber, studentId);
+        }
+        
+        return true;
+      });
+      
+      logger.debug(`📊 Firestore: ${students.length} öğrenci, ${uniqueStudents.length} unique öğrenci (${students.length - uniqueStudents.length} duplicate filtrelendi)`);
+      
+      // Yeni listede olmayan eski öğrencileri sil
+      const studentsToDelete = [];
+      existingStudentsSnap.forEach(doc => {
+        const studentId = doc.id;
+        if (!newStudentIds.has(studentId)) {
+          studentsToDelete.push(doc.ref);
+        }
+      });
+      
+      // Silme işlemini batch ile yap
+      if (studentsToDelete.length > 0) {
+        logger.debug(`🗑️ Firestore: ${studentsToDelete.length} eski öğrenci silinecek`);
+        const deleteChunkSize = 500;
+        
+        for (let i = 0; i < studentsToDelete.length; i += deleteChunkSize) {
+          const chunk = studentsToDelete.slice(i, i + deleteChunkSize);
+          const deleteBatch = writeBatch(this.db);
+          
+          chunk.forEach(studentRef => {
+            deleteBatch.delete(studentRef);
+          });
+          
+          await deleteBatch.commit();
+          logger.debug(`✅ Firestore: Eski öğrenci chunk silindi (${i + 1}-${i + chunk.length})`);
+        }
+      }
+      
+      // Yeni öğrencileri kaydet/güncelle
       const chunkSize = 500;
       
-      for (let i = 0; i < students.length; i += chunkSize) {
-        const chunk = students.slice(i, i + chunkSize);
+      for (let i = 0; i < uniqueStudents.length; i += chunkSize) {
+        const chunk = uniqueStudents.slice(i, i + chunkSize);
+        const saveBatch = writeBatch(this.db);
         
         chunk.forEach(student => {
           const studentRef = doc(this.db, 'students', student.id.toString());
-          batch.set(studentRef, {
+          saveBatch.set(studentRef, {
             ...student,
             updatedAt: serverTimestamp()
           });
         });
         
-        await batch.commit();
+        await saveBatch.commit();
         logger.debug(`✅ Firestore: Öğrenci chunk kaydedildi (${i + 1}-${i + chunk.length})`);
       }
+      
+      logger.info(`✅ Firestore: ${uniqueStudents.length} öğrenci kaydedildi, ${studentsToDelete.length} eski öğrenci silindi`);
     } catch (error) {
       logger.error('❌ Firestore: Öğrenci kaydetme hatası:', error);
       throw error;
@@ -682,11 +750,25 @@ class FirestoreClient {
         students.push({ id: doc.id, ...doc.data() });
       });
       
-      logger.info('✅ Firestore: Öğrenciler yüklendi (SERVER):', students.length, 'öğrenci');
-      if (students.length > 0) {
-        logger.info('📋 İlk öğrenci:', students[0]);
+      console.log(`📊 Firestore: ${students.length} öğrenci yüklendi (duplicate kontrolü öncesi)`);
+      
+      // Duplicate kontrolü: aynı ID veya numaraya sahip öğrencileri filtrele
+      const uniqueStudents = this._filterDuplicateStudents(students);
+      
+      if (students.length !== uniqueStudents.length) {
+        const duplicateCount = students.length - uniqueStudents.length;
+        console.warn(`⚠️ Firestore: ${duplicateCount} duplicate öğrenci filtrelendi, ${uniqueStudents.length} unique öğrenci döndürüldü`);
+        logger.warn(`⚠️ Firestore: ${duplicateCount} duplicate öğrenci filtrelendi, ${uniqueStudents.length} unique öğrenci döndürüldü`);
+      } else {
+        console.log(`✅ Firestore: Duplicate öğrenci bulunamadı, ${uniqueStudents.length} öğrenci`);
       }
-      return students;
+      
+      console.log(`✅ Firestore: Öğrenciler yüklendi (SERVER): ${uniqueStudents.length} öğrenci`);
+      logger.info('✅ Firestore: Öğrenciler yüklendi (SERVER):', uniqueStudents.length, 'öğrenci');
+      if (uniqueStudents.length > 0) {
+        logger.info('📋 İlk öğrenci:', uniqueStudents[0]);
+      }
+      return uniqueStudents;
     } catch (error) {
       logger.error('❌ Firestore: Öğrenci yükleme hatası:', error);
       // Hata durumunda cache'den yükle (fallback)
@@ -698,13 +780,63 @@ class FirestoreClient {
         studentsSnap.forEach(doc => {
           students.push({ id: doc.id, ...doc.data() });
         });
-        logger.warn('⚠️ Cache\'den yüklendi:', students.length, 'öğrenci');
-        return students;
+        
+        // Cache'den yüklenen öğrencilerde de duplicate kontrolü yap
+        const uniqueStudents = this._filterDuplicateStudents(students);
+        if (students.length !== uniqueStudents.length) {
+          logger.warn(`⚠️ Cache: ${students.length - uniqueStudents.length} duplicate öğrenci filtrelendi`);
+        }
+        
+        logger.warn('⚠️ Cache\'den yüklendi:', uniqueStudents.length, 'öğrenci');
+        return uniqueStudents;
       } catch (cacheError) {
         logger.error('❌ Cache yükleme de başarısız:', cacheError);
         return [];
       }
     }
+  }
+  
+  /**
+   * Duplicate öğrencileri filtrele (helper fonksiyon)
+   */
+  _filterDuplicateStudents(students) {
+    const seenIds = new Set();
+    const seenNumbers = new Map();
+    const duplicates = [];
+    
+    const uniqueStudents = students.filter(student => {
+      const studentId = student.id?.toString();
+      const studentNumber = student.numara?.toString();
+      
+      // ID duplicate kontrolü
+      if (studentId && seenIds.has(studentId)) {
+        console.warn(`⚠️ Duplicate ID: ${studentId} - ${student.ad} ${student.soyad}`);
+        duplicates.push({ type: 'ID', id: studentId, student });
+        logger.warn(`⚠️ Firestore: Duplicate ID tespit edildi ve filtrelendi: ${studentId} - ${student.ad} ${student.soyad}`);
+        return false;
+      }
+      if (studentId) seenIds.add(studentId);
+      
+      // Numara duplicate kontrolü
+      if (studentNumber) {
+        if (seenNumbers.has(studentNumber)) {
+          const existingStudent = seenNumbers.get(studentNumber);
+          console.warn(`⚠️ Duplicate numara: ${studentNumber} - Mevcut: ID=${existingStudent.id} (${existingStudent.ad} ${existingStudent.soyad}), Yeni: ID=${studentId} (${student.ad} ${student.soyad})`);
+          duplicates.push({ type: 'numara', numara: studentNumber, existing: existingStudent, new: student });
+          logger.warn(`⚠️ Firestore: Duplicate numara tespit edildi: ${studentNumber} (mevcut ID: ${existingStudent.id}, yeni ID: ${studentId}) - ${student.ad} ${student.soyad}`);
+          return false;
+        }
+        seenNumbers.set(studentNumber, student);
+      }
+      
+      return true;
+    });
+    
+    if (duplicates.length > 0) {
+      console.log(`🔍 Toplam ${duplicates.length} duplicate tespit edildi:`, duplicates);
+    }
+    
+    return uniqueStudents;
   }
 
   /**

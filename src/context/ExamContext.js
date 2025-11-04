@@ -143,6 +143,53 @@ const loadFromFirestore = async () => {
         ayarlar: firestoreAyarlar ? Object.keys(firestoreAyarlar).length : 0
       });
       
+      // Firestore'dan yüklenen verileri IndexedDB ve localStorage'a da senkronize et (cache temizleme için)
+      // Bu sayede Firestore'daki değişiklikler (silinen duplicate'ler) IndexedDB ve localStorage'a da yansır
+      try {
+        if (firestoreOgrenciler && firestoreOgrenciler.length > 0) {
+          // IndexedDB'yi senkronize et
+          const { default: indexedDB } = await import('../database/database');
+          await indexedDB.saveStudents(firestoreOgrenciler).catch(err => {
+            console.debug('IndexedDB senkronizasyon hatası (önemsiz):', err);
+          });
+          
+          // localStorage'ı da senkronize et (Firestore'dan güncel verileri yaz)
+          try {
+            localStorage.setItem('exam_ogrenciler', JSON.stringify(firestoreOgrenciler));
+            console.log(`✅ Öğrenciler IndexedDB ve localStorage'a senkronize edildi (${firestoreOgrenciler.length} öğrenci)`);
+          } catch (e) {
+            console.debug('localStorage senkronizasyon hatası (önemsiz):', e);
+          }
+        }
+        
+        if (firestoreSalonlar && firestoreSalonlar.length > 0) {
+          const { default: indexedDB } = await import('../database/database');
+          await indexedDB.saveSalons(firestoreSalonlar).catch(err => {
+            console.debug('IndexedDB salon senkronizasyon hatası (önemsiz):', err);
+          });
+          try {
+            localStorage.setItem('exam_salonlar', JSON.stringify(firestoreSalonlar));
+          } catch (e) {
+            console.debug('localStorage salon senkronizasyon hatası (önemsiz):', e);
+          }
+        }
+        
+        if (firestoreAyarlar && Object.keys(firestoreAyarlar).length > 0) {
+          const { default: indexedDB } = await import('../database/database');
+          await indexedDB.saveSettings(firestoreAyarlar).catch(err => {
+            console.debug('IndexedDB ayar senkronizasyon hatası (önemsiz):', err);
+          });
+          try {
+            localStorage.setItem('exam_ayarlar', JSON.stringify(firestoreAyarlar));
+          } catch (e) {
+            console.debug('localStorage ayar senkronizasyon hatası (önemsiz):', e);
+          }
+        }
+      } catch (syncError) {
+        // Senkronizasyon hatası önemli değil, sadece log'la
+        console.debug('Senkronizasyon hatası (önemsiz):', syncError);
+      }
+      
       return {
         // Firestore'dan hangi veriler varsa onları kullan, yoksa boş array/object
         ogrenciler: firestoreOgrenciler && firestoreOgrenciler.length > 0 ? firestoreOgrenciler : [],
