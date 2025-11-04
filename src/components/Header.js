@@ -243,15 +243,34 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
           component="div" 
           sx={{ 
             position: 'absolute',
-            left: '50%',
+            left: { xs: 64, sm: '50%' },
             top: '50%',
-            transform: 'translate(-50%, -50%)',
+            transform: { xs: 'translateY(-50%)', sm: 'translate(-50%, -50%)' },
             fontWeight: 'bold',
-            fontSize: '1.5rem',
-            textAlign: 'center'
+            fontSize: { xs: '0.85rem', sm: '1rem', md: '1.5rem' },
+            textAlign: { xs: 'left', sm: 'center' },
+            maxWidth: { xs: 'calc(100% - 140px)', sm: 'calc(100% - 200px)', md: 'none' },
+            overflow: 'hidden',
+            whiteSpace: { xs: 'normal', sm: 'nowrap' },
+            lineHeight: { xs: 1.3, sm: 1.2 },
+            display: { xs: 'flex', sm: 'block' },
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: { xs: 0, sm: 0 },
+            px: { xs: 0.5, sm: 0 },
+            zIndex: 1
           }}
+          title={baslik || 'Ortak Sınav Yerleştirme Sistemi'}
         >
-          {baslik || 'Ortak Sınav Yerleştirme Sistemi'}
+          {baslik || (
+            <>
+              <Box component="span" sx={{ display: { xs: 'block', sm: 'inline' } }}>
+                Ortak Sınav
+              </Box>
+              <Box component="span" sx={{ display: { xs: 'block', sm: 'inline' } }}>
+                Yerleştirme Sistemi
+              </Box>
+            </>
+          )}
         </Typography>
 
         {/* Sağ taraf - Tüm Butonlar Birlikte */}

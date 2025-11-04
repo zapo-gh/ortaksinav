@@ -248,11 +248,11 @@ const PlanlamaYap = memo(({
   };
 
   return (
-    <Card sx={{ maxWidth: 1200, mx: 'auto', mt: 2 }}>
-      <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-          <AssessmentIcon sx={{ mr: 1, color: 'primary.main' }} />
-          <Typography variant="h5" component="h2" gutterBottom>
+    <Card sx={{ maxWidth: 1200, mx: 'auto', mt: { xs: 1, sm: 2 }, mb: 2 }}>
+      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 2, sm: 3 } }}>
+          <AssessmentIcon sx={{ mr: 1, color: 'primary.main', fontSize: { xs: 24, sm: 28 } }} />
+          <Typography variant="h5" component="h2" gutterBottom sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
             Planlama ve Yerleştirme
           </Typography>
         </Box>
@@ -261,7 +261,7 @@ const PlanlamaYap = memo(({
         {kontroller?.tumHatalar && (
           <Alert 
             severity={kontroller.tumHatalar.length === 0 ? 'success' : 'error'}
-            sx={{ mb: 3 }}
+            sx={{ mb: { xs: 2, sm: 3 }, fontSize: { xs: '0.875rem', sm: '1rem' } }}
           >
             {kontroller.tumHatalar.length === 0 
               ? 'Tüm kontroller başarılı! Yerleştirme yapılabilir.'
@@ -273,13 +273,14 @@ const PlanlamaYap = memo(({
         {/* Kontrol Kartları */}
         <Box sx={{ 
           display: 'flex', 
-          gap: 3, 
+          gap: { xs: 2, sm: 3 }, 
           mb: 4,
-          flexWrap: 'nowrap',
-          minHeight: 200
+          flexDirection: { xs: 'column', sm: 'row' },
+          flexWrap: { xs: 'nowrap', sm: 'nowrap' },
+          minHeight: { xs: 'auto', sm: 200 }
         }}>
           {/* Öğrenciler Kontrolü */}
-          <Paper elevation={2} sx={{ p: 3, flex: 1, minWidth: 0 }}>
+          <Paper elevation={2} sx={{ p: { xs: 2, sm: 3 }, flex: { xs: '0 0 auto', sm: 1 }, minWidth: 0, width: { xs: '100%', sm: 'auto' } }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <PeopleIcon sx={{ mr: 1, color: 'primary.main' }} />
               <Typography variant="h6">Öğrenciler</Typography>
@@ -319,7 +320,7 @@ const PlanlamaYap = memo(({
           </Paper>
 
           {/* Salonlar Kontrolü */}
-          <Paper elevation={2} sx={{ p: 3, flex: 1, minWidth: 0 }}>
+          <Paper elevation={2} sx={{ p: { xs: 2, sm: 3 }, flex: { xs: '0 0 auto', sm: 1 }, minWidth: 0, width: { xs: '100%', sm: 'auto' } }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <MeetingRoomIcon sx={{ mr: 1, color: 'primary.main' }} />
               <Typography variant="h6">Salonlar</Typography>
@@ -366,7 +367,7 @@ const PlanlamaYap = memo(({
           </Paper>
 
           {/* Ayarlar Kontrolü */}
-          <Paper elevation={2} sx={{ p: 3, flex: 1, minWidth: 0 }}>
+          <Paper elevation={2} sx={{ p: { xs: 2, sm: 3 }, flex: { xs: '0 0 auto', sm: 1 }, minWidth: 0, width: { xs: '100%', sm: 'auto' } }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <SettingsIcon sx={{ mr: 1, color: 'primary.main' }} />
               <Typography variant="h6">Dersler</Typography>
@@ -403,19 +404,26 @@ const PlanlamaYap = memo(({
 
         {/* Ders Bilgileri */}
         {ayarlar?.dersler && ayarlar.dersler.length > 0 && (
-          <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
+          <Paper elevation={1} sx={{ p: { xs: 2, sm: 3 }, mb: { xs: 2, sm: 3 } }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <BookIcon sx={{ mr: 1, color: 'primary.main' }} />
               <Typography variant="h6" sx={{ color: 'primary.main' }}>
                 Ders Bilgileri
               </Typography>
             </Box>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, justifyContent: 'space-around' }}>
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: { xs: 'column', sm: 'row' },
+              flexWrap: 'wrap', 
+              gap: { xs: 2, sm: 3 }, 
+              justifyContent: { xs: 'stretch', sm: 'space-around' } 
+            }}>
               {ayarlar.dersler.map((ders, index) => (
                 <Box key={ders.id || index} sx={{ 
-                  flex: '1 1 30%', 
-                  minWidth: 250, 
-                  p: 2, 
+                  flex: { xs: '0 0 auto', sm: '1 1 30%' }, 
+                  minWidth: { xs: '100%', sm: 250 }, 
+                  width: { xs: '100%', sm: 'auto' },
+                  p: { xs: 1.5, sm: 2 }, 
                   border: '1px solid', 
                   borderColor: 'grey.300', 
                   borderRadius: 2, 

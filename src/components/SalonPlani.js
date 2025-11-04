@@ -25,7 +25,9 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  Zoom
+  Zoom,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   Chair as ChairIcon,
@@ -88,6 +90,8 @@ const DroppableSeat = memo(({ masa, onStudentMove, children }) => {
 });
 
 const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler = [], onOgrenciSec, tumSalonlar, onSalonDegistir, ayarlar = {}, salonlar = [], seciliSalonId, onSeciliSalonDegistir, onStudentTransfer, yerlestirmeSonucu, tumOgrenciSayisi }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { showConfirm } = useNotifications();
 
   const [modalAcik, setModalAcik] = useState(false);
@@ -336,9 +340,9 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
         onMouseEnter={() => masa.ogrenci && onStudentHover(masa.ogrenci)}
         onMouseLeave={onStudentLeave}
         sx={{
-          p: 1,
-          minHeight: 80,
-          maxHeight: 80,
+          p: { xs: 0.5, sm: 1 },
+          minHeight: { xs: 60, sm: 80 },
+          maxHeight: { xs: 60, sm: 80 },
           width: '100%',
           display: 'flex',
           flexDirection: 'column',
@@ -382,11 +386,11 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
           variant="caption"
           sx={{
             position: 'absolute',
-            top: 1,
-            left: 2,
+            top: { xs: 0.5, sm: 1 },
+            left: { xs: 1, sm: 2 },
             fontWeight: 'bold',
             color: 'text.secondary',
-            fontSize: '0.6rem',
+            fontSize: { xs: '0.5rem', sm: '0.6rem' },
             cursor: 'default'
           }}
           
@@ -505,16 +509,16 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
         {/* Öğrenci Bilgileri */}
         {masa.ogrenci ? (
           <Box sx={{ textAlign: 'center', width: '100%' }}>
-            <Avatar 
+            <Avatar
               sx={{ 
-                width: 20, 
-                height: 20, 
+                width: { xs: 16, sm: 20 }, 
+                height: { xs: 16, sm: 20 }, 
                 mx: 'auto', 
-                mb: 0.5,
+                mb: { xs: 0.3, sm: 0.5 },
                 bgcolor: `${getGenderColor(masa.ogrenci)}.main`
               }}
             >
-              <PersonIcon sx={{ fontSize: 12 }} />
+              <PersonIcon sx={{ fontSize: { xs: 10, sm: 12 } }} />
             </Avatar>
             
             <Typography 
@@ -522,7 +526,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
               sx={{ 
                 display: 'block',
                 fontWeight: 'bold',
-                fontSize: '0.65rem',
+                fontSize: { xs: '0.55rem', sm: '0.65rem' },
                 lineHeight: 1
               }}
             >
@@ -533,7 +537,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
               variant="caption" 
               sx={{ 
                 display: 'block',
-                fontSize: '0.6rem',
+                fontSize: { xs: '0.5rem', sm: '0.6rem' },
                 color: 'text.secondary'
               }}
             >
@@ -544,10 +548,10 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
               variant="caption" 
               sx={{ 
                 display: 'block',
-                fontSize: '0.55rem',
+                fontSize: { xs: '0.45rem', sm: '0.55rem' },
                 color: 'text.primary',
                 fontWeight: 'bold',
-                mt: 0.25
+                mt: { xs: 0.1, sm: 0.25 }
               }}
             >
               {masa.ogrenci.sinif || masa.ogrenci.sube}
@@ -557,8 +561,8 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
             <Box 
               sx={{ 
                 position: 'absolute', 
-                top: 4, 
-                right: 4,
+                top: { xs: 2, sm: 4 }, 
+                right: { xs: 2, sm: 4 },
                 opacity: isHovered ? 1 : 0.7, // Her zaman biraz görünür olsun
                 transition: 'opacity 0.1s ease',
                 zIndex: 20,
@@ -581,8 +585,8 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
           </Box>
         ) : (
           <Box sx={{ textAlign: 'center', color: 'text.disabled' }}>
-            <ChairIcon sx={{ fontSize: 16, mb: 0.5 }} />
-            <Typography variant="caption" sx={{ fontSize: '0.6rem' }}>
+            <ChairIcon sx={{ fontSize: { xs: 12, sm: 16 }, mb: { xs: 0.3, sm: 0.5 } }} />
+            <Typography variant="caption" sx={{ fontSize: { xs: '0.5rem', sm: '0.6rem' } }}>
               Boş
             </Typography>
           </Box>
@@ -1042,14 +1046,31 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
         {/* Salon sekmeleri - Hem yerleştirme planı varken hem de yokken göster */}
         {((tumSalonlar && tumSalonlar.length > 1) || (salonlar && salonlar.length > 0)) && (
           <Paper elevation={1} sx={{ p: { xs: 1, sm: 2 }, mb: 3, bgcolor: 'grey.50' }}>
-            <Box sx={{ 
-              display: 'flex', 
-              gap: { xs: 0.5, sm: 1 }, 
-              flexWrap: 'wrap', 
-              justifyContent: 'center', 
-              alignItems: 'center',
-              flexDirection: { xs: 'column', sm: 'row' }
-            }}>
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                gap: { xs: 0.5, sm: 1 }, 
+                flexWrap: { xs: 'nowrap', sm: 'wrap' },
+                overflowX: { xs: 'auto', sm: 'visible' },
+                overflowY: 'hidden',
+                WebkitOverflowScrolling: 'touch',
+                scrollbarWidth: { xs: 'thin', sm: 'auto' },
+                '&::-webkit-scrollbar': {
+                  height: { xs: 6, sm: 'auto' }
+                },
+                '&::-webkit-scrollbar-track': {
+                  backgroundColor: { xs: 'rgba(0,0,0,0.05)', sm: 'transparent' }
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  backgroundColor: { xs: 'rgba(0,0,0,0.2)', sm: 'transparent' },
+                  borderRadius: { xs: 3, sm: 0 }
+                },
+                justifyContent: { xs: 'flex-start', sm: 'center' }, 
+                alignItems: 'center',
+                flexDirection: 'row',
+                pb: { xs: 1, sm: 0 }
+              }}
+            >
               {/* Yerleştirme planı varken - tumSalonlar kullan */}
               {sortedTumSalonlar && sortedTumSalonlar.length > 0 && sortedTumSalonlar
                 .map((salon) => {
@@ -1064,21 +1085,36 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                       }
                     }}
                     sx={{ 
-                      minWidth: { xs: '100%', sm: 100 },
-                      width: { xs: '100%', sm: 'auto' },
-                      borderRadius: 3,
+                      minWidth: { xs: 'auto', sm: 100 },
+                      maxWidth: { xs: '110px', sm: 'none' },
+                      width: { xs: 'auto', sm: 'auto' },
+                      flexShrink: 0,
+                      borderRadius: { xs: 2, sm: 3 },
                       textTransform: 'none',
                       fontWeight: isActive ? 'bold' : 'normal',
                       boxShadow: isActive ? 3 : 1,
+                      px: { xs: 0.75, sm: 2 },
+                      py: { xs: 0.5, sm: 1 },
                       '&:hover': {
                         boxShadow: 4,
-                        transform: 'translateY(-1px)'
+                        // Transform yerine sadece box-shadow ile hover efekti
                       },
-                      transition: 'opacity 0.1s ease, background-color 0.1s ease',
-                      mb: { xs: 0.5, sm: 0 }
+                      transition: 'box-shadow 0.2s ease, background-color 0.2s ease',
+                      mb: { xs: 0, sm: 0 }
                     }}
                   >
-                    <Typography variant="body2">
+                    <Typography 
+                      variant="body2"
+                      sx={{
+                        fontSize: { xs: '0.7rem', sm: '0.875rem' },
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        maxWidth: { xs: '85px', sm: 'none' },
+                        title: salon.salonAdi,
+                        lineHeight: 1.2
+                      }}
+                    >
                       {salon.salonAdi}
                     </Typography>
                     <Chip 
@@ -1102,10 +1138,16 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                       size="small" 
                       title="Bu salonun toplam öğrenci sayısı (tüm sınıflardan)"
                       sx={{ 
-                        ml: 1,
+                        ml: { xs: 0.5, sm: 1 },
+                        mt: { xs: 0.25, sm: 0 },
+                        height: { xs: 18, sm: 24 },
+                        fontSize: { xs: '0.6rem', sm: '0.75rem' },
                         fontWeight: 'bold',
                         backgroundColor: isActive ? 'white' : 'primary.main',
-                        color: isActive ? 'primary.main' : 'white'
+                        color: isActive ? 'primary.main' : 'white',
+                        '& .MuiChip-label': {
+                          px: { xs: 0.5, sm: 1 }
+                        }
                       }}
                     />
                   </Button>
@@ -1122,31 +1164,52 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                     variant={isActive ? 'contained' : 'outlined'}
                     onClick={() => onSeciliSalonDegistir && onSeciliSalonDegistir(salon.id)}
                     sx={{ 
-                      minWidth: { xs: '100%', sm: 100 },
-                      width: { xs: '100%', sm: 'auto' },
-                      borderRadius: 3,
+                      minWidth: { xs: 'auto', sm: 100 },
+                      maxWidth: { xs: '110px', sm: 'none' },
+                      width: { xs: 'auto', sm: 'auto' },
+                      flexShrink: 0,
+                      borderRadius: { xs: 2, sm: 3 },
                       textTransform: 'none',
                       fontWeight: isActive ? 'bold' : 'normal',
                       boxShadow: isActive ? 3 : 1,
+                      px: { xs: 0.75, sm: 2 },
+                      py: { xs: 0.5, sm: 1 },
                       '&:hover': {
                         boxShadow: 4,
-                        transform: 'translateY(-1px)'
+                        // Transform yerine sadece box-shadow ile hover efekti
                       },
-                      transition: 'opacity 0.1s ease, background-color 0.1s ease',
-                      mb: { xs: 0.5, sm: 0 }
+                      transition: 'box-shadow 0.2s ease, background-color 0.2s ease',
+                      mb: { xs: 0, sm: 0 }
                     }}
                   >
-                    <Typography variant="body2">
+                    <Typography 
+                      variant="body2"
+                      sx={{
+                        fontSize: { xs: '0.7rem', sm: '0.875rem' },
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        maxWidth: { xs: '85px', sm: 'none' },
+                        title: salon.ad || salon.salonAdi || `Salon ${salon.id}`,
+                        lineHeight: 1.2
+                      }}
+                    >
                       {salon.ad || salon.salonAdi || `Salon ${salon.id}`}
                     </Typography>
                     <Chip 
                       label={0} 
                       size="small" 
                       sx={{ 
-                        ml: 1,
+                        ml: { xs: 0.5, sm: 1 },
+                        mt: { xs: 0.25, sm: 0 },
+                        height: { xs: 18, sm: 24 },
+                        fontSize: { xs: '0.6rem', sm: '0.75rem' },
                         fontWeight: 'bold',
                         backgroundColor: isActive ? 'white' : 'primary.main',
-                        color: isActive ? 'primary.main' : 'white'
+                        color: isActive ? 'primary.main' : 'white',
+                        '& .MuiChip-label': {
+                          px: { xs: 0.5, sm: 1 }
+                        }
                       }}
                     />
                   </Button>
@@ -1160,8 +1223,16 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
 
         {/* Grup Bazlı Masalar */}
         {sinifDuzeni.gruplar ? (
-          // Grup bazlı görüntüleme - YAN YANA
-          <Box sx={{ display: 'flex', flexDirection: 'row', gap: 3, flexWrap: 'nowrap', justifyContent: 'center', mb: 2 }}>
+          // Grup bazlı görüntüleme - Mobilde 2 sütun, masaüstünde yan yana
+          <Box sx={{ 
+            display: 'grid',
+            gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(auto-fit, minmax(280px, 1fr))' },
+            gap: { xs: 1.5, sm: 3 }, 
+            justifyContent: 'center', 
+            alignItems: { xs: 'stretch', sm: 'flex-start' },
+            mb: 2,
+            width: '100%'
+          }}>
             {Object.keys(sinifDuzeni.gruplar).map((grupId, index) => {
               // Güvenlik kontrolü: grupId'nin gruplar'da var olduğundan ve array olduğundan emin ol
               const grupMasalar = sinifDuzeni.gruplar[grupId];
@@ -1170,15 +1241,25 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
               }
               
               return (
-              <Box key={grupId} sx={{ minWidth: '280px', flex: '1 1 0', maxWidth: '25%' }}>
-                <Typography variant="subtitle1" sx={{ mb: 1, color: 'primary.main', fontWeight: 'bold', textAlign: 'center' }}>
+              <Box key={grupId} sx={{ 
+                minWidth: { xs: 0, sm: '280px' }, 
+                width: { xs: '100%', sm: 'auto' },
+                maxWidth: { xs: '100%', sm: '25%' } 
+              }}>
+                <Typography variant="subtitle1" sx={{ 
+                  mb: 1, 
+                  color: 'primary.main', 
+                  fontWeight: 'bold', 
+                  textAlign: 'center',
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                }}>
                   Grup {index + 1}
                 </Typography>
                 <Box 
                   sx={{ 
                     display: 'grid',
                     gridTemplateColumns: 'repeat(2, 1fr)',
-                    gap: 0.5,
+                    gap: { xs: 0.3, sm: 0.5 },
                     maxWidth: '100%',
                     mx: 'auto'
                   }}
@@ -1596,3 +1677,5 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
 SalonPlani.displayName = 'SalonPlani';
 
 export default SalonPlani;
+
+

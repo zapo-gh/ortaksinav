@@ -23,7 +23,9 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   People as PeopleIcon,
@@ -221,6 +223,8 @@ const DraggableUnplacedStudent = ({ ogrenci }) => {
 };
 
 const AnaSayfaContent = React.memo(() => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [seciliSalonId, setSeciliSalonId] = useState(null);
   const [showWelcome, setShowWelcome] = useState(false); // Sayfa yenileme için false
   const { showSuccess, showError } = useNotifications();
@@ -1677,18 +1681,37 @@ const AnaSayfaContent = React.memo(() => {
         )}
 
         {/* Tab Navigation */}
-        <Paper elevation={1} sx={{ mb: { xs: 2, sm: 3 } }}>
+        <Paper 
+          elevation={1} 
+          sx={{ 
+            mb: { xs: 2, sm: 3 },
+            position: { xs: 'sticky', sm: 'relative' },
+            top: { xs: 0, sm: 0 },
+            zIndex: { xs: 1100, sm: 1 },
+            backgroundColor: 'background.paper',
+            width: '100%'
+          }}
+        >
           <Tabs
             value={aktifTab}
             onChange={(e, newValue) => tabDegistir(newValue)}
-            centered
+            variant={isMobile ? "scrollable" : "standard"}
+            scrollButtons={isMobile ? "auto" : false}
+            centered={!isMobile}
+            allowScrollButtonsMobile
             sx={{ 
               borderBottom: 1, 
               borderColor: 'divider',
+              '& .MuiTabs-scrollButtons': {
+                '&.Mui-disabled': {
+                  opacity: 0.3
+                }
+              },
               '& .MuiTab-root': {
                 minWidth: { xs: 'auto', sm: 'auto' },
                 px: { xs: 1, sm: 2 },
-                fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                whiteSpace: 'nowrap'
               }
             }}
           >
