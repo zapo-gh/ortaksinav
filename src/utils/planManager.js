@@ -416,7 +416,11 @@ class PlanManager {
       numara: ogrenci.numara || '',
       sinif: ogrenci.sinif || '',
       cinsiyet: ogrenci.cinsiyet || 'E',
-      masaNumarasi: ogrenci.masaNumarasi || null
+      masaNumarasi: ogrenci.masaNumarasi || null,
+      // Pinned bilgilerini de kaydet (sabitlenen öğrenciler için)
+      pinned: ogrenci.pinned || false,
+      pinnedSalonId: ogrenci.pinnedSalonId || null,
+      pinnedMasaId: ogrenci.pinnedMasaId || null
     };
   }
 

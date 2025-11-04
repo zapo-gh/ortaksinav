@@ -705,11 +705,22 @@ class FirestoreClient {
         
         chunk.forEach(student => {
           const studentRef = doc(this.db, 'students', student.id.toString());
+          // Pinned bilgilerini de kaydet (pinned, pinnedSalonId, pinnedMasaId)
           saveBatch.set(studentRef, {
             ...student,
+            pinned: student.pinned || false,
+            pinnedSalonId: student.pinnedSalonId || null,
+            pinnedMasaId: student.pinnedMasaId || null,
             updatedAt: serverTimestamp()
           });
         });
+        
+        // Pinned öğrencileri log'la
+        const pinnedInChunk = chunk.filter(s => s.pinned === true);
+        if (pinnedInChunk.length > 0) {
+          logger.debug(`📌 Firestore: ${pinnedInChunk.length} sabitlenen öğrenci kaydediliyor:`, 
+            pinnedInChunk.map(s => ({ id: s.id, ad: s.ad || s.name, pinnedSalonId: s.pinnedSalonId })));
+        }
         
         await saveBatch.commit();
         logger.debug(`✅ Firestore: Öğrenci chunk kaydedildi (${i + 1}-${i + chunk.length})`);
@@ -747,10 +758,116 @@ class FirestoreClient {
       
       const students = [];
       studentsSnap.forEach(doc => {
-        students.push({ id: doc.id, ...doc.data() });
+        const studentData = doc.data();
+        students.push({ id: doc.id, ...studentData });
       });
       
+      // Pinned öğrencileri kontrol et ve log'la
+      const pinnedStudents = students.filter(s => s.pinned === true);
+      if (pinnedStudents.length > 0) {
+        console.log(`📌 Firestore: ${pinnedStudents.length} sabitlenen öğrenci yüklendi:`, 
+          pinnedStudents.map(s => ({
+            id: s.id,
+            ad: s.ad || s.name,
+            soyad: s.soyad || s.surname,
+            numara: s.numara || s.number,
+            pinnedSalonId: s.pinnedSalonId,
+            pinnedMasaId: s.pinnedMasaId
+          })));
+      }
+      
       console.log(`📊 Firestore: ${students.length} öğrenci yüklendi (duplicate kontrolü öncesi)`);
+      
+      // Geçersiz öğrencileri filtrele (ad/soyad/numara eksik olanlar)
+      const invalidStudents = students.filter(s => {
+        const hasAd = s.ad || s.name;
+        const hasSoyad = s.soyad || s.surname;
+        const hasNumara = s.numara || s.number;
+        return !hasAd && !hasSoyad && !hasNumara;
+      });
+      
+      if (invalidStudents.length > 0) {
+        console.warn(`⚠️ Geçersiz öğrenci kayıtları tespit edildi (${invalidStudents.length} adet):`, 
+          invalidStudents.map(s => ({ id: s.id, ad: s.ad, soyad: s.soyad, numara: s.numara || s.number })));
+        
+        // Geçersiz öğrencileri Firestore'dan sil
+        const invalidIds = invalidStudents.map(s => s.id.toString());
+        const validStudents = students.filter(s => !invalidIds.includes(s.id.toString()));
+        
+        // Geçersiz kayıtları Firestore'dan sil
+        if (invalidStudents.length > 0) {
+          console.log(`🗑️ Geçersiz öğrenci kayıtları Firestore'dan siliniyor...`);
+          const deleteBatch = writeBatch(this.db);
+          invalidStudents.forEach(student => {
+            const studentRef = doc(this.db, 'students', student.id.toString());
+            deleteBatch.delete(studentRef);
+          });
+          try {
+            await deleteBatch.commit();
+            console.log(`✅ ${invalidStudents.length} geçersiz öğrenci kaydı Firestore'dan silindi`);
+          } catch (deleteError) {
+            console.error('❌ Geçersiz öğrenci kayıtları silinirken hata:', deleteError);
+          }
+        }
+        
+        // Geçerli öğrencileri kullan
+        students.length = 0;
+        students.push(...validStudents);
+        console.log(`📊 Geçerli öğrenci sayısı: ${students.length} (${invalidStudents.length} geçersiz kayıt filtrelendi)`);
+      }
+      
+      // 555 numaralı öğrenciyi özel olarak kontrol et ve tüm öğrencileri numara ve ad/soyad'a göre kontrol et
+      const student555 = students.filter(s => {
+        const numara = s.numara?.toString() || s.number?.toString() || 
+                      (typeof s.numara === 'number' ? s.numara.toString() : null) ||
+                      (typeof s.number === 'number' ? s.number.toString() : null);
+        const ad = (s.ad || s.name || '').toString().toLowerCase().trim();
+        const soyad = (s.soyad || s.surname || '').toString().toLowerCase().trim();
+        return numara === '555' || (numara && numara.trim() === '555') || 
+               (ad.includes('can') && soyad.includes('güzel'));
+      });
+      
+      console.log(`🔍 555 numaralı veya Can Güzel öğrenci kontrolü: ${student555.length} kayıt bulundu`);
+      if (student555.length > 0) {
+        console.log(`📋 555/Can Güzel öğrenci detayları:`, student555.map(s => ({
+          id: s.id,
+          numara: s.numara || s.number,
+          ad: s.ad || s.name,
+          soyad: s.soyad || s.surname,
+          tümVeri: s
+        })));
+      }
+      
+      // Tüm öğrencileri numara ve ad/soyad kombinasyonuna göre kontrol et
+      const studentsByName = new Map();
+      students.forEach(s => {
+        const numara = (s.numara?.toString() || s.number?.toString() || '').trim();
+        const ad = (s.ad || s.name || '').toString().toLowerCase().trim();
+        const soyad = (s.soyad || s.surname || '').toString().toLowerCase().trim();
+        const key = `${numara}_${ad}_${soyad}`;
+        
+        if (!studentsByName.has(key)) {
+          studentsByName.set(key, []);
+        }
+        studentsByName.get(key).push(s);
+      });
+      
+      // Aynı numara ve ad/soyad kombinasyonuna sahip duplicate'leri bul
+      const duplicateByName = [];
+      studentsByName.forEach((studentsList, key) => {
+        if (studentsList.length > 1) {
+          duplicateByName.push({ key, students: studentsList });
+        }
+      });
+      
+      if (duplicateByName.length > 0) {
+        console.warn(`⚠️ Aynı numara ve ad/soyad kombinasyonuna sahip ${duplicateByName.length} duplicate bulundu:`, 
+          duplicateByName.map(d => ({
+            key: d.key,
+            count: d.students.length,
+            students: d.students.map(s => ({ id: s.id, numara: s.numara || s.number, ad: s.ad || s.name, soyad: s.soyad || s.surname }))
+          })));
+      }
       
       // Duplicate kontrolü: aynı ID veya numaraya sahip öğrencileri filtrele
       const uniqueStudents = this._filterDuplicateStudents(students);
@@ -800,40 +917,121 @@ class FirestoreClient {
    * Duplicate öğrencileri filtrele (helper fonksiyon)
    */
   _filterDuplicateStudents(students) {
-    const seenIds = new Set();
-    const seenNumbers = new Map();
     const duplicates = [];
+    const studentsWithoutNumber = [];
+    
+    // Önce tüm öğrencileri numara ve ID'ye göre grupla
+    const studentsByNumber = new Map();
+    const studentsById = new Map();
+    
+    students.forEach(student => {
+      const studentId = student.id?.toString();
+      // Numara alanını farklı formatlardan oku (numara, number, numaraStr, vs.)
+      let studentNumber = student.numara?.toString() || 
+                         student.number?.toString() || 
+                         (typeof student.numara === 'number' ? student.numara.toString() : null) ||
+                         (typeof student.number === 'number' ? student.number.toString() : null);
+      
+      // Trim ve normalize et
+      if (studentNumber) {
+        studentNumber = studentNumber.trim();
+      }
+      
+      // Numara ile grupla
+      if (studentNumber && studentNumber.length > 0) {
+        if (!studentsByNumber.has(studentNumber)) {
+          studentsByNumber.set(studentNumber, []);
+        }
+        studentsByNumber.get(studentNumber).push(student);
+      } else {
+        studentsWithoutNumber.push(student);
+      }
+      
+      // ID ile grupla
+      if (studentId) {
+        if (!studentsById.has(studentId)) {
+          studentsById.set(studentId, []);
+        }
+        studentsById.get(studentId).push(student);
+      }
+    });
+    
+    // Numara bazlı duplicate'leri bul
+    studentsByNumber.forEach((studentsWithSameNumber, numara) => {
+      if (studentsWithSameNumber.length > 1) {
+        console.warn(`⚠️ Duplicate numara tespit edildi: ${numara} - ${studentsWithSameNumber.length} kayıt:`, 
+          studentsWithSameNumber.map(s => ({ id: s.id, ad: s.ad, soyad: s.soyad })));
+        
+        // İlkini tut, diğerlerini duplicate olarak işaretle
+        for (let i = 1; i < studentsWithSameNumber.length; i++) {
+          duplicates.push({ 
+            type: 'numara', 
+            numara: numara, 
+            student: studentsWithSameNumber[i],
+            kept: studentsWithSameNumber[0]
+          });
+        }
+      }
+    });
+    
+    // ID bazlı duplicate'leri bul
+    studentsById.forEach((studentsWithSameId, id) => {
+      if (studentsWithSameId.length > 1) {
+        console.warn(`⚠️ Duplicate ID tespit edildi: ${id} - ${studentsWithSameId.length} kayıt`);
+        for (let i = 1; i < studentsWithSameId.length; i++) {
+          duplicates.push({ 
+            type: 'ID', 
+            id: id, 
+            student: studentsWithSameId[i],
+            kept: studentsWithSameId[0]
+          });
+        }
+      }
+    });
+    
+    // Duplicate'leri çıkar
+    const duplicateIds = new Set(duplicates.map(d => d.student.id?.toString()).filter(Boolean));
+    const duplicateNumbers = new Set(duplicates.map(d => d.numara).filter(Boolean));
     
     const uniqueStudents = students.filter(student => {
       const studentId = student.id?.toString();
-      const studentNumber = student.numara?.toString();
+      // Numara alanını farklı formatlardan oku
+      let studentNumber = student.numara?.toString() || 
+                         student.number?.toString() || 
+                         (typeof student.numara === 'number' ? student.numara.toString() : null) ||
+                         (typeof student.number === 'number' ? student.number.toString() : null);
       
-      // ID duplicate kontrolü
-      if (studentId && seenIds.has(studentId)) {
-        console.warn(`⚠️ Duplicate ID: ${studentId} - ${student.ad} ${student.soyad}`);
-        duplicates.push({ type: 'ID', id: studentId, student });
-        logger.warn(`⚠️ Firestore: Duplicate ID tespit edildi ve filtrelendi: ${studentId} - ${student.ad} ${student.soyad}`);
+      // Trim ve normalize et
+      if (studentNumber) {
+        studentNumber = studentNumber.trim();
+      }
+      
+      // Duplicate ID kontrolü
+      if (studentId && duplicateIds.has(studentId)) {
         return false;
       }
-      if (studentId) seenIds.add(studentId);
       
-      // Numara duplicate kontrolü
-      if (studentNumber) {
-        if (seenNumbers.has(studentNumber)) {
-          const existingStudent = seenNumbers.get(studentNumber);
-          console.warn(`⚠️ Duplicate numara: ${studentNumber} - Mevcut: ID=${existingStudent.id} (${existingStudent.ad} ${existingStudent.soyad}), Yeni: ID=${studentId} (${student.ad} ${student.soyad})`);
-          duplicates.push({ type: 'numara', numara: studentNumber, existing: existingStudent, new: student });
-          logger.warn(`⚠️ Firestore: Duplicate numara tespit edildi: ${studentNumber} (mevcut ID: ${existingStudent.id}, yeni ID: ${studentId}) - ${student.ad} ${student.soyad}`);
-          return false;
+      // Duplicate numara kontrolü (ilk kayıt tutulur)
+      if (studentNumber && duplicateNumbers.has(studentNumber)) {
+        // Bu numaranın ilk kaydı mı kontrol et
+        const allWithThisNumber = studentsByNumber.get(studentNumber) || [];
+        const studentIndex = allWithThisNumber.findIndex(s => s.id === student.id);
+        if (studentIndex !== 0 && studentIndex !== -1) {
+          return false; // İlk kayıt değil, duplicate
         }
-        seenNumbers.set(studentNumber, student);
       }
       
       return true;
     });
     
     if (duplicates.length > 0) {
-      console.log(`🔍 Toplam ${duplicates.length} duplicate tespit edildi:`, duplicates);
+      console.log(`🔍 Toplam ${duplicates.length} duplicate tespit edildi ve filtrelendi:`, duplicates);
+      console.log(`📊 Sonuç: ${students.length} öğrenci → ${uniqueStudents.length} unique öğrenci (${duplicates.length} duplicate filtrelendi)`);
+    }
+    
+    if (studentsWithoutNumber.length > 0) {
+      console.warn(`⚠️ ${studentsWithoutNumber.length} öğrenci numarası olmadan kaydedilmiş:`, 
+        studentsWithoutNumber.map(s => ({ id: s.id, ad: s.ad, soyad: s.soyad })));
     }
     
     return uniqueStudents;

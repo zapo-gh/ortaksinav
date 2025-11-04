@@ -247,7 +247,9 @@ const AnaSayfaContent = React.memo(() => {
     tabDegistir,
     yuklemeBaslat,
     hataAyarla,
-    hataTemizle
+    hataTemizle,
+    ogrenciPin,
+    ogrenciUnpin
   } = useExam();
 
   // Sadece ilk açılışta giriş sayfası göster
@@ -787,6 +789,89 @@ const AnaSayfaContent = React.memo(() => {
       }
 
       yerlestirmeGuncelle(yerlestirmeFormatinda);
+      
+      // Plan verisindeki pinned bilgilerini öğrenci listesine geri yükle
+      // Plan verisindeki tüm öğrencileri topla (salon masalarındaki öğrenciler ve yerleşemeyen öğrenciler)
+      const planOgrencileri = new Map();
+      
+      // Salon masalarındaki öğrencileri topla
+      if (yerlestirmeFormatinda.tumSalonlar && Array.isArray(yerlestirmeFormatinda.tumSalonlar)) {
+        yerlestirmeFormatinda.tumSalonlar.forEach(salon => {
+          if (salon.masalar && Array.isArray(salon.masalar)) {
+            salon.masalar.forEach(masa => {
+              if (masa.ogrenci && masa.ogrenci.id) {
+                planOgrencileri.set(masa.ogrenci.id.toString(), {
+                  ...masa.ogrenci,
+                  // Pinned bilgilerini koru (eğer varsa)
+                  pinned: masa.ogrenci.pinned || false,
+                  pinnedSalonId: masa.ogrenci.pinnedSalonId || null,
+                  pinnedMasaId: masa.ogrenci.pinnedMasaId || null
+                });
+              }
+            });
+          }
+        });
+      }
+      
+      // Yerleşemeyen öğrencileri de topla
+      if (yerlestirmeFormatinda.yerlesilemeyenOgrenciler && Array.isArray(yerlestirmeFormatinda.yerlesilemeyenOgrenciler)) {
+        yerlestirmeFormatinda.yerlesilemeyenOgrenciler.forEach(ogrenci => {
+          if (ogrenci && ogrenci.id) {
+            planOgrencileri.set(ogrenci.id.toString(), {
+              ...ogrenci,
+              // Pinned bilgilerini koru (eğer varsa)
+              pinned: ogrenci.pinned || false,
+              pinnedSalonId: ogrenci.pinnedSalonId || null,
+              pinnedMasaId: ogrenci.pinnedMasaId || null
+            });
+          }
+        });
+      }
+      
+      // Öğrenci listesindeki pinned bilgilerini plan verisinden güncelle
+      if (planOgrencileri.size > 0) {
+        const guncelOgrenciler = ogrenciler.map(ogrenci => {
+          const planOgrenci = planOgrencileri.get(ogrenci.id?.toString());
+          if (planOgrenci && (planOgrenci.pinned || planOgrenci.pinnedSalonId || planOgrenci.pinnedMasaId)) {
+            // Plan verisinde pinned bilgisi varsa, öğrenci listesine geri yükle
+            return {
+              ...ogrenci,
+              pinned: planOgrenci.pinned || false,
+              pinnedSalonId: planOgrenci.pinnedSalonId || null,
+              pinnedMasaId: planOgrenci.pinnedMasaId || null
+            };
+          }
+          return ogrenci;
+        });
+        
+        // Pinned bilgilerini güncelle (eğer değişiklik varsa)
+        const pinnedBilgisiDegisti = guncelOgrenciler.some((ogrenci, index) => {
+          const mevcutOgrenci = ogrenciler[index];
+          return ogrenci.pinned !== mevcutOgrenci?.pinned ||
+                 ogrenci.pinnedSalonId !== mevcutOgrenci?.pinnedSalonId ||
+                 ogrenci.pinnedMasaId !== mevcutOgrenci?.pinnedMasaId;
+        });
+        
+        if (pinnedBilgisiDegisti) {
+          // Pinned bilgilerini state'e geri yükle (ogrencilerEkle ile güncelle)
+          const pinnedOgrenciler = guncelOgrenciler.filter(o => o.pinned);
+          if (pinnedOgrenciler.length > 0) {
+            console.log(`📌 Plan'dan ${pinnedOgrenciler.length} sabitlenen öğrenci bilgisi geri yüklendi`);
+          }
+          
+          // Öğrenci listesini güncelle (pinned bilgileri ile)
+          ogrenciler.forEach((ogrenci, index) => {
+            const planOgrenci = planOgrencileri.get(ogrenci.id?.toString());
+            if (planOgrenci && (planOgrenci.pinned || planOgrenci.pinnedSalonId || planOgrenci.pinnedMasaId)) {
+              // Pinned bilgisini güncelle
+              ogrenciPin(ogrenci.id, planOgrenci.pinnedSalonId, planOgrenci.pinnedMasaId);
+            } else if (ogrenci.pinned && !planOgrenci) {
+              // Plan verisinde pinned bilgisi yoksa, pinned'i kaldır
+              ogrenciUnpin(ogrenci.id);
+            }
+          });
+        }
+      }
       
       tabDegistir('salon-plani');
 
