@@ -432,8 +432,10 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                       height: 18,
                       backgroundColor: 'warning.light',
                       display: 'flex',
+                      flexDirection: 'row',
                       alignItems: 'center',
                       justifyContent: 'center',
+                      gap: { xs: 0.5, sm: 1 },
                       fontSize: '10px',
                       fontWeight: 'bold',
                       borderRadius: 1
@@ -457,8 +459,10 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                       borderBottom: '18px solid',
                       borderBottomColor: 'warning.light',
                       display: 'flex',
+                      flexDirection: 'row',
                       alignItems: 'center',
                       justifyContent: 'center',
+                      gap: { xs: 0.5, sm: 1 },
                       position: 'relative'
                     }}
                   >
@@ -489,8 +493,10 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                       borderRadius: '50%',
                       backgroundColor: 'success.light',
                       display: 'flex',
+                      flexDirection: 'row',
                       alignItems: 'center',
                       justifyContent: 'center',
+                      gap: { xs: 0.5, sm: 1 },
                       fontSize: '10px',
                       fontWeight: 'bold'
                     }}
@@ -1092,19 +1098,31 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                       borderRadius: { xs: 2, sm: 3 },
                       textTransform: 'none',
                       fontWeight: isActive ? 'bold' : 'normal',
-                      boxShadow: isActive ? 3 : 1,
+                      boxShadow: 'none',
                       px: { xs: 0.75, sm: 2 },
-                      py: { xs: 0.5, sm: 1 },
+                      py: { xs: 0.5, sm: 0.5 },
+                      minHeight: { xs: 28, sm: 'auto' },
+                      height: { xs: 28, sm: 'auto' },
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: { xs: 0.5, sm: 1 },
+                      '& > *': {
+                        display: 'flex',
+                        alignItems: 'center'
+                      },
                       '&:hover': {
-                        boxShadow: 4,
+                        boxShadow: 'none',
                         // Transform yerine sadece box-shadow ile hover efekti
                       },
-                      transition: 'box-shadow 0.2s ease, background-color 0.2s ease',
+                      transition: 'background-color 0.2s ease',
                       mb: { xs: 0, sm: 0 }
                     }}
                   >
                     <Typography 
                       variant="body2"
+                      component="span"
                       sx={{
                         fontSize: { xs: '0.7rem', sm: '0.875rem' },
                         overflow: 'hidden',
@@ -1112,7 +1130,8 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                         whiteSpace: 'nowrap',
                         maxWidth: { xs: '85px', sm: 'none' },
                         title: salon.salonAdi,
-                        lineHeight: 1.2
+                        lineHeight: 1.2,
+                        alignSelf: 'center'
                       }}
                     >
                       {salon.salonAdi}
@@ -1138,13 +1157,14 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                       size="small" 
                       title="Bu salonun toplam öğrenci sayısı (tüm sınıflardan)"
                       sx={{ 
-                        ml: { xs: 0.5, sm: 1 },
-                        mt: { xs: 0.25, sm: 0 },
+                        ml: 0,
+                        mt: 0,
                         height: { xs: 18, sm: 24 },
                         fontSize: { xs: '0.6rem', sm: '0.75rem' },
                         fontWeight: 'bold',
                         backgroundColor: isActive ? 'white' : 'primary.main',
                         color: isActive ? 'primary.main' : 'white',
+                        alignSelf: 'center',
                         '& .MuiChip-label': {
                           px: { xs: 0.5, sm: 1 }
                         }
@@ -1171,14 +1191,25 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                       borderRadius: { xs: 2, sm: 3 },
                       textTransform: 'none',
                       fontWeight: isActive ? 'bold' : 'normal',
-                      boxShadow: isActive ? 3 : 1,
+                      boxShadow: 'none',
                       px: { xs: 0.75, sm: 2 },
-                      py: { xs: 0.5, sm: 1 },
+                      py: { xs: 0.5, sm: 0.5 },
+                      minHeight: { xs: 28, sm: 'auto' },
+                      height: { xs: 28, sm: 'auto' },
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: { xs: 0.5, sm: 1 },
+                      '& > *': {
+                        display: 'flex',
+                        alignItems: 'center'
+                      },
                       '&:hover': {
-                        boxShadow: 4,
+                        boxShadow: 'none',
                         // Transform yerine sadece box-shadow ile hover efekti
                       },
-                      transition: 'box-shadow 0.2s ease, background-color 0.2s ease',
+                      transition: 'background-color 0.2s ease',
                       mb: { xs: 0, sm: 0 }
                     }}
                   >
@@ -1200,13 +1231,14 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                       label={0} 
                       size="small" 
                       sx={{ 
-                        ml: { xs: 0.5, sm: 1 },
-                        mt: { xs: 0.25, sm: 0 },
+                        ml: 0,
+                        mt: 0,
                         height: { xs: 18, sm: 24 },
                         fontSize: { xs: '0.6rem', sm: '0.75rem' },
                         fontWeight: 'bold',
                         backgroundColor: isActive ? 'white' : 'primary.main',
                         color: isActive ? 'primary.main' : 'white',
+                        alignSelf: 'center',
                         '& .MuiChip-label': {
                           px: { xs: 0.5, sm: 1 }
                         }
