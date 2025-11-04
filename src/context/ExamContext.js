@@ -126,6 +126,13 @@ const loadFromFirestore = async () => {
     if (latestPlan && latestPlan.data) {
       // Plan verisini yerleştirme sonucu formatına dönüştür
       yerlestirmeSonucu = latestPlan.data;
+      
+      // Eğer salon objesi yoksa, tumSalonlar[0]'dan oluştur
+      if (!yerlestirmeSonucu.salon && yerlestirmeSonucu.tumSalonlar && yerlestirmeSonucu.tumSalonlar.length > 0) {
+        yerlestirmeSonucu.salon = yerlestirmeSonucu.tumSalonlar[0];
+        console.log('✅ Salon objesi tumSalonlar ilk elemanından oluşturuldu');
+      }
+      
       console.log('✅ Yerleştirme sonucu en son plandan yüklendi');
     }
     
@@ -556,13 +563,23 @@ const examReducer = (state, action) => {
       return newState;
       
     case ACTIONS.YERLESTIRME_YAP:
+      // Eğer salon objesi yoksa, tumSalonlar[0]'dan oluştur
+      let yerlestirmeSonucuWithSalon = action.payload;
+      if (!yerlestirmeSonucuWithSalon.salon && yerlestirmeSonucuWithSalon.tumSalonlar && yerlestirmeSonucuWithSalon.tumSalonlar.length > 0) {
+        yerlestirmeSonucuWithSalon = {
+          ...yerlestirmeSonucuWithSalon,
+          salon: yerlestirmeSonucuWithSalon.tumSalonlar[0]
+        };
+        console.log('✅ YERLESTIRME_YAP: Salon objesi tumSalonlar ilk elemanından oluşturuldu');
+      }
+      
       newState = {
         ...state,
-        yerlestirmeSonucu: action.payload,
+        yerlestirmeSonucu: yerlestirmeSonucuWithSalon,
         placementIndex: (() => {
           const index = {};
           try {
-            const tumSalonlar = action.payload?.tumSalonlar;
+            const tumSalonlar = yerlestirmeSonucuWithSalon?.tumSalonlar;
             if (Array.isArray(tumSalonlar)) {
               tumSalonlar.forEach(salon => {
                 const salonAdi = salon.salonAdi || salon.ad || String(salon.id || salon.salonId || '');

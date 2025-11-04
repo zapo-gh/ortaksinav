@@ -48,9 +48,8 @@ import { useNotifications } from './NotificationSystem';
 
 const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
 const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
-  const { showError } = useNotifications();
+  const { showSuccess, showError, showWarning } = useNotifications();
   const [yukleme, setYukleme] = useState(false);
-  const [hata, setHata] = useState(null);
   const [aramaTerimi, setAramaTerimi] = useState('');
   const [aramaAcik, setAramaAcik] = useState(false);
   const aramaRef = useRef(null);
@@ -121,7 +120,6 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
       .replace(/Ç/g, 'c');
   }, []);
   
-  const [basarili, setBasarili] = useState(null);
   const [dialogAcik, setDialogAcik] = useState(false);
   const [bekleyenOgrenciler, setBekleyenOgrenciler] = useState([]);
   const [silmeDialogAcik, setSilmeDialogAcik] = useState(false);
@@ -209,13 +207,6 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
   const [validationErrors, setValidationErrors] = useState({});
   const [validationWarnings, setValidationWarnings] = useState({});
 
-  // Başarı mesajını göster ve otomatik kaybolsun
-  const basariliMesajGoster = (mesaj) => {
-    setBasarili(mesaj);
-    setTimeout(() => {
-      setBasarili(null);
-    }, 4000); // 4 saniye sonra kaybol
-  };
 
   // Öğrenci silme fonksiyonları
   const handleOgrenciSil = (ogrenciId) => {
@@ -282,8 +273,6 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
     }
     
     // Hata ve yükleme durumlarını da temizle
-    setHata(null);
-    setBasarili(null);
     setYukleme(false);
     setDialogAcik(false);
     setBekleyenOgrenciler([]);
@@ -401,14 +390,14 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
     
     if (!validation.isValid) {
       const firstError = Object.values(validation.errors)[0];
-      setHata(firstError);
+      showError(firstError);
       return;
     }
 
     // Öğrenci numarası kontrolü (duplicate check)
     const mevcutNumara = ogrenciler.find(o => String(o.numara) === String(sanitizedFormData.numara));
     if (mevcutNumara) {
-      setHata('Bu öğrenci numarası zaten kullanılıyor!');
+      showError('Bu öğrenci numarası zaten kullanılıyor!');
       return;
     }
 
@@ -430,7 +419,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
     }
 
     ogrencilerEkle([yeniOgrenci]);
-    basariliMesajGoster(`✅ ${yeniOgrenci.ad} ${yeniOgrenci.soyad} başarıyla eklendi!`);
+    showSuccess(`✅ ${yeniOgrenci.ad} ${yeniOgrenci.soyad} başarıyla eklendi!`);
     
     // Formu temizle
     setManuelOgrenci({
@@ -470,8 +459,9 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
 
     ogrencilerEkle(bekleyenOgrenciler);
     setDialogAcik(false);
+    const ogrenciSayisi = bekleyenOgrenciler.length;
     setBekleyenOgrenciler([]);
-    basariliMesajGoster(`✅ ${bekleyenOgrenciler.length} öğrenci başarıyla yüklendi!`);
+    showSuccess(`✅ ${ogrenciSayisi} öğrenci başarıyla yüklendi!`);
   };
 
   const handleOnikinciSinifRed = () => {
@@ -484,8 +474,9 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
     const digerOgrenciler = bekleyenOgrenciler.filter(ogrenci => !ogrenci.sinif.startsWith('12-'));
     ogrencilerEkle(digerOgrenciler);
     setDialogAcik(false);
+    const ogrenciSayisi = digerOgrenciler.length;
     setBekleyenOgrenciler([]);
-    basariliMesajGoster(`✅ ${digerOgrenciler.length} öğrenci başarıyla yüklendi!`);
+    showSuccess(`✅ ${ogrenciSayisi} öğrenci başarıyla yüklendi!`);
   };
 
   // CSV dosyası yükleme kaldırıldı - sadece Excel desteği var
@@ -496,7 +487,6 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
     if (!file) return;
 
     setYukleme(true);
-    setHata(null);
 
     // File input değerini temizle (aynı dosyayı tekrar yükleyebilmek için)
     event.target.value = '';
@@ -939,7 +929,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
           setYukleme(false);
           const tespitEdilenSiniflar = ogrenciGruplari.map(g => g.sinif).join(', ');
           
-          setHata(`❌ Excel dosyasında öğrenci verisi bulunamadı!
+          showError(`❌ Excel dosyasında öğrenci verisi bulunamadı!
 
 🔍 Analiz Sonucu:
 • Tespit edilen sınıf sayısı: ${ogrenciGruplari.length}
@@ -999,10 +989,10 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
 
           ogrencilerEkle(yeniOgrenciler);
           setYukleme(false);
-          basariliMesajGoster(`✅ ${yeniOgrenciler.length} öğrenci başarıyla yüklendi!`);
+          showSuccess(`✅ ${yeniOgrenciler.length} öğrenci başarıyla yüklendi!`);
         }
       } catch (error) {
-        setHata('Excel dosyası işlenirken hata oluştu: ' + error.message);
+        showError('Excel dosyası işlenirken hata oluştu: ' + error.message);
         setYukleme(false);
       }
     };
@@ -1040,19 +1030,6 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
           </Alert>
         )}
 
-        {/* Hata Mesajı */}
-        {hata && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setHata(null)}>
-            {hata}
-          </Alert>
-        )}
-
-        {/* Başarı Mesajı */}
-        {basarili && (
-          <Alert severity="success" sx={{ mb: 2 }} onClose={() => setBasarili(null)}>
-            {basarili}
-          </Alert>
-        )}
 
         {/* Yükleme Göstergesi */}
         {yukleme && (

@@ -16,7 +16,6 @@ import {
   Paper,
   FormControlLabel,
   Switch,
-  Snackbar,
   Alert,
   AlertTitle,
   Dialog,
@@ -34,6 +33,7 @@ import {
   DragIndicator as DragIndicatorIcon,
   Warning as WarningIcon
 } from '@mui/icons-material';
+import { useNotifications } from './NotificationSystem';
 import {
   DndContext,
   closestCenter,
@@ -258,11 +258,11 @@ const SortableSalonItem = ({ form, index, onFormChange, onFormDelete, onFormCopy
 };
 
 const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu = null }) => {
+  // Notification sistemi
+  const { showSuccess, showWarning, showError } = useNotifications();
+  
   // Basit state yönetimi - sadece salonlar listesi
   const [aktifSalonFormlari, setAktifSalonFormlari] = useState([]);
-  const [uyariAcik, setUyariAcik] = useState(false);
-  const [uyariMesaji, setUyariMesaji] = useState('');
-  const [basarili, setBasarili] = useState(null);
   const [onayDialogAcik, setOnayDialogAcik] = useState(false);
   const [silinecekSalonId, setSilinecekSalonId] = useState(null);
   const [silinecekSalonAdi, setSilinecekSalonAdi] = useState('');
@@ -304,35 +304,19 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
     }
   }, [salonlar]);
 
-  const uyariGoster = (mesaj) => {
-    setUyariMesaji(mesaj);
-    setUyariAcik(true);
-  };
-
-  const uyariKapat = () => {
-    setUyariAcik(false);
-  };
-
-  const basariliMesajGoster = (mesaj) => {
-    setBasarili(mesaj);
-    // 4 saniye sonra otomatik kapat
-    setTimeout(() => {
-      setBasarili(null);
-    }, 4000);
-  };
 
   // Yeni salon formu ekleme
   const handleSalonFormEkle = () => {
     // Yerleştirme planı kontrolü
     if (yerlesimPlaniVarMi()) {
-      uyariGoster('⚠️ Mevcut bir yerleştirme planı bulunduğu için salon eklenemez. Önce mevcut planı temizleyin.');
+      showWarning('⚠️ Mevcut bir yerleştirme planı bulunduğu için salon eklenemez. Önce mevcut planı temizleyin.');
       return;
     }
 
     // Eğer boş salon formu varsa yeni ekleme
     const bosFormVar = aktifSalonFormlari.some(form => !form.salonAdi.trim());
     if (bosFormVar) {
-      basariliMesajGoster('⚠️ Lütfen önce mevcut salonun adını girin!');
+      showWarning('⚠️ Lütfen önce mevcut salonun adını girin!');
       return;
     }
 
@@ -384,7 +368,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
   const handleSalonFormSil = (formId) => {
     // Yerleştirme planı kontrolü
     if (yerlesimPlaniVarMi()) {
-      uyariGoster('⚠️ Mevcut bir yerleştirme planı bulunduğu için salon silinemez. Önce mevcut planı temizleyin.');
+      showWarning('⚠️ Mevcut bir yerleştirme planı bulunduğu için salon silinemez. Önce mevcut planı temizleyin.');
       return;
     }
 
@@ -400,13 +384,13 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
   const handleSalonFormKopyala = (formId) => {
     // Yerleştirme planı kontrolü
     if (yerlesimPlaniVarMi()) {
-      uyariGoster('⚠️ Mevcut bir yerleştirme planı bulunduğu için salon kopyalanamaz. Önce mevcut planı temizleyin.');
+      showWarning('⚠️ Mevcut bir yerleştirme planı bulunduğu için salon kopyalanamaz. Önce mevcut planı temizleyin.');
       return;
     }
 
     const kopyalanacakForm = aktifSalonFormlari.find(form => form.id === formId);
     if (!kopyalanacakForm) {
-      uyariGoster('❌ Kopyalanacak salon bulunamadı!');
+      showError('❌ Kopyalanacak salon bulunamadı!');
       return;
     }
 
@@ -456,7 +440,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
         onSalonlarDegistir([...(salonlar || []), yeniSalon]);
       }
     } catch (e) { console.debug('Salon kopyalama persist hatası:', e); }
-    basariliMesajGoster(`✅ "${kopyalanacakForm.salonAdi}" salonu kopyalandı!`);
+    showSuccess(`✅ "${kopyalanacakForm.salonAdi}" salonu kopyalandı!`);
   };
 
   // Onay dialogu - silme işlemini gerçekleştir
@@ -499,7 +483,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
   const handleDragEnd = (event) => {
     // Yerleştirme planı kontrolü
     if (yerlesimPlaniVarMi()) {
-      uyariGoster('⚠️ Mevcut bir yerleştirme planı bulunduğu için salon sıralaması değiştirilemez. Önce mevcut planı temizleyin.');
+      showWarning('⚠️ Mevcut bir yerleştirme planı bulunduğu için salon sıralaması değiştirilemez. Önce mevcut planı temizleyin.');
       return;
     }
 
@@ -543,7 +527,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
 
   const handleTopluSilmeOnay = () => {
     if (seciliSalonlar.length === 0) {
-      uyariGoster('Lütfen silinecek salonları seçin!');
+      showWarning('Lütfen silinecek salonları seçin!');
       return;
     }
 
@@ -553,7 +537,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
   const handleTopluSilmeTamamla = () => {
     // Yerleştirme planı kontrolü
     if (yerlesimPlaniVarMi()) {
-      uyariGoster('Mevcut bir yerleştirme planı bulunduğu için salon silinemez. Önce mevcut planı temizleyin.');
+      showWarning('Mevcut bir yerleştirme planı bulunduğu için salon silinemez. Önce mevcut planı temizleyin.');
       setTopluSilmeDialogAcik(false);
       return;
     }
@@ -568,11 +552,12 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
     }
 
     // State'leri temizle
+    const silinenSayi = seciliSalonlar.length;
     setSeciliSalonlar([]);
     setTopluSilmeModu(false);
     setTopluSilmeDialogAcik(false);
     
-    setBasarili(`${seciliSalonlar.length} salon başarıyla silindi!`);
+    showSuccess(`${silinenSayi} salon başarıyla silindi!`);
   };
 
   const handleTopluSilmeIptal = () => {
@@ -692,7 +677,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
     // Yerleştirme planı kontrolü - sadece kritik alanlar için
     const kritikAlanlar = ['grupSayisi', 'grupSiraSayisi', 'siraTipi'];
     if (kritikAlanlar.includes(field) && yerlesimPlaniVarMi()) {
-      uyariGoster('⚠️ Mevcut bir yerleştirme planı bulunduğu için salon yapısı değiştirilemez. Önce mevcut planı temizleyin.');
+      showWarning('⚠️ Mevcut bir yerleştirme planı bulunduğu için salon yapısı değiştirilemez. Önce mevcut planı temizleyin.');
       return;
     }
 
@@ -736,7 +721,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
   const handleGrupSiraSayisiChange = (formId, grupId, siraSayisi) => {
     // Yerleştirme planı kontrolü
     if (yerlesimPlaniVarMi()) {
-      uyariGoster('⚠️ Mevcut bir yerleştirme planı bulunduğu için salon yapısı değiştirilemez. Önce mevcut planı temizleyin.');
+      showWarning('⚠️ Mevcut bir yerleştirme planı bulunduğu için salon yapısı değiştirilemez. Önce mevcut planı temizleyin.');
       return;
     }
 
@@ -789,19 +774,6 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
           </Alert>
         )}
 
-        {/* Başarı Mesajı */}
-        {basarili && (
-          <Alert 
-            severity="warning" 
-            sx={{ 
-              mb: 3, 
-              borderRadius: '8px'
-            }} 
-            onClose={() => setBasarili(null)}
-          >
-            {basarili}
-          </Alert>
-        )}
 
           {/* Salon Ekleme ve Toplu Silme Butonları */}
           <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -890,28 +862,6 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
         </CardContent>
       </Card>
 
-      {/* Modern Uyarı Sistemi */}
-      <Snackbar
-        open={uyariAcik}
-        autoHideDuration={4000}
-        onClose={uyariKapat}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert 
-          onClose={uyariKapat} 
-          severity="warning" 
-          variant="filled"
-          sx={{ 
-            width: '100%',
-            '& .MuiAlert-message': {
-              fontSize: '0.95rem',
-              fontWeight: 500
-            }
-          }}
-        >
-          {uyariMesaji}
-        </Alert>
-      </Snackbar>
 
       {/* Modern Onay Dialogu */}
       <Dialog

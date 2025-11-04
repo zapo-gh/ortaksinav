@@ -1787,7 +1787,7 @@ const AnaSayfaContent = React.memo(() => {
           color="secondary"
           sx={{
             position: 'fixed',
-            bottom: { xs: 100, sm: 120 }, // Footer yüksekliğine göre ayarlandı (Firefox sorunu için)
+            bottom: { xs: 8, sm: 24 },
             right: { xs: 8, sm: 24 },
             zIndex: 1000,
             width: { xs: 48, sm: 56 },
@@ -1804,7 +1804,7 @@ const AnaSayfaContent = React.memo(() => {
           color="primary"
           sx={{
             position: 'fixed',
-            bottom: { xs: 100, sm: 120 }, // Footer yüksekliğine göre ayarlandı (Firefox sorunu için)
+            bottom: { xs: 8, sm: 24 },
             right: { xs: 64, sm: 88 },
             zIndex: 1000,
             width: { xs: 48, sm: 56 },
