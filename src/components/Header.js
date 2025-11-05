@@ -12,11 +12,9 @@ import {
   Chip
 } from '@mui/material';
 import {
-  Menu as MenuIcon,
   AccountCircle,
   ExitToApp,
   Login,
-  Home as HomeIcon,
   Search as SearchIcon
 } from '@mui/icons-material';
 import { FaGraduationCap } from 'react-icons/fa';
@@ -274,26 +272,18 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
         </Typography>
 
         {/* Sağ taraf - Tüm Butonlar Birlikte */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 1.5 }, position: 'absolute', right: { xs: 80, md: 16 }, top: '50%', transform: 'translateY(-50%)' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, md: 1.5 }, position: 'absolute', right: { xs: 16, md: 16 }, top: '50%', transform: 'translateY(-50%)' }}>
           <IconButton color="inherit" size="large" onClick={() => setOpenSearch(true)} title="Öğrenci Ara (Ctrl+K)">
             <SearchIcon />
           </IconButton>
-          {/* Ana Sayfa Butonu */}
-          <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
-            <Button 
-              color="inherit" 
-              sx={{ minWidth: 'auto', px: 1.5, mr: 0 }} 
-              onClick={onHomeClick}
-              startIcon={<HomeIcon />}
-            >
-              Ana Sayfa
-            </Button>
-            {showTestDashboard && (
+          {/* Test Dashboard Butonu */}
+          {showTestDashboard && (
+            <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
               <Button color="inherit" sx={{ minWidth: 'auto', px: 1.5, mr: 0 }} onClick={onTestDashboardClick}>
                 Test Dashboard
               </Button>
-            )}
-          </Box>
+            </Box>
+          )}
 
           {/* Kullanıcı Bölgesi */}
           {kullanici ? (
@@ -336,33 +326,27 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
               color="inherit" 
               startIcon={<Login />}
               sx={{
-                minWidth: 'auto',
-                px: 1.5,
+                minWidth: { xs: 'auto', sm: 'auto' },
+                px: { xs: 0.5, sm: 1.5 },
+                py: { xs: 0.5, sm: 0.75 },
                 border: '1px solid rgba(255, 255, 255, 0.3)',
                 '&:hover': {
                   bgcolor: 'rgba(255, 255, 255, 0.1)'
+                },
+                '& .MuiButton-startIcon': {
+                  margin: { xs: 0, sm: '0 8px 0 0' }
+                },
+                '& .MuiSvgIcon-root': {
+                  fontSize: { xs: '1.2rem', sm: '1.5rem' }
                 }
               }}
             >
-              Giriş Yap
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                Giriş Yap
+              </Box>
             </Button>
           )}
         </Box>
-
-        {/* Mobil Menü */}
-        <IconButton
-          size="large"
-          color="inherit"
-          sx={{ 
-            display: { xs: 'flex', md: 'none' }, 
-            position: 'absolute', 
-            right: 16,
-            top: '50%',
-            transform: 'translateY(-50%)'
-          }}
-        >
-          <MenuIcon />
-        </IconButton>
       </Toolbar>
     </AppBar>
     <QuickSearchModal open={openSearch} onClose={() => setOpenSearch(false)} />

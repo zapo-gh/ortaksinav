@@ -1241,15 +1241,20 @@ export const gelismisYerlestirme = (ogrenciler, salonlar, ayarlar) => {
     
     if (salonOgrencileri.length === 0) {
       logger.warn(`⚠️ Salon ${salon.salonAdi} için öğrenci yok`);
+      const koltukMatrisi = createSalonKoltukMatrisi(salon);
       sonuclar.push({
         salonId: salon.id,
         salonAdi: salon.salonAdi,
         ogrenciler: [],
-        koltukMatrisi: createSalonKoltukMatrisi(salon),
+        koltukMatrisi: koltukMatrisi,
         yerlesilemeyenOgrenciler: [],
         plan: [],
         deneme: 0,
-        basariOrani: 0
+        basariOrani: 0,
+        siraDizilimi: salon.siraDizilimi || { // siraDizilimi bilgisini koru
+          satir: koltukMatrisi.satirSayisi,
+          sutun: koltukMatrisi.sutunSayisi
+        }
       });
       return;
     }
@@ -1909,7 +1914,15 @@ const salonYerlestirmeYeni = (salon, ogrenciler, ayarlar, seed, weightManager) =
     plan: sonuc.plan,
     salon: {
       ...salon,
-      masalar: masalarWithOgrenciler // Masalar'ı da ekle
+      masalar: masalarWithOgrenciler, // Masalar'ı da ekle
+      siraDizilimi: salon.siraDizilimi || { // siraDizilimi bilgisini koru
+        satir: motor.koltukMatrisi.satirSayisi,
+        sutun: motor.koltukMatrisi.sutunSayisi
+      }
+    },
+    siraDizilimi: salon.siraDizilimi || { // siraDizilimi bilgisini sonuç objesine de ekle
+      satir: motor.koltukMatrisi.satirSayisi,
+      sutun: motor.koltukMatrisi.sutunSayisi
     },
     masalar: masalarWithOgrenciler, // Backward compatibility için
     deneme: 1,

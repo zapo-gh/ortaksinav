@@ -5,9 +5,21 @@ import { useExam } from '../context/ExamContext';
 const QuickSearchModal = ({ open, onClose }) => {
   const { ogrenciler, placementIndex, yerlestirmeSonucu, yerlestirmeGuncelle, tabDegistir } = useExam();
   const [query, setQuery] = React.useState('');
+  const inputRef = React.useRef(null);
 
   React.useEffect(() => {
-    if (!open) setQuery('');
+    if (!open) {
+      setQuery('');
+    } else {
+      // Modal açıldığında input'a focus et
+      const timer = setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 100); // Modal animasyonunun tamamlanması için kısa bir gecikme
+      
+      return () => clearTimeout(timer);
+    }
   }, [open]);
 
   const getPlacementFallback = (studentId) => {
@@ -53,7 +65,15 @@ const QuickSearchModal = ({ open, onClose }) => {
             Henüz yerleştirme yapılmadı. Öğrencilerin salon/masa bilgisi bu nedenle boş olabilir.
           </Alert>
         )}
-        <TextField autoFocus fullWidth placeholder="Ad, Soyad veya Numara" value={query} onChange={e => setQuery(e.target.value)} size="small" />
+        <TextField 
+          inputRef={inputRef}
+          autoFocus 
+          fullWidth 
+          placeholder="Ad, Soyad veya Numara" 
+          value={query} 
+          onChange={e => setQuery(e.target.value)} 
+          size="small" 
+        />
         {query && (
           <List dense>
             {results.length === 0 ? (

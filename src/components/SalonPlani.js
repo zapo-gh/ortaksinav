@@ -101,13 +101,13 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
   const [transferModalAcik, setTransferModalAcik] = useState(false);
   const [transferOgrenci, setTransferOgrenci] = useState(null);
 
-  // Cinsiyet bazlı renk fonksiyonu
-  const getGenderColor = (ogrenci) => {
+  // Cinsiyet bazlı renk fonksiyonu - useCallback ile optimize edildi
+  const getGenderColor = useCallback((ogrenci) => {
     if (!ogrenci || !ogrenci.cinsiyet) return 'primary';
     
     const cinsiyet = ogrenci.cinsiyet.toString().toLowerCase().trim();
     return cinsiyet === 'kız' || cinsiyet === 'kadin' || cinsiyet === 'k' ? 'secondary' : 'primary';
-  };
+  }, []);
 
   // Tek masa için masa numarası hesaplama fonksiyonu
   const calculateDeskNumberForMasa = (masa) => {

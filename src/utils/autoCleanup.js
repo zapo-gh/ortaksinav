@@ -10,19 +10,34 @@ class AutoCleanup {
     this.cleanupInterval = 24 * 60 * 60 * 1000; // 24 saat
     this.maxTempPlans = 3; // Maksimum 3 geçici plan
     this.tempPlanMaxAge = 7 * 24 * 60 * 60 * 1000; // 7 gün
+    this.intervalId = null; // Interval ID'yi sakla (cleanup için)
   }
 
   /**
    * Otomatik temizlik başlat
    */
   startAutoCleanup() {
+    // Önce mevcut interval'ı temizle (eğer varsa)
+    this.stopAutoCleanup();
+    
     // Sayfa yüklendiğinde temizlik yap
     this.performCleanup();
     
     // Periyodik temizlik (her 24 saatte bir)
-    setInterval(() => {
+    this.intervalId = setInterval(() => {
       this.performCleanup();
     }, this.cleanupInterval);
+  }
+
+  /**
+   * Otomatik temizliği durdur (memory leak önleme)
+   */
+  stopAutoCleanup() {
+    if (this.intervalId !== null) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+      logger.debug('🛑 Otomatik temizlik durduruldu');
+    }
   }
 
   /**

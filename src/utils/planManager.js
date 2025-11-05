@@ -391,12 +391,45 @@ class PlanManager {
   cleanSalonData(salon) {
     if (!salon) return null;
 
+    // KRİTİK: siraDizilimi bilgisini hesapla veya koru
+    let siraDizilimi = salon.siraDizilimi;
+    
+    // Eğer siraDizilimi eksik veya geçersizse, hesapla
+    if (!siraDizilimi || !siraDizilimi.satir || !siraDizilimi.sutun || siraDizilimi.satir === 0 || siraDizilimi.sutun === 0) {
+      // Önce masalar'dan hesapla
+      if (salon.masalar && Array.isArray(salon.masalar) && salon.masalar.length > 0) {
+        const maxSatir = Math.max(...salon.masalar.map(m => m.satir || 0)) + 1;
+        const maxSutun = Math.max(...salon.masalar.map(m => m.sutun || 0)) + 1;
+        if (maxSatir > 0 && maxSutun > 0) {
+          siraDizilimi = { satir: maxSatir, sutun: maxSutun };
+        }
+      }
+      
+      // Masalar'dan hesaplanamadıysa, koltukMatrisi'nden hesapla
+      if ((!siraDizilimi || !siraDizilimi.satir || !siraDizilimi.sutun) && salon.koltukMatrisi) {
+        if (salon.koltukMatrisi.satirSayisi && salon.koltukMatrisi.sutunSayisi) {
+          siraDizilimi = {
+            satir: salon.koltukMatrisi.satirSayisi,
+            sutun: salon.koltukMatrisi.sutunSayisi
+          };
+        }
+      }
+      
+      // Hala hesaplanamadıysa, kapasite'den varsayılan değerler hesapla
+      if (!siraDizilimi || !siraDizilimi.satir || !siraDizilimi.sutun) {
+        const kapasite = salon.kapasite || salon.masalar?.length || 30;
+        const satir = Math.ceil(Math.sqrt(kapasite)) || 6;
+        const sutun = Math.ceil(kapasite / satir) || 5;
+        siraDizilimi = { satir, sutun };
+      }
+    }
+
     return {
       id: salon.id || salon.salonId,
       salonId: salon.salonId || salon.id,
       salonAdi: salon.salonAdi || salon.ad || 'İsimsiz Salon',
       kapasite: salon.kapasite || 0,
-      siraDizilimi: salon.siraDizilimi || { satir: 0, sutun: 0 },
+      siraDizilimi: siraDizilimi,
       ogrenciler: (salon.ogrenciler || []).map(ogrenci => this.cleanStudentData(ogrenci)),
       masalar: (salon.masalar || []).map(masa => this.cleanMasaData(masa)),
       yerlesilemeyenOgrenciler: salon.yerlesilemeyenOgrenciler || []
@@ -475,23 +508,59 @@ class PlanManager {
 
     // KRITIK: Tüm salonların siraDizilimi'ni kontrol et ve eksikse ekle
     // SalonPlani bileşeni siraDizilimi.satir ve siraDizilimi.sutun bekliyor
-    if (planData.salon && (!planData.salon.siraDizilimi || !planData.salon.siraDizilimi.satir || !planData.salon.siraDizilimi.sutun)) {
-      console.warn('⚠️ Ana salon siraDizilimi eksik, varsayılan değerler ekleniyor');
-      planData.salon.siraDizilimi = planData.salon.siraDizilimi || {};
-      planData.salon.siraDizilimi.satir = planData.salon.siraDizilimi.satir || Math.ceil(Math.sqrt(planData.salon.kapasite || 30)) || 6;
-      planData.salon.siraDizilimi.sutun = planData.salon.siraDizilimi.sutun || Math.ceil((planData.salon.kapasite || 30) / planData.salon.siraDizilimi.satir) || 5;
+    const fixSalonSiraDizilimi = (salon) => {
+      if (!salon) return salon;
+      
+      // Eğer siraDizilimi zaten geçerliyse, hiçbir şey yapma
+      if (salon.siraDizilimi && salon.siraDizilimi.satir && salon.siraDizilimi.sutun && 
+          salon.siraDizilimi.satir > 0 && salon.siraDizilimi.sutun > 0) {
+        return salon;
+      }
+      
+      // siraDizilimi eksik veya geçersizse hesapla
+      let siraDizilimi = salon.siraDizilimi || {};
+      
+      // Önce masalar'dan hesapla
+      if (salon.masalar && Array.isArray(salon.masalar) && salon.masalar.length > 0) {
+        const maxSatir = Math.max(...salon.masalar.map(m => (m.satir || 0))) + 1;
+        const maxSutun = Math.max(...salon.masalar.map(m => (m.sutun || 0))) + 1;
+        if (maxSatir > 0 && maxSutun > 0) {
+          siraDizilimi = { satir: maxSatir, sutun: maxSutun };
+        }
+      }
+      
+      // Masalar'dan hesaplanamadıysa, koltukMatrisi'nden hesapla
+      if ((!siraDizilimi.satir || !siraDizilimi.sutun) && salon.koltukMatrisi) {
+        if (salon.koltukMatrisi.satirSayisi && salon.koltukMatrisi.sutunSayisi) {
+          siraDizilimi = {
+            satir: salon.koltukMatrisi.satirSayisi,
+            sutun: salon.koltukMatrisi.sutunSayisi
+          };
+        }
+      }
+      
+      // Hala hesaplanamadıysa, kapasite'den varsayılan değerler hesapla
+      if (!siraDizilimi.satir || !siraDizilimi.sutun) {
+        const kapasite = salon.kapasite || salon.masalar?.length || 30;
+        const satir = Math.ceil(Math.sqrt(kapasite)) || 6;
+        const sutun = Math.ceil(kapasite / satir) || 5;
+        siraDizilimi = { satir, sutun };
+        console.warn('⚠️ Salon siraDizilimi eksik, varsayılan değerler ekleniyor:', salon.salonAdi || salon.ad);
+      }
+      
+      return {
+        ...salon,
+        siraDizilimi
+      };
+    };
+
+    // Ana salonu düzelt
+    if (planData.salon) {
+      planData.salon = fixSalonSiraDizilimi(planData.salon);
     }
 
     // TumSalonlar içindeki tüm salonların siraDizilimi'ni kontrol et
-    planData.tumSalonlar = planData.tumSalonlar.map(salon => {
-      if (!salon.siraDizilimi || !salon.siraDizilimi.satir || !salon.siraDizilimi.sutun) {
-        console.warn('⚠️ Salon siraDizilimi eksik, varsayılan değerler ekleniyor:', salon.salonAdi || salon.ad);
-        salon.siraDizilimi = salon.siraDizilimi || {};
-        salon.siraDizilimi.satir = salon.siraDizilimi.satir || Math.ceil(Math.sqrt(salon.kapasite || 30)) || 6;
-        salon.siraDizilimi.sutun = salon.siraDizilimi.sutun || Math.ceil((salon.kapasite || 30) / salon.siraDizilimi.satir) || 5;
-      }
-      return salon;
-    });
+    planData.tumSalonlar = planData.tumSalonlar.map(salon => fixSalonSiraDizilimi(salon));
 
     console.log('✅ Plan verisi doğrulandı:', {
       salonVar: !!planData.salon,

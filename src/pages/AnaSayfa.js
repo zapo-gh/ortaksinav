@@ -406,38 +406,38 @@ const AnaSayfaContent = React.memo(() => {
     `
   });
 
-  // Yazdırma menüsü handler'ları
-  const handlePrintMenuOpen = (event) => {
+  // Yazdırma menüsü handler'ları - useCallback ile optimize edildi
+  const handlePrintMenuOpen = useCallback((event) => {
     setPrintMenuAnchor(event.currentTarget);
-  };
+  }, []);
 
-  const handlePrintMenuClose = () => {
+  const handlePrintMenuClose = useCallback(() => {
     setPrintMenuAnchor(null);
-  };
+  }, []);
 
-  const handleSalonPlaniPrintClick = () => {
+  const handleSalonPlaniPrintClick = useCallback(() => {
     handleSalonPlaniPrint();
     handlePrintMenuClose();
-  };
+  }, [handleSalonPlaniPrint, handlePrintMenuClose]);
 
-  const handleSinifListesiPrintClick = () => {
+  const handleSinifListesiPrintClick = useCallback(() => {
     handleSinifListesiPrint();
     handlePrintMenuClose();
-  };
+  }, [handleSinifListesiPrint, handlePrintMenuClose]);
 
-  const handleSalonImzaListesiPrintClick = () => {
+  const handleSalonImzaListesiPrintClick = useCallback(() => {
     handleSalonImzaListesiPrint();
     handlePrintMenuClose();
-  };
+  }, [handleSalonImzaListesiPrint, handlePrintMenuClose]);
 
-  // Kaydetme fonksiyonları
-  const handleSaveClick = () => {
+  // Kaydetme fonksiyonları - useCallback ile optimize edildi
+  const handleSaveClick = useCallback(() => {
     setSaveDialogOpen(true);
-  };
+  }, []);
 
-  const handleSaveDialogClose = () => {
+  const handleSaveDialogClose = useCallback(() => {
     setSaveDialogOpen(false);
-  };
+  }, []);
 
   const handleSavePlan = useCallback(async (planAdi, onCloseCallback) => {
     if (!planAdi.trim()) {
@@ -627,7 +627,7 @@ const AnaSayfaContent = React.memo(() => {
     }
   };
 
-  const handleSalonlarDegistir = (yeniSalonlar) => {
+  const handleSalonlarDegistir = useCallback((yeniSalonlar) => {
     salonlarGuncelle(yeniSalonlar);
     
     // LocalStorage'a kaydet
@@ -672,13 +672,13 @@ const AnaSayfaContent = React.memo(() => {
         tumSalonlar: guncellenmisTumSalonlar
       });
     }
-  };
+  }, [salonlarGuncelle, yerlestirmeSonucu, yerlestirmeGuncelle]);
 
-  // Yerleştirme sonuçlarını temizle
-  const handleYerlestirmeTemizle = () => {
+  // Yerleştirme sonuçlarını temizle - useCallback ile optimize edildi
+  const handleYerlestirmeTemizle = useCallback(() => {
     yerlestirmeTemizle(); // Yerleştirme sonucunu temizle
     tabDegistir('planlama'); // Planlama sekmesine geri dön
-  };
+  }, [yerlestirmeTemizle, tabDegistir]);
 
   // Plan yükleme fonksiyonu
   const handlePlanYukle = async (plan) => {
@@ -1238,10 +1238,13 @@ const AnaSayfaContent = React.memo(() => {
         salonId: salon.salonId,
         salonAdi: salon.salonAdi,
         kapasite: gercekKapasite, // KRİTİK DÜZELTME: Gerçek salon kapasitesi (masa sayısı)
-        siraDizilimi: {
+        siraDizilimi: salon.siraDizilimi || (salon.koltukMatrisi?.satirSayisi && salon.koltukMatrisi?.sutunSayisi ? {
           satir: salon.koltukMatrisi.satirSayisi,
           sutun: salon.koltukMatrisi.sutunSayisi
-        },
+        } : {
+          satir: Math.ceil(Math.sqrt(gercekKapasite || 30)) || 6,
+          sutun: Math.ceil((gercekKapasite || 30) / (Math.ceil(Math.sqrt(gercekKapasite || 30)) || 6)) || 5
+        }),
         ogrenciler: uniqueOgrenciler, // DÜZELTME: Temizlenmiş liste
         masalar: [],
         plan: salon.plan || [] // Plan verisini ekle

@@ -77,6 +77,19 @@ export const useRealTimeUpdates = () => {
     }
   }, []);
 
+  // Timeout refs for cleanup
+  const timeoutRefs = useRef([]);
+
+  // Cleanup all timeouts on unmount
+  useEffect(() => {
+    return () => {
+      timeoutRefs.current.forEach(timeoutId => {
+        if (timeoutId) clearTimeout(timeoutId);
+      });
+      timeoutRefs.current = [];
+    };
+  }, []);
+
   // Complete operation
   const completeOperation = useCallback((result = null, finalMessage = null) => {
     if (!operationRef.current) return;
@@ -91,7 +104,7 @@ export const useRealTimeUpdates = () => {
     logger.info(`Operasyon tamamlandı: ${op.name} (${duration}ms)`);
 
     // Reset after delay
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       setCurrentOperation(null);
       setProgress(0);
       setStatus('idle');
@@ -100,7 +113,11 @@ export const useRealTimeUpdates = () => {
       setEstimatedTime(null);
       operationRef.current = null;
       progressHistory.current = [];
+      // Remove from refs array
+      timeoutRefs.current = timeoutRefs.current.filter(id => id !== timeoutId);
     }, 3000);
+    
+    timeoutRefs.current.push(timeoutId);
   }, []);
 
   // Error handling
@@ -114,7 +131,7 @@ export const useRealTimeUpdates = () => {
     logger.error(`Operasyon hatası: ${op.name} - ${errorMessage}`, details);
 
     // Reset after delay
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       setCurrentOperation(null);
       setProgress(0);
       setStatus('idle');
@@ -123,7 +140,11 @@ export const useRealTimeUpdates = () => {
       setEstimatedTime(null);
       operationRef.current = null;
       progressHistory.current = [];
+      // Remove from refs array
+      timeoutRefs.current = timeoutRefs.current.filter(id => id !== timeoutId);
     }, 5000);
+    
+    timeoutRefs.current.push(timeoutId);
   }, []);
 
   // Cancel operation
@@ -136,7 +157,7 @@ export const useRealTimeUpdates = () => {
 
     logger.warn(`Operasyon iptal edildi: ${op.name}`);
 
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       setCurrentOperation(null);
       setProgress(0);
       setStatus('idle');
@@ -145,7 +166,11 @@ export const useRealTimeUpdates = () => {
       setEstimatedTime(null);
       operationRef.current = null;
       progressHistory.current = [];
+      // Remove from refs array
+      timeoutRefs.current = timeoutRefs.current.filter(id => id !== timeoutId);
     }, 2000);
+    
+    timeoutRefs.current.push(timeoutId);
   }, []);
 
   // Format time

@@ -7,11 +7,23 @@ class SessionManager {
     this.sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     this.tempData = null;
     this.isActive = true;
+    this.beforeUnloadHandler = null; // Event listener referansı (cleanup için)
     
     // Sayfa kapatılırken temizlik
-    window.addEventListener('beforeunload', () => {
+    this.beforeUnloadHandler = () => {
       this.cleanup();
-    });
+    };
+    window.addEventListener('beforeunload', this.beforeUnloadHandler);
+  }
+  
+  /**
+   * Cleanup event listener (memory leak önleme)
+   */
+  removeEventListener() {
+    if (this.beforeUnloadHandler) {
+      window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+      this.beforeUnloadHandler = null;
+    }
   }
 
   /**
@@ -43,6 +55,8 @@ class SessionManager {
   cleanup() {
     this.tempData = null;
     this.isActive = false;
+    // Event listener'ı da temizle
+    this.removeEventListener();
   }
 
   /**
