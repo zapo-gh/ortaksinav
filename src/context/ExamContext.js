@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import logger from '../utils/logger';
 import { storageOptimizer } from '../utils/storageOptimizer';
+import { waitForAuth } from '../firebase/authState';
 
 // localStorage yardımcı fonksiyonları (sıkıştırmasız)
 const loadFromStorage = (key, defaultValue) => {
@@ -81,6 +82,11 @@ const saveToStorage = async (key, value, immediate = false) => {
 // Firestore'dan veri yükleme fonksiyonu
 const loadFromFirestore = async () => {
   try {
+    try {
+      await waitForAuth();
+    } catch (authError) {
+      console.warn('⚠️ Firestore veri yükleme öncesi kimlik doğrulaması yapılamadı, offline moda geçilebilir.', authError);
+    }
     // console.log('📥 Firestore\'dan veriler yükleniyor...');
     
     // Lazy import db

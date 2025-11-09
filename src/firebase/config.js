@@ -1,14 +1,22 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
+import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { DISABLE_FIREBASE, firebaseConfig, createMockFirebase } from '../config/firebaseConfig';
 
-let app, db;
+let app, db, auth = null;
+let authReadyResolve = () => {};
+let authReadyReject = () => {};
+const authReadyPromise = new Promise((resolve, reject) => {
+  authReadyResolve = resolve;
+  authReadyReject = reject;
+});
 
 if (DISABLE_FIREBASE) {
   // Development mode - use mock Firebase
   const mockFirebase = createMockFirebase();
   app = mockFirebase.app;
   db = mockFirebase.db;
+  authReadyResolve(null);
   console.log('🔧 Firebase disabled for development - using localStorage only');
 } else {
   // Production mode - use real Firebase
@@ -18,6 +26,33 @@ if (DISABLE_FIREBASE) {
 
     // Initialize Firestore
     db = getFirestore(app);
+
+    // Initialize Auth (anonymous session)
+    auth = getAuth(app);
+    setPersistence(auth, browserLocalPersistence)
+      .catch((err) => {
+        console.warn('⚠️ Firebase auth persistence ayarlanamadı:', err);
+      })
+      .finally(() => {
+        signInAnonymously(auth).catch((error) => {
+          console.error('❌ Anonymous authentication failed:', error);
+          authReadyReject(error);
+        });
+      });
+
+    onAuthStateChanged(
+      auth,
+      (user) => {
+        if (user) {
+          console.log('✅ Firebase Auth hazır - kullanıcı UID:', user.uid);
+          authReadyResolve(user);
+        }
+      },
+      (error) => {
+        console.error('❌ Auth state error:', error);
+        authReadyReject(error);
+      }
+    );
 
     // Enable offline persistence (optional)
     enableIndexedDbPersistence(db).catch((err) => {
@@ -42,8 +77,9 @@ if (DISABLE_FIREBASE) {
     const mockFirebase = createMockFirebase();
     app = mockFirebase.app;
     db = mockFirebase.db;
+    authReadyResolve(null);
   }
 }
 
-export { db };
+export { db, auth, authReadyPromise };
 export default app;

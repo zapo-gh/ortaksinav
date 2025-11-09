@@ -5,10 +5,76 @@
 
 // DatabaseAdapter'ı import et (Firestore birincil, IndexedDB fallback)
 import db from '../database/index';
+import { waitForAuth, getCurrentUserId } from '../firebase/authState';
+import { sanitizeStudentRecord, sanitizeSalonRecord, sanitizeSettingsMap } from '../utils/sanitizer';
+import { DISABLE_FIREBASE } from '../config/firebaseConfig';
 
 class PlanManager {
   constructor() {
     this.currentPlan = null;
+    this.currentPlanOwnerId = null;
+    this.currentPlanInvalidated = false;
+  }
+
+  setCurrentPlan(plan) {
+    if (plan && plan.id) {
+      const normalizedName = String(plan.name || '').trim();
+      const ownerId = plan.ownerId || getCurrentUserId() || 'offline';
+      this.currentPlan = {
+        id: plan.id,
+        name: normalizedName
+      };
+      this.currentPlanOwnerId = ownerId;
+      this.currentPlanInvalidated = false;
+      console.log('✅ planManager: Aktif plan güncellendi', {
+        ...this.currentPlan,
+        ownerId: this.currentPlanOwnerId
+      });
+    } else {
+      this.clearCurrentPlan();
+    }
+  }
+
+  clearCurrentPlan() {
+    if (this.currentPlan) {
+      console.log('ℹ️ planManager: Aktif plan temizlendi');
+    }
+    this.currentPlan = null;
+    this.currentPlanOwnerId = null;
+    this.currentPlanInvalidated = false;
+  }
+
+  invalidateCurrentPlan(reason = '') {
+    if (this.currentPlan) {
+      this.currentPlanInvalidated = true;
+      console.log('⚠️ planManager: Aktif plan geçersiz kılındı', {
+        currentPlan: this.currentPlan,
+        reason
+      });
+    }
+  }
+
+  isCurrentPlanActive() {
+    if (!this.currentPlan || this.currentPlanInvalidated) {
+      return false;
+    }
+    const activeOwner = this.currentPlanOwnerId;
+    if (!activeOwner || activeOwner === 'offline') {
+      return true;
+    }
+    const currentOwner = getCurrentUserId();
+    if (currentOwner && activeOwner !== currentOwner) {
+      return false;
+    }
+    return true;
+  }
+
+  getCurrentPlanId() {
+    return this.currentPlan?.id || null;
+  }
+
+  getCurrentPlanName() {
+    return this.currentPlan?.name || '';
   }
 
   /**
@@ -17,21 +83,53 @@ class PlanManager {
   async savePlan(planName, planData) {
     try {
       console.log('💾 Plan kaydediliyor:', planName);
-      
       const normalizedPlanName = String(planName || '').trim();
       const lowerPlanName = normalizedPlanName.toLowerCase();
       
-      // Aynı isimde plan var mı kontrol et
+      let authOwnerId = null;
+      try {
+        const authResult = await waitForAuth();
+        authOwnerId = authResult?.uid || getCurrentUserId() || null;
+      } catch (authError) {
+        console.warn('⚠️ planManager.savePlan kimlik doğrulaması başarısız, offline mod kullanılacak:', authError);
+      }
+      const ownerId = authOwnerId || 'offline';
+      if (ownerId === 'offline' && db.useFirestore) {
+        console.warn('⚠️ planManager: Firestore kimlik doğrulaması yok, IndexedDB moduna geçiliyor.');
+        db.useFirestore = false;
+      }
+      if (ownerId === 'offline' && db.useFirestore) {
+        console.warn('⚠️ planManager: Firestore kimlik doğrulaması yok, IndexedDB moduna geçiliyor.');
+        db.useFirestore = false;
+      }
+      
+      // Önce, mevcut plan context'i üzerinden kontrol et
+      if (this.isCurrentPlanActive()) {
+        const currentName = this.getCurrentPlanName().toLowerCase();
+        if (currentName === lowerPlanName) {
+          console.log('🔄 planManager: Mevcut plan ID üzerinden güncelleme yapılıyor:', this.currentPlan.id);
+          const updatedId = await this.updatePlan(this.currentPlan.id, normalizedPlanName, planData, ownerId);
+          if (updatedId) {
+            this.setCurrentPlan({ id: updatedId, name: normalizedPlanName, ownerId });
+          }
+          return updatedId;
+        }
+      }
+
       try {
         const allPlans = await db.getAllPlans();
         const existingPlan = allPlans.find(plan => {
-          const existingName = String(plan.name || '').trim();
-          return existingName.toLowerCase() === lowerPlanName;
+          const existingName = String(plan.name || '').trim().toLowerCase();
+          return existingName === lowerPlanName;
         });
         
         if (existingPlan) {
           console.log('🔄 Aynı isimde plan bulundu, güncelleme yapılıyor:', existingPlan.id);
-          return await this.updatePlan(existingPlan.id, planName, planData);
+          const updatedId = await this.updatePlan(existingPlan.id, normalizedPlanName, planData, ownerId);
+          if (updatedId) {
+            this.setCurrentPlan({ id: updatedId, name: normalizedPlanName, ownerId });
+          }
+          return updatedId;
         }
       } catch (error) {
         console.warn('⚠️ Plan kontrolü sırasında hata (yeni plan oluşturulacak):', error.message);
@@ -105,7 +203,7 @@ class PlanManager {
       
       // Veritabanına kaydet
       const planPayload = {
-        name: planName,
+        name: normalizedPlanName,
         date: new Date().toISOString(),
         totalStudents: cleanPlanData.totalStudents || 0,
         salonCount: cleanPlanData.salonCount || 0,
@@ -114,6 +212,7 @@ class PlanManager {
         sinavSaati: ayarlar.sinavSaati !== undefined && ayarlar.sinavSaati !== null && ayarlar.sinavSaati !== '' ? ayarlar.sinavSaati : null,
         sinavDonemi: ayarlar.sinavDonemi !== undefined && ayarlar.sinavDonemi !== null && ayarlar.sinavDonemi !== '' ? ayarlar.sinavDonemi : null,
         donem: ayarlar.donem !== undefined && ayarlar.donem !== null && ayarlar.donem !== '' ? ayarlar.donem : null,
+        ownerId,
         data: cleanPlanData
       };
       
@@ -148,6 +247,10 @@ class PlanManager {
       console.log('✅ planManager: Kaydedilen plan ID tipi:', typeof savedPlan);
       console.log('✅ planManager: Kaydedilen plan ID değeri:', savedPlan);
       
+      if (savedPlan) {
+        this.setCurrentPlan({ id: savedPlan, name: normalizedPlanName, ownerId });
+      }
+      
       return savedPlan;
       
     } catch (error) {
@@ -162,6 +265,17 @@ class PlanManager {
   async loadPlan(planId) {
     try {
       console.log('📥 Plan yükleniyor:', planId);
+      let authOwnerId = null;
+      try {
+        const authResult = await waitForAuth();
+        authOwnerId = authResult?.uid || getCurrentUserId() || null;
+      } catch (authError) {
+        console.warn('⚠️ planManager.loadPlan kimlik doğrulaması başarısız, offline mod kullanılacak:', authError);
+      }
+      if (!authOwnerId && db.useFirestore) {
+        console.warn('⚠️ planManager: Firestore kimlik doğrulaması yok, IndexedDB moduna geçiliyor.');
+        db.useFirestore = false;
+      }
       
       // planId validation
       if (planId === null || planId === undefined || planId === '') {
@@ -213,12 +327,21 @@ class PlanManager {
         tumSalonlarLength: validatedPlan.tumSalonlar?.length || 0
       });
       
-      return {
+      const result = {
         id: plan.id,
         name: plan.name,
         date: plan.date,
+        ownerId: plan.ownerId || authOwnerId || 'offline',
         data: validatedPlan
       };
+      
+      this.setCurrentPlan({
+        id: plan.id,
+        name: plan.name || plan.data?.name || plan.data?.ayarlar?.planAdi || normalizedPlanId,
+        ownerId: plan.ownerId || authOwnerId || 'offline'
+      });
+      
+      return result;
       
     } catch (error) {
       console.error('❌ Plan yükleme hatası:', error);
@@ -280,6 +403,7 @@ class PlanManager {
         id: plan.id,
         name: plan.name,
         date: plan.date,
+        ownerId: plan.ownerId || 'offline',
         totalStudents: plan.totalStudents,
         salonCount: plan.salonCount,
         sinavTarihi: plan.sinavTarihi || null,
@@ -337,6 +461,59 @@ class PlanManager {
   }
 
   /**
+   * Var olan planı güncelle
+   */
+  async updatePlan(planId, planName, planData, ownerIdParam = null) {
+    try {
+      console.log('🔄 planManager: Plan güncelleme başlıyor:', { planId, planName });
+      const normalizedPlanName = String(planName || '').trim();
+      let authOwnerId = ownerIdParam;
+      if (!authOwnerId) {
+        try {
+          const authResult = await waitForAuth();
+          authOwnerId = authResult?.uid || getCurrentUserId() || null;
+        } catch (authError) {
+          console.warn('⚠️ planManager.updatePlan kimlik doğrulaması başarısız, offline mod kullanılacak:', authError);
+        }
+      }
+      const ownerId = authOwnerId || 'offline';
+      const cleanPlanData = this.cleanPlanData(planData);
+      const ayarlar = cleanPlanData.ayarlar || {};
+
+      const planPayload = {
+        name: normalizedPlanName,
+        date: new Date().toISOString(),
+        totalStudents: cleanPlanData.totalStudents || 0,
+        salonCount: cleanPlanData.salonCount || 0,
+        sinavTarihi: ayarlar.sinavTarihi !== undefined && ayarlar.sinavTarihi !== null && ayarlar.sinavTarihi !== '' ? ayarlar.sinavTarihi : null,
+        sinavSaati: ayarlar.sinavSaati !== undefined && ayarlar.sinavSaati !== null && ayarlar.sinavSaati !== '' ? ayarlar.sinavSaati : null,
+        sinavDonemi: ayarlar.sinavDonemi !== undefined && ayarlar.sinavDonemi !== null && ayarlar.sinavDonemi !== '' ? ayarlar.sinavDonemi : null,
+        donem: ayarlar.donem !== undefined && ayarlar.donem !== null && ayarlar.donem !== '' ? ayarlar.donem : null,
+        ownerId,
+        data: cleanPlanData
+      };
+
+      console.log('🔄 planManager: db.updatePlan çağrılıyor...', {
+        planId,
+        name: planPayload.name,
+        totalStudents: planPayload.totalStudents,
+        salonCount: planPayload.salonCount
+      });
+
+      const result = await db.updatePlan(planId, planPayload);
+      const updatedPlanId = result || planId;
+
+      console.log('✅ planManager: Plan güncellendi:', updatedPlanId);
+      this.setCurrentPlan({ id: updatedPlanId, name: normalizedPlanName, ownerId });
+
+      return updatedPlanId;
+    } catch (error) {
+      console.error('❌ Plan güncelleme hatası:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Plan verisini temizle ve standardize et
    */
   cleanPlanData(planData) {
@@ -360,7 +537,9 @@ class PlanManager {
       tumSalonlar: tumSalonlar,
       
       // Yerleşemeyen öğrenciler
-      yerlesilemeyenOgrenciler: planData.yerlesilemeyenOgrenciler || [],
+      yerlesilemeyenOgrenciler: Array.isArray(planData.yerlesilemeyenOgrenciler)
+        ? planData.yerlesilemeyenOgrenciler.map(ogr => this.cleanStudentData(ogr))
+        : [],
       
       // Kalan öğrenciler
       kalanOgrenciler: planData.kalanOgrenciler || [],
@@ -373,7 +552,7 @@ class PlanManager {
       },
       
       // Ayarlar bilgilerini de kaydet
-      ayarlar: planData.ayarlar || {}
+      ayarlar: sanitizeSettingsMap(planData.ayarlar || {})
     };
 
     // Toplam öğrenci sayısını hesapla
@@ -424,14 +603,21 @@ class PlanManager {
       }
     }
 
-    return {
+    const sanitizedSalon = sanitizeSalonRecord({
+      ...salon,
       id: salon.id || salon.salonId,
       salonId: salon.salonId || salon.id,
-      salonAdi: salon.salonAdi || salon.ad || 'İsimsiz Salon',
+      salonAdi: salon.salonAdi || salon.ad || 'İsimsiz Salon'
+    });
+
+    return {
+      id: sanitizedSalon.id,
+      salonId: sanitizedSalon.salonId,
+      salonAdi: sanitizedSalon.salonAdi || 'İsimsiz Salon',
       kapasite: salon.kapasite || 0,
       siraDizilimi: siraDizilimi,
-      ogrenciler: (salon.ogrenciler || []).map(ogrenci => this.cleanStudentData(ogrenci)),
-      masalar: (salon.masalar || []).map(masa => this.cleanMasaData(masa)),
+      ogrenciler: (sanitizedSalon.ogrenciler || []).map(ogrenci => this.cleanStudentData(ogrenci)),
+      masalar: (sanitizedSalon.masalar || []).map(masa => this.cleanMasaData(masa)),
       yerlesilemeyenOgrenciler: salon.yerlesilemeyenOgrenciler || []
     };
   }
@@ -442,19 +628,14 @@ class PlanManager {
   cleanStudentData(ogrenci) {
     if (!ogrenci) return null;
 
-    return {
-      id: ogrenci.id,
-      ad: ogrenci.ad || '',
-      soyad: ogrenci.soyad || '',
-      numara: ogrenci.numara || '',
-      sinif: ogrenci.sinif || '',
-      cinsiyet: ogrenci.cinsiyet || 'E',
+    const sanitized = sanitizeStudentRecord({
+      ...ogrenci,
       masaNumarasi: ogrenci.masaNumarasi || null,
-      // Pinned bilgilerini de kaydet (sabitlenen öğrenciler için)
       pinned: ogrenci.pinned || false,
       pinnedSalonId: ogrenci.pinnedSalonId || null,
       pinnedMasaId: ogrenci.pinnedMasaId || null
-    };
+    });
+    return sanitized;
   }
 
   /**

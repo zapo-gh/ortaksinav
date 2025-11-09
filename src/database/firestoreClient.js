@@ -20,6 +20,8 @@ import { db } from '../firebase/config';
 import logger from '../utils/logger';
 import { sanitizeForFirestore, sanitizeFromFirestore, checkDataSize, chunkArray } from '../utils/firestoreUtils';
 import { DISABLE_FIREBASE } from '../config/firebaseConfig';
+import { waitForAuth, getCurrentUserId } from '../firebase/authState';
+import { sanitizeStudentRecord, sanitizeSettingsMap, sanitizeSalonRecord, sanitizePlanMeta, sanitizeText, sanitizeStringArray } from '../utils/sanitizer';
 
 /**
  * Firestore Database Client - Parçalı Model
@@ -103,6 +105,11 @@ class FirestoreClient {
     }
     
     try {
+      await waitForAuth();
+      const ownerId = getCurrentUserId();
+      if (!ownerId) {
+        throw new Error('Kimlik doğrulaması olmadan plan kaydedilemez.');
+      }
       // TÜM TEST PLANLARINI ENGelle (Firestore kota sorununu önlemek için)
       const planName = String(planData?.name || '').trim();
       const lowerPlanName = planName.toLowerCase();
@@ -144,7 +151,10 @@ class FirestoreClient {
       const planId = planRef.id;
       
       // Veriyi sanitize et (ÖNCE sanitize et, SONRA kontrol yap)
-      const sanitizedPlanData = sanitizeForFirestore(planData);
+      const sanitizedPlanData = sanitizeForFirestore({
+        ...planData,
+        ownerId
+      });
       
       // EK KORUMA: Çok az öğrenci/salon içeren planları engelle (sanitize edilmiş veriyle kontrol)
       const totalStudents = sanitizedPlanData?.totalStudents || 0;
@@ -156,16 +166,16 @@ class FirestoreClient {
         return null; // Kaydetme, null döndür
       }
       
+      const sanitizedAyarlar =
+        sanitizeSettingsMap(sanitizedPlanData?.data?.ayarlar || sanitizedPlanData?.ayarlar || {});
+
       const planMeta = {
-        name: sanitizedPlanData?.name || 'İsimsiz Plan',
-        date: sanitizedPlanData?.date || null,
+        ...sanitizePlanMeta(sanitizedPlanData),
         totalStudents: sanitizedPlanData?.totalStudents || null,
         salonCount: sanitizedPlanData?.salonCount || null,
-        // Sınav bilgilerini metadata'ya ekle
-        sinavTarihi: sanitizedPlanData?.sinavTarihi || null,
-        sinavSaati: sanitizedPlanData?.sinavSaati || null,
-        sinavDonemi: sanitizedPlanData?.sinavDonemi || null,
-        donem: sanitizedPlanData?.donem || null,
+        // Plan ayarlarını da meta verisine ekle (ayarlar sekmesini geri yüklemek için)
+        ayarlar: sanitizedAyarlar,
+        ownerId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
@@ -180,12 +190,12 @@ class FirestoreClient {
       
       // Salonları parçalı olarak kaydet
       if (planData?.data?.tumSalonlar) {
-        await this.savePlanSalons(planId, planData.data.tumSalonlar);
+        await this.savePlanSalons(planId, planData.data.tumSalonlar, ownerId);
       }
       
       // Yerleşmeyen öğrencileri kaydet
       if (planData?.data?.yerlesilemeyenOgrenciler) {
-        await this.saveUnplacedStudents(planId, planData.data.yerlesilemeyenOgrenciler);
+        await this.saveUnplacedStudents(planId, planData.data.yerlesilemeyenOgrenciler, ownerId);
       }
       
       console.log('✅ Firestore: Plan kaydedildi:', planId);
@@ -202,8 +212,9 @@ class FirestoreClient {
   /**
    * Salonları parçalı olarak kaydet
    */
-  async savePlanSalons(planId, salons) {
+  async savePlanSalons(planId, salons, ownerIdParam = null) {
     try {
+      const ownerId = ownerIdParam || getCurrentUserId();
       const batch = writeBatch(this.db);
       const chunkSize = 500; // Firestore batch limit
       
@@ -239,7 +250,8 @@ class FirestoreClient {
           
           const salonRef = doc(this.db, 'plans', planId, 'salons', salonId);
           const sanitizedSalon = sanitizeForFirestore({
-            ...salon,
+            ...sanitizeSalonRecord(salon),
+            ownerId,
             updatedAt: serverTimestamp()
           });
           batch.set(salonRef, sanitizedSalon);
@@ -257,9 +269,10 @@ class FirestoreClient {
   /**
    * Yerleşmeyen öğrencileri parçalı olarak kaydet
    */
-  async saveUnplacedStudents(planId, students) {
+  async saveUnplacedStudents(planId, students, ownerIdParam = null) {
     try {
       if (!students || students.length === 0) return;
+      const ownerId = ownerIdParam || getCurrentUserId();
       
       const batch = writeBatch(this.db);
       const chunkSize = 500;
@@ -269,8 +282,9 @@ class FirestoreClient {
         const chunkRef = doc(this.db, 'plans', planId, 'unplaced', `chunk_${Math.floor(i / chunkSize)}`);
         
         batch.set(chunkRef, {
-          students: chunk,
+          students: chunk.map(sanitizeStudentRecord),
           chunkIndex: Math.floor(i / chunkSize),
+          ownerId,
           updatedAt: serverTimestamp()
         });
       }
@@ -291,6 +305,11 @@ class FirestoreClient {
     if (disabledResult) return disabledResult;
     
     try {
+      await waitForAuth();
+      const ownerId = getCurrentUserId();
+      if (!ownerId) {
+        throw new Error('Kimlik doğrulaması olmadan plan yüklenemez.');
+      }
       logger.debug('📥 Firestore: Plan yükleniyor:', planId);
       
       // Meta bilgileri yükle
@@ -302,6 +321,21 @@ class FirestoreClient {
       }
       
       const planMeta = planSnap.data();
+      if (planMeta.ownerId && planMeta.ownerId !== ownerId) {
+        throw new Error('Bu planı görüntüleme yetkiniz yok.');
+      }
+      if (!planMeta.ownerId && ownerId && !DISABLE_FIREBASE) {
+        try {
+          await updateDoc(planRef, {
+            ownerId,
+            updatedAt: serverTimestamp()
+          });
+          logger.debug('✅ Firestore: Legacy plan ownerId güncellendi:', planId);
+          planMeta.ownerId = ownerId;
+        } catch (claimError) {
+          logger.warn('⚠️ Legacy plan ownerId güncellenemedi:', claimError);
+        }
+      }
       
       // Salonları yükle
       const salonsRef = collection(this.db, 'plans', planId, 'salons');
@@ -309,7 +343,11 @@ class FirestoreClient {
       const salons = [];
       
       salonsSnap.forEach(doc => {
-        salons.push({ id: doc.id, ...doc.data() });
+        const salonData = doc.data();
+        if (salonData.ownerId && salonData.ownerId !== ownerId) {
+          return;
+        }
+        salons.push({ id: doc.id, ...salonData });
       });
       
       // Yerleşmeyen öğrencileri yükle
@@ -319,6 +357,9 @@ class FirestoreClient {
       
       unplacedSnap.forEach(doc => {
         const data = doc.data();
+        if (data.ownerId && data.ownerId !== ownerId) {
+          return;
+        }
         if (data.students) {
           unplacedStudents.push(...data.students);
         }
@@ -326,10 +367,12 @@ class FirestoreClient {
       
       // Plan verisini birleştir
       const planData = {
+        id: planId,
         ...planMeta,
         data: {
           tumSalonlar: salons,
-          yerlesilemeyenOgrenciler: unplacedStudents
+          yerlesilemeyenOgrenciler: unplacedStudents,
+          ayarlar: planMeta?.ayarlar || {}
         }
       };
       
@@ -349,30 +392,68 @@ class FirestoreClient {
     if (disabledResult) return disabledResult;
     
     try {
+      await waitForAuth();
+      const authOwnerId = getCurrentUserId();
+      const ownerId = authOwnerId || (DISABLE_FIREBASE ? 'offline' : null);
+      if (!ownerId) {
+        console.warn('⚠️ getLatestPlan: Kimlik doğrulaması olmadan işlem yapılamaz');
+        return null;
+      }
       logger.debug('📥 Firestore: En son plan yükleniyor...');
       
       const plansRef = collection(this.db, 'plans');
-      const q = query(plansRef);
-      const plansSnap = await getDocs(q);
+      let plansSnap = await getDocs(query(plansRef, where('ownerId', '==', ownerId)));
+      let plans = [];
       
-      const plans = [];
-      plansSnap.forEach(doc => {
-        const planData = doc.data();
-        // Test Plan'ları filtrele
-        const planName = String(planData?.name || '').trim();
-        const lowerName = planName.toLowerCase();
-        if (planName === 'Test Plan' || 
-            planName === 'Valid Plan' ||
-            lowerName.includes('test plan') ||
-            lowerName.includes('valid plan')) {
-          return; // Bu planı atla
-        }
-        
-        plans.push({
-          id: doc.id,
-          ...planData
+      const accumulatePlans = (snapshot) => {
+        snapshot.forEach(doc => {
+          const planData = doc.data();
+          // Test Plan'ları filtrele
+          const planName = String(planData?.name || '').trim();
+          const lowerName = planName.toLowerCase();
+          if (planName === 'Test Plan' || 
+              planName === 'Valid Plan' ||
+              lowerName.includes('test plan') ||
+              lowerName.includes('valid plan')) {
+            return;
+          }
+          plans.push({
+            id: doc.id,
+            ...planData
+          });
         });
-      });
+      };
+      
+      accumulatePlans(plansSnap);
+      
+      if (plans.length === 0) {
+        try {
+          const legacySnap = await getDocs(plansRef);
+          const claimPromises = [];
+          legacySnap.forEach(doc => {
+            const data = doc.data();
+            if (!data.ownerId) {
+              plans.push({
+                id: doc.id,
+                ...data
+              });
+              if (ownerId && !DISABLE_FIREBASE) {
+                claimPromises.push(
+                  updateDoc(doc.ref, {
+                    ownerId,
+                    updatedAt: serverTimestamp()
+                  }).catch(err => logger.warn('⚠️ Legacy plan ownerId güncelleme hatası:', err))
+                );
+              }
+            }
+          });
+          if (claimPromises.length > 0) {
+            await Promise.all(claimPromises);
+          }
+        } catch (legacyError) {
+          logger.warn('⚠️ Legacy planlar alınamadı:', legacyError);
+        }
+      }
       
       // Client-side sıralama
       if (plans.length > 0) {
@@ -429,19 +510,21 @@ class FirestoreClient {
     if (disabledResult) return disabledResult;
     
     try {
+      await waitForAuth();
+      const authOwnerId = getCurrentUserId();
+      const ownerId = authOwnerId || (DISABLE_FIREBASE ? 'offline' : null);
+      if (!ownerId) {
+        console.warn('⚠️ getAllPlans: Kimlik doğrulaması olmadan plan listesi getirilemez');
+        return [];
+      }
       logger.debug('🔍 Firestore: Planlar listeleniyor...');
       
       const plansRef = collection(this.db, 'plans');
-      
-      // orderBy kullanmadan tüm planları getir (index sorunlarını önlemek için)
-      // Client-side sıralama yapacağız
-      const q = query(plansRef);
-      const plansSnap = await getDocs(q);
+      let plansSnap = await getDocs(query(plansRef, where('ownerId', '==', ownerId)));
       
       const plans = [];
-      plansSnap.forEach(doc => {
+      const addPlanIfAllowed = (doc) => {
         const planData = doc.data();
-        // Test Plan'ları ve Valid Plan'ları filtrele (gereksiz test planlarını Firestore'dan getirme)
         const planName = String(planData?.name || '').trim();
         const lowerName = planName.toLowerCase();
         if (planName === 'Test Plan' || 
@@ -449,14 +532,41 @@ class FirestoreClient {
             lowerName.includes('test plan') ||
             lowerName.includes('valid plan')) {
           logger.debug(`⚠️ Test/Valid Plan filtrelendi: ${doc.id} - ${planName}`);
-          return; // Bu planı atla
+          return;
         }
-        
         plans.push({
           id: doc.id,
           ...planData
         });
-      });
+      };
+      
+      plansSnap.forEach(addPlanIfAllowed);
+      
+      if (plans.length === 0) {
+        try {
+          const legacySnap = await getDocs(plansRef);
+          const claimPromises = [];
+          legacySnap.forEach(doc => {
+            const data = doc.data();
+            if (!data.ownerId) {
+              addPlanIfAllowed(doc);
+              if (ownerId && !DISABLE_FIREBASE) {
+                claimPromises.push(
+                  updateDoc(doc.ref, {
+                    ownerId,
+                    updatedAt: serverTimestamp()
+                  }).catch(err => logger.warn('⚠️ Legacy plan ownerId güncelleme hatası:', err))
+                );
+              }
+            }
+          });
+          if (claimPromises.length > 0) {
+            await Promise.all(claimPromises);
+          }
+        } catch (legacyError) {
+          logger.warn('⚠️ Legacy planlar alınamadı:', legacyError);
+        }
+      }
       
       // Client-side sıralama (Firestore index gerektirmeyen yöntem)
       if (plans.length > 0) {
@@ -506,6 +616,11 @@ class FirestoreClient {
     }
     
     try {
+      await waitForAuth();
+      const ownerId = getCurrentUserId();
+      if (!ownerId) {
+        throw new Error('Kimlik doğrulaması olmadan plan güncellenemez.');
+      }
       logger.debug('🔄 Firestore: Plan güncelleniyor:', planId);
       
       const planRef = doc(this.db, 'plans', planId);
@@ -515,20 +630,26 @@ class FirestoreClient {
       if (!planSnap.exists()) {
         throw new Error(`Plan bulunamadı: ${planId}`);
       }
+      const existingPlan = planSnap.data();
+      if (existingPlan.ownerId && existingPlan.ownerId !== ownerId) {
+        throw new Error('Bu planı güncelleme yetkiniz yok.');
+      }
       
       // Veriyi sanitize et
-      const sanitizedPlanData = sanitizeForFirestore(planData);
+      const sanitizedPlanData = sanitizeForFirestore({
+        ...planData,
+        ownerId
+      });
       
+      const sanitizedAyarlar =
+        sanitizeSettingsMap(sanitizedPlanData?.data?.ayarlar || sanitizedPlanData?.ayarlar || {});
+
       const planMeta = {
-        name: sanitizedPlanData?.name || 'İsimsiz Plan',
-        date: sanitizedPlanData?.date || null,
+        ...sanitizePlanMeta(sanitizedPlanData),
         totalStudents: sanitizedPlanData?.totalStudents || null,
         salonCount: sanitizedPlanData?.salonCount || null,
-        // Sınav bilgilerini metadata'ya ekle
-        sinavTarihi: sanitizedPlanData?.sinavTarihi || null,
-        sinavSaati: sanitizedPlanData?.sinavSaati || null,
-        sinavDonemi: sanitizedPlanData?.sinavDonemi || null,
-        donem: sanitizedPlanData?.donem || null,
+        ayarlar: sanitizedAyarlar,
+        ownerId,
         updatedAt: serverTimestamp()
       };
       
@@ -554,7 +675,7 @@ class FirestoreClient {
         await batch.commit();
         
         // Yeni salonları ekle
-        await this.savePlanSalons(planId, planData.data.tumSalonlar);
+        await this.savePlanSalons(planId, planData.data.tumSalonlar, ownerId);
       }
       
       // Yerleşmeyen öğrencileri güncelle
@@ -570,7 +691,7 @@ class FirestoreClient {
         await batch.commit();
         
         // Yeni unplaced öğrencileri ekle
-        await this.saveUnplacedStudents(planId, planData.data.yerlesilemeyenOgrenciler);
+        await this.saveUnplacedStudents(planId, planData.data.yerlesilemeyenOgrenciler, ownerId);
       }
       
       console.log('✅ Firestore: Plan güncellendi:', planId);
@@ -590,7 +711,21 @@ class FirestoreClient {
     if (disabledResult) return disabledResult;
     
     try {
+      await waitForAuth();
+      const ownerId = getCurrentUserId();
+      if (!ownerId) {
+        throw new Error('Kimlik doğrulaması olmadan plan silinemez.');
+      }
       logger.debug('🗑️ Firestore: Plan siliniyor:', planId);
+      const planRef = doc(this.db, 'plans', planId);
+      const planSnap = await getDoc(planRef);
+      if (!planSnap.exists()) {
+        return null;
+      }
+      const planMeta = planSnap.data();
+      if (planMeta.ownerId && planMeta.ownerId !== ownerId) {
+        throw new Error('Bu planı silme yetkiniz yok.');
+      }
       
       // Alt koleksiyonları sil
       const batch = writeBatch(this.db);
@@ -599,22 +734,28 @@ class FirestoreClient {
       const salonsRef = collection(this.db, 'plans', planId, 'salons');
       const salonsSnap = await getDocs(salonsRef);
       salonsSnap.forEach(doc => {
-        batch.delete(doc.ref);
+        const salonData = doc.data();
+        if (!salonData.ownerId || salonData.ownerId === ownerId) {
+          batch.delete(doc.ref);
+        }
       });
       
       // Yerleşmeyen öğrencileri sil
       const unplacedRef = collection(this.db, 'plans', planId, 'unplaced');
       const unplacedSnap = await getDocs(unplacedRef);
       unplacedSnap.forEach(doc => {
-        batch.delete(doc.ref);
+        const unplacedData = doc.data();
+        if (!unplacedData.ownerId || unplacedData.ownerId === ownerId) {
+          batch.delete(doc.ref);
+        }
       });
       
       // Meta planı sil
-      const planRef = doc(this.db, 'plans', planId);
       batch.delete(planRef);
       
       await batch.commit();
       logger.debug('✅ Firestore: Plan silindi:', planId);
+      return planId;
     } catch (error) {
       logger.error('❌ Firestore: Plan silme hatası:', error);
       throw error;
@@ -630,10 +771,15 @@ class FirestoreClient {
     if (disabledResult) return disabledResult;
     
     try {
+      await waitForAuth();
+      const ownerId = getCurrentUserId();
+      if (!ownerId) {
+        throw new Error('Kimlik doğrulaması olmadan öğrenci kaydedilemez.');
+      }
       logger.debug('💾 Firestore: Öğrenciler kaydediliyor...');
       
       // Önce mevcut tüm öğrencileri al
-      const studentsRef = collection(this.db, 'students');
+      const studentsRef = query(collection(this.db, 'students'), where('ownerId', '==', ownerId));
       const existingStudentsSnap = await getDocs(studentsRef);
       
       // Yeni listedeki öğrenci ID'lerini bir Set'e al (hızlı lookup için)
@@ -704,13 +850,15 @@ class FirestoreClient {
         const saveBatch = writeBatch(this.db);
         
         chunk.forEach(student => {
-          const studentRef = doc(this.db, 'students', student.id.toString());
+          const sanitizedStudent = sanitizeStudentRecord(student);
+          const studentRef = doc(this.db, 'students', sanitizedStudent.id.toString());
           // Pinned bilgilerini de kaydet (pinned, pinnedSalonId, pinnedMasaId)
           saveBatch.set(studentRef, {
-            ...student,
-            pinned: student.pinned || false,
-            pinnedSalonId: student.pinnedSalonId || null,
-            pinnedMasaId: student.pinnedMasaId || null,
+            ...sanitizedStudent,
+            pinned: sanitizedStudent.pinned || false,
+            pinnedSalonId: sanitizedStudent.pinnedSalonId || null,
+            pinnedMasaId: sanitizedStudent.pinnedMasaId || null,
+            ownerId,
             updatedAt: serverTimestamp()
           });
         });
@@ -750,15 +898,24 @@ class FirestoreClient {
     }
     
     try {
+      await waitForAuth();
+      const ownerId = getCurrentUserId();
+      if (!ownerId) {
+        console.warn('⚠️ getAllStudents: Kimlik doğrulaması olmadan öğrenciler getirilemez');
+        return [];
+      }
       logger.info('📥 Firestore: Öğrenciler yükleniyor (SERVER\'dan - cache bypass)...');
       
-      const studentsRef = collection(this.db, 'students');
+      const studentsRef = query(collection(this.db, 'students'), where('ownerId', '==', ownerId));
       // getDocsFromServer kullanarak cache'i bypass et ve server'dan güncel verileri çek
       const studentsSnap = await getDocsFromServer(studentsRef);
       
       const students = [];
       studentsSnap.forEach(doc => {
         const studentData = doc.data();
+        if (studentData.ownerId && studentData.ownerId !== ownerId) {
+          return;
+        }
         students.push({ id: doc.id, ...studentData });
       });
       
@@ -891,11 +1048,15 @@ class FirestoreClient {
       // Hata durumunda cache'den yükle (fallback)
       try {
         logger.warn('⚠️ Server yükleme başarısız, cache\'den yükleniyor...');
-        const studentsRef = collection(this.db, 'students');
+        const studentsRef = query(collection(this.db, 'students'), where('ownerId', '==', ownerId));
         const studentsSnap = await getDocs(studentsRef);
         const students = [];
         studentsSnap.forEach(doc => {
-          students.push({ id: doc.id, ...doc.data() });
+          const studentData = doc.data();
+          if (studentData.ownerId && studentData.ownerId !== ownerId) {
+            return;
+          }
+          students.push({ id: doc.id, ...studentData });
         });
         
         // Cache'den yüklenen öğrencilerde de duplicate kontrolü yap
@@ -1045,15 +1206,30 @@ class FirestoreClient {
     if (disabledResult) return disabledResult;
     
     try {
+      await waitForAuth();
+      const ownerId = getCurrentUserId();
+      if (!ownerId) {
+        throw new Error('Kimlik doğrulaması olmadan ayarlar kaydedilemez.');
+      }
       logger.debug('💾 Firestore: Ayarlar kaydediliyor...');
       
       const batch = writeBatch(this.db);
       
       Object.entries(settings).forEach(([key, value]) => {
-        const settingRef = doc(this.db, 'settings', key);
+        const docId = `${ownerId}_${key}`;
+        const sanitizedValue = typeof value === 'string'
+          ? sanitizeText(value)
+          : Array.isArray(value)
+            ? sanitizeStringArray(value)
+            : value && typeof value === 'object'
+              ? sanitizeSettingsMap(value)
+              : value;
+        const settingRef = doc(this.db, 'settings', docId);
         batch.set(settingRef, {
-          value,
-          type: typeof value,
+          ownerId,
+          key,
+          value: sanitizedValue,
+          type: typeof sanitizedValue,
           updatedAt: serverTimestamp()
         });
       });
@@ -1074,15 +1250,26 @@ class FirestoreClient {
     if (disabledResult) return disabledResult;
     
     try {
+      await waitForAuth();
+      const ownerId = getCurrentUserId();
+      if (!ownerId) {
+        console.warn('⚠️ getSettings: Kimlik doğrulaması olmadan ayarlar getirilemez');
+        return {};
+      }
       logger.debug('📥 Firestore: Ayarlar yükleniyor (SERVER\'dan - cache bypass)...');
       
-      const settingsRef = collection(this.db, 'settings');
+      const settingsRef = query(collection(this.db, 'settings'), where('ownerId', '==', ownerId));
       // getDocsFromServer kullanarak cache'i bypass et ve server'dan güncel verileri çek
       const settingsSnap = await getDocsFromServer(settingsRef);
       
       const settings = {};
       settingsSnap.forEach(doc => {
-        settings[doc.id] = doc.data().value;
+        const data = doc.data();
+        if (data.ownerId && data.ownerId !== ownerId) {
+          return;
+        }
+        const key = data.key || doc.id.replace(`${ownerId}_`, '');
+        settings[key] = data.value;
       });
       
       logger.debug('✅ Firestore: Ayarlar yüklendi (SERVER):', Object.keys(settings).length);
@@ -1092,11 +1279,16 @@ class FirestoreClient {
       // Hata durumunda cache'den yükle (fallback)
       try {
         logger.warn('⚠️ Server yükleme başarısız, cache\'den yükleniyor...');
-        const settingsRef = collection(this.db, 'settings');
+        const settingsRef = query(collection(this.db, 'settings'), where('ownerId', '==', ownerId));
         const settingsSnap = await getDocs(settingsRef);
         const settings = {};
         settingsSnap.forEach(doc => {
-          settings[doc.id] = doc.data().value;
+          const data = doc.data();
+          if (data.ownerId && data.ownerId !== ownerId) {
+            return;
+          }
+          const key = data.key || doc.id.replace(`${ownerId}_`, '');
+          settings[key] = data.value;
         });
         logger.warn('⚠️ Cache\'den yüklendi:', Object.keys(settings).length, 'ayar');
         return settings;
@@ -1115,18 +1307,25 @@ class FirestoreClient {
     if (disabledResult) return disabledResult;
     
     try {
+      await waitForAuth();
+      const ownerId = getCurrentUserId();
+      if (!ownerId) {
+        throw new Error('Kimlik doğrulaması olmadan salon kaydedilemez.');
+      }
       logger.debug('💾 Firestore: Salonlar kaydediliyor...');
       
-      const batch = writeBatch(this.db);
       const chunkSize = 500;
       
       for (let i = 0; i < salons.length; i += chunkSize) {
         const chunk = salons.slice(i, i + chunkSize);
+        const batch = writeBatch(this.db);
         
         chunk.forEach(salon => {
-          const salonRef = doc(this.db, 'salons', salon.id.toString());
+          const sanitizedSalon = sanitizeSalonRecord(salon);
+          const salonRef = doc(this.db, 'salons', sanitizedSalon.id.toString());
           batch.set(salonRef, {
-            ...salon,
+            ...sanitizedSalon,
+            ownerId,
             updatedAt: serverTimestamp()
           });
         });
@@ -1157,9 +1356,15 @@ class FirestoreClient {
     }
     
     try {
+      await waitForAuth();
+      const ownerId = getCurrentUserId();
+      if (!ownerId) {
+        console.warn('⚠️ getAllSalons: Kimlik doğrulaması olmadan salonlar getirilemez');
+        return [];
+      }
       logger.info('📥 Firestore: Salonlar yükleniyor (SERVER\'dan - cache bypass)...');
       
-      const salonsRef = collection(this.db, 'salons');
+      const salonsRef = query(collection(this.db, 'salons'), where('ownerId', '==', ownerId));
       // getDocsFromServer kullanarak cache'i bypass et ve server'dan güncel verileri çek
       const salonsSnap = await getDocsFromServer(salonsRef);
       
@@ -1167,7 +1372,11 @@ class FirestoreClient {
       
       const salons = [];
       salonsSnap.forEach(doc => {
-        salons.push({ id: doc.id, ...doc.data() });
+        const salonData = doc.data();
+        if (salonData.ownerId && salonData.ownerId !== ownerId) {
+          return;
+        }
+        salons.push({ id: doc.id, ...salonData });
       });
       
       // Salonları sayısal ID'ye göre sırala (string sıralama yerine)
@@ -1187,11 +1396,15 @@ class FirestoreClient {
       // Hata durumunda cache'den yükle (fallback)
       try {
         logger.warn('⚠️ Server yükleme başarısız, cache\'den yükleniyor...');
-        const salonsRef = collection(this.db, 'salons');
+        const salonsRef = query(collection(this.db, 'salons'), where('ownerId', '==', ownerId));
         const salonsSnap = await getDocs(salonsRef);
         const salons = [];
         salonsSnap.forEach(doc => {
-          salons.push({ id: doc.id, ...doc.data() });
+          const salonData = doc.data();
+          if (salonData.ownerId && salonData.ownerId !== ownerId) {
+            return;
+          }
+          salons.push({ id: doc.id, ...salonData });
         });
         // Salonları sayısal ID'ye göre sırala
         salons.sort((a, b) => {

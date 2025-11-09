@@ -104,7 +104,12 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
       // Plan objesi zaten yüklenmiş (onPlanYukle prop'undan geliyor)
       if (plan.data) {
         console.log('✅ Plan verisi zaten mevcut, direkt kullanılıyor');
-        onPlanYukle(plan.data || plan);
+        onPlanYukle({
+          id: planId,
+          name: plan.name || 'İsimsiz Plan',
+          date: plan.date || null,
+          data: plan.data || plan
+        });
         return;
       }
       
@@ -112,7 +117,7 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
       console.log('📥 Plan verisi yükleniyor, ID:', planId);
       const loadedPlan = await planManager.loadPlan(planId);
       if (loadedPlan && loadedPlan.data) {
-        onPlanYukle(loadedPlan.data);
+        onPlanYukle(loadedPlan);
       } else {
         throw new Error('Plan yüklendi ama veri bulunamadı');
       }

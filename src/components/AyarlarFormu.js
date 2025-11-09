@@ -24,20 +24,114 @@ import {
   Book as BookIcon,
   Warning as WarningIcon
 } from '@mui/icons-material';
+import { sanitizeText, sanitizeStringArray } from '../utils/sanitizer';
+
+const defaultFormData = {
+  sinavAdi: '',
+  sinavTarihi: '',
+  sinavSaati: '',
+  dersler: []
+};
+
+const createGeneratedDersId = (ders, index) => {
+  const baseName = ders?.ad ? ders.ad.toString().toLowerCase().replace(/\s+/g, '-') : 'ders';
+  return `generated-${index}-${baseName}`;
+};
+
+const normalizeSettings = (ayarlar) => {
+  const normalizedDersler = Array.isArray(ayarlar?.dersler)
+    ? ayarlar.dersler.map((ders, index) => {
+        const normalizedId = ders?.id ?? ders?.uuid ?? createGeneratedDersId(ders, index);
+        return {
+          ...ders,
+          id: normalizedId,
+          ad: sanitizeText(ders?.ad || ''),
+          siniflar: Array.isArray(ders.siniflar) ? sanitizeStringArray(ders.siniflar) : []
+        };
+      })
+    : [];
+
+  const normalized = {
+    ...defaultFormData,
+    ...(ayarlar || {}),
+    dersler: normalizedDersler
+  };
+  normalized.sinavAdi = sanitizeText(normalized.sinavAdi || '');
+  normalized.sinavTarihi = sanitizeText(normalized.sinavTarihi || '');
+  normalized.sinavSaati = sanitizeText(normalized.sinavSaati || '');
+  return normalized;
+};
+
+const computeErrors = (data) => {
+  const validationErrors = {};
+  if (Array.isArray(data?.dersler)) {
+    data.dersler.forEach((ders) => {
+      const key = ders?.id ?? ders?.uuid;
+      if (!sanitizeText(ders?.ad || '')) {
+        validationErrors[`ders_${key}`] = 'Ders adı boş bırakılamaz';
+      }
+    });
+  }
+  return validationErrors;
+};
+
+const areSettingsEqual = (prev, next) => {
+  try {
+    return JSON.stringify(prev) === JSON.stringify(next);
+  } catch (error) {
+    console.warn('Ayarlar karşılaştırması yapılamadı:', error);
+    return false;
+  }
+};
 
 const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirmeSonucu = null }) => {
   const { showError } = useNotifications();
-  const [formData, setFormData] = useState({
-    sinavAdi: ayarlar?.sinavAdi || '',
-    sinavTarihi: ayarlar?.sinavTarihi || '',
-    sinavSaati: ayarlar?.sinavSaati || '',
-    dersler: ayarlar?.dersler || [],
-    ...ayarlar
+  const [formData, setFormData] = useState(() => normalizeSettings(ayarlar));
+  const [errors, setErrors] = useState(() => computeErrors(normalizeSettings(ayarlar)));
+  const [seciliSiniflar, setSeciliSiniflar] = useState(() => {
+    const normalized = normalizeSettings(ayarlar);
+    const initialSelections = {};
+    normalized.dersler.forEach((ders, index) => {
+      const dersId = ders?.id ?? createGeneratedDersId(ders, index);
+      initialSelections[dersId] = Array.isArray(ders.siniflar) ? [...ders.siniflar] : [];
+    });
+    return initialSelections;
   });
+
+  React.useEffect(() => {
+    const yeniFormData = normalizeSettings(ayarlar);
+    let shouldResetSelections = false;
+
+    setFormData(prev => {
+      if (areSettingsEqual(prev, yeniFormData)) {
+        return prev;
+      }
+      shouldResetSelections = true;
+      return yeniFormData;
+    });
+    setErrors(computeErrors(yeniFormData));
+
+    if (shouldResetSelections) {
+      const initialSelections = {};
+      yeniFormData.dersler.forEach((ders, index) => {
+        const dersId = ders?.id ?? createGeneratedDersId(ders, index);
+        initialSelections[dersId] = Array.isArray(ders.siniflar) ? [...ders.siniflar] : [];
+      });
+      setSeciliSiniflar(initialSelections);
+    }
+  }, [ayarlar]);
 
   const [kaydedildi, setKaydedildi] = useState(false);
   void kaydedildi; // Kullanılmayan state
-  const [seciliSiniflar, setSeciliSiniflar] = useState({});
+
+  const applyFormUpdate = React.useCallback((nextData) => {
+    setFormData(nextData);
+    const validationErrors = computeErrors(nextData);
+    setErrors(validationErrors);
+    if (onAyarlarDegistir) {
+      onAyarlarDegistir(nextData);
+    }
+  }, [onAyarlarDegistir]);
 
   // Yerleştirme planı kontrolü
   const yerlesimPlaniVarMi = () => {
@@ -63,23 +157,6 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
     return a.localeCompare(b);
   });
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    const newValue = type === 'checkbox' ? checked : value;
-    
-    const yeniFormData = {
-      ...formData,
-      [name]: newValue
-    };
-    
-    setFormData(yeniFormData);
-    void handleChange; // Kullanılmayan fonksiyon
-    // Anında kaydet
-    if (onAyarlarDegistir) {
-      onAyarlarDegistir(yeniFormData);
-    }
-  };
-
   const handleDersEkle = () => {
     // Yerleştirme planı kontrolü
     if (yerlesimPlaniVarMi()) {
@@ -89,8 +166,9 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
 
     if (formData.dersler.length >= 4) return;
     
+    const yeniDersId = Date.now();
     const yeniDers = {
-      id: Date.now(),
+      id: yeniDersId,
       ad: '',
       siniflar: []
     };
@@ -100,11 +178,11 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
       dersler: [...formData.dersler, yeniDers]
     };
     
-    setFormData(yeniFormData);
-    // Anında kaydet
-    if (onAyarlarDegistir) {
-      onAyarlarDegistir(yeniFormData);
-    }
+    applyFormUpdate(yeniFormData);
+    setSeciliSiniflar(prev => ({
+      ...prev,
+      [yeniDersId]: []
+    }));
   };
 
   const handleDersSil = (dersId) => {
@@ -119,11 +197,12 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
       dersler: formData.dersler.filter(ders => ders.id !== dersId)
     };
     
-    setFormData(yeniFormData);
-    // Anında kaydet
-    if (onAyarlarDegistir) {
-      onAyarlarDegistir(yeniFormData);
-    }
+    applyFormUpdate(yeniFormData);
+    setSeciliSiniflar(prev => {
+      const updated = { ...prev };
+      delete updated[dersId];
+      return updated;
+    });
   };
 
   const handleDersAdiDegistir = (dersId, yeniAd) => {
@@ -133,18 +212,16 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
       return;
     }
 
+    const safeAd = sanitizeText(yeniAd);
+
     const yeniFormData = {
       ...formData,
       dersler: formData.dersler.map(ders => 
-        ders.id === dersId ? { ...ders, ad: yeniAd } : ders
+        ders.id === dersId ? { ...ders, ad: safeAd } : ders
       )
     };
     
-    setFormData(yeniFormData);
-    // Anında kaydet
-    if (onAyarlarDegistir) {
-      onAyarlarDegistir(yeniFormData);
-    }
+    applyFormUpdate(yeniFormData);
   };
 
   const handleSinifEkle = (dersId, sinif) => {
@@ -159,22 +236,19 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
       ...formData,
       dersler: formData.dersler.map(ders => 
         ders.id === dersId 
-          ? { ...ders, siniflar: [...ders.siniflar, sinif] }
+          ? { ...ders, siniflar: sanitizeStringArray([...ders.siniflar, sinif]) }
           : ders
       )
     };
     
-    setFormData(yeniFormData);
-    // Anında kaydet
-    if (onAyarlarDegistir) {
-      onAyarlarDegistir(yeniFormData);
-    }
+    applyFormUpdate(yeniFormData);
   };
 
   const handleSinifSecimi = (dersId, siniflar) => {
+    const sanitized = sanitizeStringArray(siniflar);
     setSeciliSiniflar(prev => ({
       ...prev,
-      [dersId]: siniflar
+      [dersId]: sanitized
     }));
   };
 
@@ -196,16 +270,12 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
       ...formData,
       dersler: formData.dersler.map(ders => 
         ders.id === dersId 
-          ? { ...ders, siniflar: [...ders.siniflar, ...secilenSiniflar] }
+          ? { ...ders, siniflar: sanitizeStringArray([...ders.siniflar, ...secilenSiniflar]) }
           : ders
       )
     };
     
-    setFormData(yeniFormData);
-    // Anında kaydet
-    if (onAyarlarDegistir) {
-      onAyarlarDegistir(yeniFormData);
-    }
+    applyFormUpdate(yeniFormData);
     
     // Seçimi temizle
     setSeciliSiniflar(prev => ({
@@ -225,16 +295,12 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
       ...formData,
       dersler: formData.dersler.map(ders => 
         ders.id === dersId 
-          ? { ...ders, siniflar: ders.siniflar.filter(s => s !== sinif) }
+          ? { ...ders, siniflar: sanitizeStringArray(ders.siniflar.filter(s => s !== sinif)) }
           : ders
       )
     };
     
-    setFormData(yeniFormData);
-    // Anında kaydet
-    if (onAyarlarDegistir) {
-      onAyarlarDegistir(yeniFormData);
-    }
+    applyFormUpdate(yeniFormData);
     
     // Silinen sınıfı seçili sınıflardan da çıkar
     setSeciliSiniflar(prev => ({
@@ -245,6 +311,10 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (Object.keys(errors).length > 0) {
+      showError('Lütfen formdaki hataları düzeltin.');
+      return;
+    }
     if (onAyarlarDegistir) {
       onAyarlarDegistir(formData);
       setKaydedildi(true);
@@ -287,15 +357,19 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                 </Box>
               </Box>
               
-              {formData.dersler.map((ders, index) => (
-                <Card key={ders.id} sx={{ mb: 2, border: '1px solid', borderColor: 'divider' }}>
+              {formData.dersler.map((ders, index) => {
+                const dersIdForHandlers = ders?.id ?? createGeneratedDersId(ders, index);
+                const dersKey = `${dersIdForHandlers}-${index}`;
+
+                return (
+                  <Card key={dersKey} sx={{ mb: 2, border: '1px solid', borderColor: 'divider' }}>
                   <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                       <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>
                         Ders {index + 1}
                       </Typography>
                       <IconButton 
-                        onClick={() => handleDersSil(ders.id)}
+                        onClick={() => handleDersSil(dersIdForHandlers)}
                         color="error"
                         size="small"
                       >
@@ -304,25 +378,27 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                     </Box>
 
                     <Grid container spacing={2}>
-                      <Grid size={{ xs: 12, md: 6 }} key={`ders-adi-${ders.id}`}>
+                      <Grid size={{ xs: 12, md: 6 }} key={`ders-adi-${dersKey}`}>
                         <TextField
                           fullWidth
                           label="Ders Adı"
                           value={ders.ad}
-                          onChange={(e) => handleDersAdiDegistir(ders.id, e.target.value)}
+                          onChange={(e) => handleDersAdiDegistir(dersIdForHandlers, e.target.value)}
                           variant="outlined"
                           placeholder="Örn: Matematik, Türkçe, Fizik"
+                          error={Boolean(errors[`ders_${dersIdForHandlers}`])}
+                          helperText={errors[`ders_${dersIdForHandlers}`] || ''}
                         />
                       </Grid>
 
-                      <Grid size={{ xs: 12, md: 6 }} key={`sinif-secimi-${ders.id}`}>
+                      <Grid size={{ xs: 12, md: 6 }} key={`sinif-secimi-${dersKey}`}>
                         <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
                           <FormControl fullWidth>
                             <InputLabel>Sınıf Seç (Çoklu)</InputLabel>
                             <Select
                               multiple
-                              value={seciliSiniflar[ders.id] || []}
-                              onChange={(e) => handleSinifSecimi(ders.id, e.target.value)}
+                              value={seciliSiniflar[dersIdForHandlers] || []}
+                              onChange={(e) => handleSinifSecimi(dersIdForHandlers, e.target.value)}
                               label="Sınıf Seç (Çoklu)"
                               renderValue={(selected) => {
                                 if (selected.length === 0) {
@@ -357,7 +433,7 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                                   
                                   // Diğer derslere eklenmiş sınıfları filtrele
                                   const digerDerslerdeKullanilanSiniflar = formData.dersler
-                                    .filter(d => d.id !== ders.id)
+                                    .filter(d => d !== ders)
                                     .flatMap(d => d.siniflar);
                                   
                                   return !digerDerslerdeKullanilanSiniflar.includes(sinif);
@@ -367,8 +443,8 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                                     key={sinif} 
                                     value={sinif}
                                     sx={{
-                                      fontWeight: (seciliSiniflar[ders.id] || []).includes(sinif) ? 'bold' : 'normal',
-                                      backgroundColor: (seciliSiniflar[ders.id] || []).includes(sinif) 
+                                      fontWeight: (seciliSiniflar[dersIdForHandlers] || []).includes(sinif) ? 'bold' : 'normal',
+                                      backgroundColor: (seciliSiniflar[dersIdForHandlers] || []).includes(sinif) 
                                         ? 'rgba(25, 118, 210, 0.15)' 
                                         : 'transparent',
                                       '&.Mui-selected': {
@@ -379,7 +455,7 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                                         }
                                       },
                                       '&:hover': {
-                                        backgroundColor: (seciliSiniflar[ders.id] || []).includes(sinif)
+                                        backgroundColor: (seciliSiniflar[dersIdForHandlers] || []).includes(sinif)
                                           ? 'rgba(25, 118, 210, 0.25)'
                                           : 'rgba(0, 0, 0, 0.04)',
                                       }
@@ -394,14 +470,14 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                           <Button
                             variant="outlined"
                             size="small"
-                            onClick={() => handleSinifEkleButon(ders.id)}
+                            onClick={() => handleSinifEkleButon(dersIdForHandlers)}
                             disabled={mevcutSiniflar.filter(sinif => {
                               // Bu derse zaten eklenmiş sınıfları filtrele
                               if (ders.siniflar.includes(sinif)) return false;
                               
                               // Diğer derslere eklenmiş sınıfları filtrele
                               const digerDerslerdeKullanilanSiniflar = formData.dersler
-                                .filter(d => d.id !== ders.id)
+                                .filter(d => d !== ders)
                                 .flatMap(d => d.siniflar);
                               
                               return !digerDerslerdeKullanilanSiniflar.includes(sinif);
@@ -418,17 +494,17 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                         </Box>
                       </Grid>
 
-                      {ders.siniflar.length > 0 ? (
-                        <Grid size={12} key={`siniflar-listesi-${ders.id}`}>
+                      {Array.isArray(ders.siniflar) && ders.siniflar.length > 0 ? (
+                        <Grid size={12} key={`siniflar-listesi-${dersKey}`}>
                           <Typography variant="body2" color="text.secondary" sx={{ mb: 1, textAlign: 'left' }}>
                             Bu dersi alan sınıflar:
                           </Typography>
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                             {ders.siniflar.map(sinif => (
                               <Chip
-                                key={sinif}
+                                key={`${dersKey}-${sinif}`}
                                 label={sinif}
-                                onDelete={() => handleSinifSil(ders.id, sinif)}
+                                onDelete={() => handleSinifSil(dersIdForHandlers, sinif)}
                                 color="primary"
                                 variant="outlined"
                                 size="small"
@@ -439,8 +515,9 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                       ) : null}
                     </Grid>
                   </CardContent>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
 
               <Button
                 variant="outlined"

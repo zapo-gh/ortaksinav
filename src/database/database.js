@@ -481,15 +481,14 @@ class KelebekDatabase extends Dexie {
         console.log('⚠️ Öğrenci verisi boş, kaydetme atlanıyor (mevcut veriler korunuyor)');
         return; // Mevcut verileri koru, silme!
       }
-      
-      // Mevcut öğrencileri temizle
-      await this.students.clear();
-      
-      // Yeni öğrencileri ekle
-      await this.students.bulkAdd(students.map((student, index) => ({
-        ...student,
-        id: student.id || index + 1
-      })));
+      await this.transaction('rw', this.students, async () => {
+        await this.students.clear();
+        const records = students.map((student, index) => ({
+          ...student,
+          id: String(student.id ?? index + 1)
+        }));
+        await this.students.bulkPut(records);
+      });
       
       console.log('✅ Öğrenciler kaydedildi:', students.length);
     } catch (error) {
@@ -517,19 +516,21 @@ class KelebekDatabase extends Dexie {
    */
   async saveSettings(settings) {
     try {
-      // Mevcut ayarları temizle
-      await this.settings.clear();
-      
-      // Yeni ayarları ekle
-      if (settings) {
-        const settingsArray = Object.entries(settings).map(([key, value]) => ({
-          key,
-          value,
-          type: typeof value
-        }));
-        
-        await this.settings.bulkAdd(settingsArray);
-      }
+      await this.transaction('rw', this.settings, async () => {
+        await this.settings.clear();
+        if (settings) {
+          const settingsArray = Object.entries(settings).map(([key, value]) => ({
+            id: key,
+            key,
+            value,
+            type: typeof value,
+            updatedAt: new Date()
+          }));
+          if (settingsArray.length > 0) {
+            await this.settings.bulkPut(settingsArray);
+          }
+        }
+      });
       
       console.log('✅ Ayarlar kaydedildi');
     } catch (error) {
@@ -568,21 +569,22 @@ class KelebekDatabase extends Dexie {
         console.log('⚠️ Salon verisi boş, kaydetme atlanıyor (mevcut veriler korunuyor)');
         return; // Mevcut verileri koru, silme!
       }
-      
-      // Mevcut salonları temizle
-      await this.salons.clear();
-      
-      // Yeni salonları ekle
-      // Dexie şemasında 'id' auto-increment. Kullanıcı salon kimliğini 'salonId' alanında saklayalım.
-      const records = salons.map((salon) => {
-        const { id: userSalonId, ...rest } = salon || {};
-        return {
-          ...rest,
-          salonId: salon.salonId || userSalonId || String(Date.now())
-          // 'id' alanını vermiyoruz; Dexie otomatik atayacak
-        };
+      await this.transaction('rw', this.salons, async () => {
+        await this.salons.clear();
+        const now = Date.now();
+        const records = salons.map((salon, index) => {
+          const { id: userSalonId, ...rest } = salon || {};
+          return {
+            ...rest,
+            salonId: String(salon.salonId || userSalonId || `${now}-${index}`),
+            masalar: Array.isArray(salon?.masalar) ? salon.masalar : [],
+            unplacedStudents: Array.isArray(salon?.unplacedStudents) ? salon.unplacedStudents : []
+          };
+        });
+        if (records.length > 0) {
+          await this.salons.bulkPut(records);
+        }
       });
-      await this.salons.bulkAdd(records);
       
       console.log('✅ Salonlar kaydedildi:', salons.length);
     } catch (error) {

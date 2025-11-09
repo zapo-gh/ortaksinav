@@ -15,41 +15,83 @@ import {
   School as SchoolIcon,
   Book as BookIcon
 } from '@mui/icons-material';
+import { sanitizeText } from '../utils/sanitizer';
+
+const defaultGeneralSettings = {
+  okulAdi: 'Akhisar Farabi Mesleki ve Teknik Anadolu Lisesi',
+  egitimYili: '2025-2026',
+  donem: '1',
+  sinavDonemi: '1',
+  sinavTarihi: '',
+  sinavSaati: ''
+};
+
+const normalizeGeneralSettings = (ayarlar) => {
+  const normalized = {
+    ...defaultGeneralSettings,
+    ...(ayarlar || {})
+  };
+  normalized.okulAdi = sanitizeText(normalized.okulAdi || '');
+  normalized.egitimYili = sanitizeText(normalized.egitimYili || '');
+  normalized.donem = sanitizeText(normalized.donem || '1');
+  normalized.sinavDonemi = sanitizeText(normalized.sinavDonemi || '1');
+  normalized.sinavTarihi = sanitizeText(normalized.sinavTarihi || '');
+  normalized.sinavSaati = sanitizeText(normalized.sinavSaati || '');
+  return normalized;
+};
+
+const validateGeneralSettings = (settings) => {
+  const validationErrors = {};
+  if (!sanitizeText(settings.okulAdi || '')) {
+    validationErrors.okulAdi = 'Okul adı zorunludur.';
+  }
+  if (!sanitizeText(settings.egitimYili || '')) {
+    validationErrors.egitimYili = 'Eğitim öğretim yılı zorunludur.';
+  }
+  if (!sanitizeText(settings.sinavTarihi || '')) {
+    validationErrors.sinavTarihi = 'Sınav tarihi seçilmelidir.';
+  }
+  if (!sanitizeText(settings.sinavSaati || '')) {
+    validationErrors.sinavSaati = 'Sınav saati seçilmelidir.';
+  }
+  return validationErrors;
+};
+
+const areGeneralSettingsEqual = (prev, next) => {
+  try {
+    return JSON.stringify(prev) === JSON.stringify(next);
+  } catch (error) {
+    console.warn('Genel ayarlar karşılaştırması yapılamadı:', error);
+    return false;
+  }
+};
 
 const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir }) => {
-  const [formData, setFormData] = useState({
-    okulAdi: ayarlar?.okulAdi || 'Akhisar Farabi Mesleki ve Teknik Anadolu Lisesi',
-    egitimYili: ayarlar?.egitimYili || '2025-2026',
-    donem: ayarlar?.donem || '1',
-    sinavDonemi: ayarlar?.sinavDonemi || '1',
-    sinavTarihi: ayarlar?.sinavTarihi || '',
-    sinavSaati: ayarlar?.sinavSaati || '',
-    ...ayarlar
-  });
+  const [formData, setFormData] = useState(() => normalizeGeneralSettings(ayarlar));
+  const [errors, setErrors] = useState(() => validateGeneralSettings(normalizeGeneralSettings(ayarlar)));
 
   // Ayarlar prop'u değiştiğinde formData'yı güncelle (özellikle plan yükleme sonrası)
   React.useEffect(() => {
-    if (ayarlar) {
-      setFormData(prev => ({
-        ...prev,
-        ...ayarlar,
-        // Özellikle sınav bilgilerini güncelle
-        sinavTarihi: ayarlar.sinavTarihi !== undefined ? ayarlar.sinavTarihi : prev.sinavTarihi,
-        sinavSaati: ayarlar.sinavSaati !== undefined ? ayarlar.sinavSaati : prev.sinavSaati,
-        sinavDonemi: ayarlar.sinavDonemi !== undefined ? ayarlar.sinavDonemi : prev.sinavDonemi,
-        donem: ayarlar.donem !== undefined ? ayarlar.donem : prev.donem
-      }));
-    }
-  }, [ayarlar?.sinavTarihi, ayarlar?.sinavSaati, ayarlar?.sinavDonemi, ayarlar?.donem]);
+    const normalized = normalizeGeneralSettings(ayarlar);
+    setFormData(prev => {
+      if (areGeneralSettingsEqual(prev, normalized)) {
+        return prev;
+      }
+      return normalized;
+    });
+    setErrors(validateGeneralSettings(normalized));
+  }, [ayarlar]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    const sanitizedValue = sanitizeText(value);
     const yeniFormData = {
       ...formData,
-      [name]: value
+      [name]: sanitizedValue
     };
     
     setFormData(yeniFormData);
+    setErrors(validateGeneralSettings(yeniFormData));
     // Anında kaydet
     if (onAyarlarDegistir) {
       onAyarlarDegistir(yeniFormData);
@@ -78,6 +120,8 @@ const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir }) => {
               onChange={handleChange}
               fullWidth
               variant="outlined"
+              error={Boolean(errors.okulAdi)}
+              helperText={errors.okulAdi || ''}
             />
           </Box>
 
@@ -89,8 +133,10 @@ const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir }) => {
               onChange={handleChange}
               fullWidth
               variant="outlined"
+              error={Boolean(errors.egitimYili)}
+              helperText={errors.egitimYili || ''}
             />
-            <FormControl fullWidth variant="outlined">
+            <FormControl fullWidth variant="outlined" error={Boolean(errors.donem)}>
               <InputLabel>Dönem</InputLabel>
               <Select
                 name="donem"
@@ -114,7 +160,7 @@ const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir }) => {
           </Box>
 
           <Box sx={{ display: 'flex', gap: 2 }}>
-            <FormControl fullWidth variant="outlined">
+            <FormControl fullWidth variant="outlined" error={Boolean(errors.sinavDonemi)}>
               <InputLabel>Sınav Dönemi</InputLabel>
               <Select
                 name="sinavDonemi"
@@ -136,6 +182,8 @@ const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir }) => {
               fullWidth
               variant="outlined"
               InputLabelProps={{ shrink: true }}
+              error={Boolean(errors.sinavTarihi)}
+              helperText={errors.sinavTarihi || ''}
             />
             <TextField
               label="Sınav Saati"
@@ -146,6 +194,8 @@ const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir }) => {
               fullWidth
               variant="outlined"
               InputLabelProps={{ shrink: true }}
+              error={Boolean(errors.sinavSaati)}
+              helperText={errors.sinavSaati || ''}
             />
           </Box>
         </Box>

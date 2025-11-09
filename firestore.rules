@@ -2,55 +2,86 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Veri boyutu kontrolü - abartılı yazmaları önle
-    function isValidDataSize() {
-      // Basit kontrol - herhangi bir çok büyük document'i reddet
-      return request.resource.data.size() < 1000000;
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function ownerMatches(data) {
+      return data.ownerId == request.auth.uid;
+    }
+
+    function isUnclaimed(data) {
+      return !data.keys().hasAny(['ownerId']) || data.ownerId == null;
+    }
+
+    function canRead(data) {
+      return isAuthenticated() && (ownerMatches(data) || isUnclaimed(data));
+    }
+
+    function canCreate(data) {
+      return isAuthenticated() &&
+        data.keys().hasAny(['ownerId']) &&
+        ownerMatches(data);
+    }
+
+    function canUpdate(newData, existingData) {
+      return canCreate(newData) &&
+        (isUnclaimed(existingData) || ownerMatches(existingData));
+    }
+
+    function canDelete(data) {
+      return isAuthenticated() && ownerMatches(data);
     }
     
-    // Plans collection - Basit boyut kontrolü
     match /plans/{planId} {
-      // Okuma serbest (sınav planları genelde public)
-      allow read: if true;
-      
-      // Yazma işlemlerinde veri boyutu kontrolü
-      allow create, update: if isValidDataSize();
-      allow delete: if true;
+      allow read: if canRead(resource.data);
+      allow create: if canCreate(request.resource.data);
+      allow update: if canUpdate(request.resource.data, resource.data);
+      allow delete: if canDelete(resource.data);
       
       // Salon subcollection
       match /salons/{salonId} {
-        allow read: if true;
-        allow create, update: if isValidDataSize();
-        allow delete: if true;
+        allow read: if canRead(resource.data) || canRead(get(/databases/$(database)/documents/plans/$(planId)).data);
+        allow create: if canCreate(request.resource.data) &&
+          ownerMatches(get(/databases/$(database)/documents/plans/$(planId)).data);
+        allow update: if canUpdate(request.resource.data, resource.data) &&
+          ownerMatches(get(/databases/$(database)/documents/plans/$(planId)).data);
+        allow delete: if canDelete(resource.data);
       }
       
       // Unplaced students subcollection
       match /unplaced/{chunkId} {
-        allow read: if true;
-        allow create, update: if isValidDataSize();
-        allow delete: if true;
+        allow read: if canRead(resource.data) || canRead(get(/databases/$(database)/documents/plans/$(planId)).data);
+        allow create: if canCreate(request.resource.data) &&
+          ownerMatches(get(/databases/$(database)/documents/plans/$(planId)).data);
+        allow update: if canUpdate(request.resource.data, resource.data) &&
+          ownerMatches(get(/databases/$(database)/documents/plans/$(planId)).data);
+        allow delete: if canDelete(resource.data);
       }
     }
     
     // Students collection
     match /students/{studentId} {
-      allow read: if true;
-      allow create, update: if isValidDataSize();
-      allow delete: if true;
+      allow read: if canRead(resource.data);
+      allow create: if canCreate(request.resource.data);
+      allow update: if canUpdate(request.resource.data, resource.data);
+      allow delete: if canDelete(resource.data);
     }
     
     // Salons collection
     match /salons/{salonId} {
-      allow read: if true;
-      allow create, update: if isValidDataSize();
-      allow delete: if true;
+      allow read: if canRead(resource.data);
+      allow create: if canCreate(request.resource.data);
+      allow update: if canUpdate(request.resource.data, resource.data);
+      allow delete: if canDelete(resource.data);
     }
     
     // Settings collection
     match /settings/{settingKey} {
-      allow read: if true;
-      allow create, update: if isValidDataSize();
-      allow delete: if true;
+      allow read: if canRead(resource.data);
+      allow create: if canCreate(request.resource.data);
+      allow update: if canUpdate(request.resource.data, resource.data);
+      allow delete: if canDelete(resource.data);
     }
   }
 }

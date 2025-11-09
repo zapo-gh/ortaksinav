@@ -1,4 +1,4 @@
-import React, { memo, useState, useCallback, useEffect } from 'react';
+import React, { memo, useState, useCallback, useEffect, useMemo } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { getSinifSeviyesi, getOgrenciDersleri, isGenderValid, isClassLevelValid } from '../algorithms/gelismisYerlestirmeAlgoritmasi';
 import { isBackToBackClassLevelValid } from '../algorithms/validation/constraints';
@@ -89,7 +89,45 @@ const DroppableSeat = memo(({ masa, onStudentMove, children }) => {
   );
 });
 
-const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler = [], onOgrenciSec, tumSalonlar, onSalonDegistir, ayarlar = {}, salonlar = [], seciliSalonId, onSeciliSalonDegistir, onStudentTransfer, yerlestirmeSonucu, tumOgrenciSayisi }) => {
+const SalonStatsChips = React.memo(({ mode, toplam, yerlesen, yerlesmeyen }) => {
+  if (mode === 'plan') {
+    return (
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: { xs: 0.5, sm: 1 },
+        ml: { xs: 0, sm: 2 },
+        flexWrap: 'wrap',
+        justifyContent: { xs: 'center', sm: 'flex-start' }
+      }}>
+        <Chip label={`Toplam: ${toplam}`} color="primary" variant="outlined" size="small" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }} />
+        <Chip label={`Yerleşen: ${yerlesen}`} color="success" variant="outlined" size="small" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }} />
+        <Chip label={`Yerleşmeyen: ${yerlesmeyen}`} color="warning" variant="outlined" size="small" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }} />
+      </Box>
+    );
+  }
+
+  if (mode === 'list') {
+    return (
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: { xs: 0.5, sm: 1 },
+        ml: { xs: 0, sm: 2 },
+        flexWrap: 'wrap',
+        justifyContent: { xs: 'center', sm: 'flex-start' }
+      }}>
+        <Chip label={`Toplam: ${toplam}`} color="primary" variant="outlined" size="small" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }} />
+        <Chip label={`Yerleşen: ${yerlesen}`} color="success" variant="outlined" size="small" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }} />
+        <Chip label={`Yerleşmeyen: ${yerlesmeyen}`} color="warning" variant="outlined" size="small" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }} />
+      </Box>
+    );
+  }
+
+  return null;
+});
+
+const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler = [], onOgrenciSec, tumSalonlar, onSalonDegistir, ayarlar = {}, salonlar = [], seciliSalonId, onSeciliSalonDegistir, onStudentTransfer, yerlestirmeSonucu, tumOgrenciSayisi, aktifPlanAdi = '' }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { showConfirm } = useNotifications();
@@ -603,7 +641,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
 });
 
   // Sınıf düzenini oluştur - GRUP BAZLI SALON YAPISINI KULLANAN
-  const sinifDuzeni = React.useMemo(() => {
+  const sinifDuzeni = useMemo(() => {
     if (!sinif) {
       return null;
     }
@@ -750,13 +788,13 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
 
   // Salon sıralamasını memoize et - sıralama her render'da değişmesin
   // KULLANICI DEĞİŞTİRMEDİĞİ SÜRECE SIRALAMA DEĞİŞMESİN
-  const sortedTumSalonlar = React.useMemo(() => {
+  const sortedTumSalonlar = useMemo(() => {
     if (!tumSalonlar || tumSalonlar.length === 0) return [];
     // Orijinal sırayı koru - sıralama yapma
     return [...tumSalonlar];
   }, [tumSalonlar]);
 
-  const sortedSalonlar = React.useMemo(() => {
+  const sortedSalonlar = useMemo(() => {
     if (!salonlar || salonlar.length === 0) return [];
     // Orijinal sırayı koru - sıralama yapma
     return [...salonlar];
@@ -901,14 +939,12 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
             }}>
             <ChairIcon sx={{ mr: 1, color: 'primary.main' }} />
               <Typography variant="h5" component="h2" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-              Sınıf Planı
+              Salon Planları
             </Typography>
             
             {/* Öğrenci Sayıları */}
-            {(() => {
-              // Yerleştirme sonucu varsa, tüm salonlardaki öğrencileri say
-              if (yerlestirmeSonucu && yerlestirmeSonucu.tumSalonlar) {
-                // GÜNCEL: Öncelik gruplar > masalar
+            <SalonStatsChips {...useMemo(() => {
+              if (yerlestirmeSonucu && Array.isArray(yerlestirmeSonucu.tumSalonlar)) {
                 const countFilled = (s) => {
                   if (s && s.gruplar) {
                     let c = 0;
@@ -927,94 +963,40 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                   return 0;
                 };
                 const toplamYerlesen = yerlestirmeSonucu.tumSalonlar.reduce((toplam, s) => toplam + countFilled(s), 0);
-                const toplamYerlesilemeyen = yerlestirmeSonucu.yerlesilemeyenOgrenciler ? yerlestirmeSonucu.yerlesilemeyenOgrenciler.length : 0;
-                const toplamOgrenci = toplamYerlesen + toplamYerlesilemeyen;
-                
-                return (
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: { xs: 0.5, sm: 1 }, 
-                    ml: { xs: 0, sm: 2 },
-                    flexWrap: 'wrap',
-                    justifyContent: { xs: 'center', sm: 'flex-start' }
-                  }}>
-                    <Chip 
-                      label={`Toplam: ${toplamOgrenci}`}
-                      color="primary"
-                      variant="outlined"
-                      size="small"
-                      sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
-                    />
-                    <Chip 
-                      label={`Yerleşen: ${toplamYerlesen}`}
-                      color="success"
-                      variant="outlined"
-                      size="small"
-                      sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
-                    />
-                    <Chip 
-                      label={`Yerleşmeyen: ${toplamYerlesilemeyen}`}
-                      color="warning"
-                      variant="outlined"
-                      size="small"
-                      sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
-                    />
-                  </Box>
-                );
+                const toplamYerlesilemeyen = Array.isArray(yerlestirmeSonucu.yerlesilemeyenOgrenciler)
+                  ? yerlestirmeSonucu.yerlesilemeyenOgrenciler.length
+                  : 0;
+                return {
+                  mode: 'plan',
+                  toplam: toplamYerlesen + toplamYerlesilemeyen,
+                  yerlesen: toplamYerlesen,
+                  yerlesmeyen: toplamYerlesilemeyen
+                };
               }
-              
-              // Yerleştirme sonucu yoksa, mevcut öğrenci listesini kullan
-              if (ogrenciler && ogrenciler.length > 0) {
-                // GÜVENLİK: Benzersiz öğrenci sayılarını hesapla
-                const uniqueOgrenciler = [];
+
+              if (Array.isArray(ogrenciler) && ogrenciler.length > 0) {
                 const seenIds = new Set();
+                let yerlesenSayisi = 0;
+                let yerlesmeyenSayisi = 0;
                 ogrenciler.forEach(o => {
                   if (o && o.id && !seenIds.has(o.id)) {
-                    uniqueOgrenciler.push(o);
                     seenIds.add(o.id);
+                    if (o.salonId) {
+                      yerlesenSayisi += 1;
+                    } else {
+                      yerlesmeyenSayisi += 1;
+                    }
                   }
                 });
-                
-                const yerlesenSayisi = uniqueOgrenciler.filter(o => o.salonId).length;
-                const yerlesilemeyenSayisi = uniqueOgrenciler.filter(o => !o.salonId).length;
-                
-                return (
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: { xs: 0.5, sm: 1 }, 
-                    ml: { xs: 0, sm: 2 },
-                    flexWrap: 'wrap',
-                    justifyContent: { xs: 'center', sm: 'flex-start' }
-                  }}>
-                    <Chip 
-                      label={`Toplam: ${uniqueOgrenciler.length}`}
-                      color="primary"
-                      variant="outlined"
-                      size="small"
-                      sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
-                    />
-                    <Chip 
-                      label={`Yerleşen: ${yerlesenSayisi}`}
-                      color="success"
-                      variant="outlined"
-                      size="small"
-                      sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
-                    />
-                    <Chip 
-                      label={`Yerleşmeyen: ${yerlesilemeyenSayisi}`}
-                      color="warning"
-                      variant="outlined"
-                      size="small"
-                      sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
-                    />
-                  </Box>
-                );
+                return {
+                  mode: 'list',
+                  toplam: seenIds.size,
+                  yerlesen: yerlesenSayisi,
+                  yerlesmeyen: yerlesmeyenSayisi
+                };
               }
-              
-              return null;
-            })()}
+              return { mode: null };
+            }, [yerlestirmeSonucu, ogrenciler])} />
           </Box>
 
           <Box sx={{ 
@@ -1023,6 +1005,23 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
             flexDirection: { xs: 'column', sm: 'row' },
             alignItems: { xs: 'center', sm: 'flex-start' }
           }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {aktifPlanAdi ? (
+                <Chip
+                  label={`Plan: ${aktifPlanAdi}`}
+                  color="primary"
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                    fontWeight: 500,
+                    maxWidth: '100%',
+                    textTransform: 'none',
+                    whiteSpace: 'normal',
+                    lineHeight: 1.3
+                  }}
+                />
+              ) : null}
             <Tooltip title="Dağıtımı Sil">
               <IconButton 
                 color="error" 
@@ -1046,6 +1045,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                 <DeleteIcon />
               </IconButton>
             </Tooltip>
+            </Box>
           </Box>
         </Box>
 

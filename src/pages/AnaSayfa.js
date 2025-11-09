@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState, Suspense } from 'react';
+import React, { useCallback, useEffect, useRef, useState, Suspense, useMemo } from 'react';
 import { useDrag, useDrop, DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import {
@@ -353,6 +353,8 @@ const AnaSayfaContent = React.memo(() => {
   
   // Kaydetme için state'ler
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [activePlanMeta, setActivePlanMeta] = useState(null);
+  const currentPlanDisplayName = activePlanMeta?.name || planManager.getCurrentPlanName() || '';
 
   // Salon Planı yazdırma fonksiyonu
   const handleSalonPlaniPrint = useReactToPrint({
@@ -430,17 +432,20 @@ const AnaSayfaContent = React.memo(() => {
     handlePrintMenuClose();
   }, [handleSalonImzaListesiPrint, handlePrintMenuClose]);
 
-  // Kaydetme fonksiyonları - useCallback ile optimize edildi
-  const handleSaveClick = useCallback(() => {
-    setSaveDialogOpen(true);
-  }, []);
+  const handleSavePlan = useCallback(async (planAdi, options) => {
+    let onCloseCallback = undefined;
+    let targetPlanId = null;
 
-  const handleSaveDialogClose = useCallback(() => {
-    setSaveDialogOpen(false);
-  }, []);
+    if (typeof options === 'function') {
+      onCloseCallback = options;
+    } else if (options && typeof options === 'object') {
+      onCloseCallback = options.onCloseCallback;
+      targetPlanId = options.planId ?? null;
+    }
 
-  const handleSavePlan = useCallback(async (planAdi, onCloseCallback) => {
-    if (!planAdi.trim()) {
+    const trimmedPlanName = (planAdi || '').trim();
+
+    if (!trimmedPlanName) {
       showError('Lütfen plan adı giriniz.');
       return;
     }
@@ -557,7 +562,7 @@ const AnaSayfaContent = React.memo(() => {
       }
 
       // PlanManager ile kaydet - Firestore'a kayıt yap
-      console.log('💾 Plan kaydetme başlatılıyor - Firestore\'a kaydedilecek:', planAdi.trim());
+      console.log('💾 Plan kaydetme başlatılıyor - Firestore\'a kaydedilecek:', trimmedPlanName);
       
       // DEBUG: DatabaseAdapter durumunu kontrol et
       const dbAdapter = await import('../database/index');
@@ -576,7 +581,21 @@ const AnaSayfaContent = React.memo(() => {
         logger.warn('⚠️ Firestore devre dışı - Plan IndexedDB\'ye kaydedilecek');
       }
       
-      const planId = await planManager.savePlan(planAdi.trim(), planData);
+      // Hangi planın güncelleneceğini belirle
+      const resolvedPlanId = targetPlanId ?? activePlanMeta?.id ?? planManager.getCurrentPlanId();
+      let planId = null;
+      let isUpdate = false;
+
+      if (resolvedPlanId) {
+        console.log('🔄 Mevcut plan güncelleniyor (ID eşleşmesi):', {
+          planId: resolvedPlanId,
+          planName: trimmedPlanName
+        });
+        isUpdate = true;
+        planId = await planManager.updatePlan(resolvedPlanId, trimmedPlanName, planData);
+      } else {
+        planId = await planManager.savePlan(trimmedPlanName, planData);
+      }
       
       if (!planId) {
         // planId null dönerse, muhtemelen test plan filtresi veya Firestore devre dışı
@@ -597,11 +616,19 @@ const AnaSayfaContent = React.memo(() => {
       }
       
       // Success mesajını göster (modal zaten kapatıldı)
+      const finalPlanName = trimmedPlanName;
+      const finalPlanId = planId;
+
       if (isFirestore) {
-        showSuccess(`Plan "${planAdi.trim()}" başarıyla Firestore'a kaydedildi/güncellendi!`);
+        showSuccess(`Plan "${finalPlanName}" başarıyla Firestore'a ${isUpdate ? 'güncellendi' : 'kaydedildi'}!`);
       } else {
-        showSuccess(`Plan "${planAdi.trim()}" başarıyla kaydedildi/güncellendi! (IndexedDB)`);
+        showSuccess(`Plan "${finalPlanName}" başarıyla ${isUpdate ? 'güncellendi' : 'kaydedildi'}! (IndexedDB)`);
       }
+
+      setActivePlanMeta({
+        id: finalPlanId,
+        name: finalPlanName
+      });
       
     } catch (error) {
       logger.error('❌ Plan kaydetme hatası:', error);
@@ -609,14 +636,40 @@ const AnaSayfaContent = React.memo(() => {
       // Hata mesajını göster (modal zaten kapatıldı)
       showError(`Plan kaydedilirken hata oluştu: ${error.message}`);
     }
-  }, [yerlestirmeSonucu, salonlar, ayarlar, showError, showSuccess]);
+  }, [yerlestirmeSonucu, salonlar, ayarlar, showError, showSuccess, activePlanMeta]);
+
+  // Kaydetme fonksiyonları - useCallback ile optimize edildi
+  const handleSaveClick = useCallback(() => {
+    console.log('💾 handleSaveClick - currentPlan state:', {
+      isActive: planManager.isCurrentPlanActive(),
+      currentPlanId: planManager.getCurrentPlanId(),
+      currentPlanName: planManager.getCurrentPlanName()
+    });
+    if (activePlanMeta?.id && activePlanMeta?.name) {
+      handleSavePlan(activePlanMeta.name, { planId: activePlanMeta.id });
+      return;
+    }
+
+    if (planManager.isCurrentPlanActive()) {
+      const currentPlanName = planManager.getCurrentPlanName();
+      if (currentPlanName) {
+        handleSavePlan(currentPlanName, { planId: planManager.getCurrentPlanId() });
+        return;
+      }
+    }
+    setSaveDialogOpen(true);
+  }, [handleSavePlan, activePlanMeta]);
+
+  const handleSaveDialogClose = useCallback(() => {
+    setSaveDialogOpen(false);
+  }, []);
 
 
 
   // Veri yükleme - artık localStorage'dan otomatik yükleniyor
   // useEffect kaldırıldı çünkü ExamContext localStorage'dan veriyi otomatik yüklüyor
 
-  const handleAyarlarDegistir = (yeniAyarlar) => {
+  const handleAyarlarDegistir = useCallback((yeniAyarlar) => {
     ayarlarGuncelle(yeniAyarlar);
     
     // LocalStorage'a kaydet
@@ -625,7 +678,7 @@ const AnaSayfaContent = React.memo(() => {
     } catch (error) {
       console.error('❌ Ayarlar LocalStorage\'a kaydedilemedi:', error);
     }
-  };
+  }, [ayarlarGuncelle]);
 
   const handleSalonlarDegistir = useCallback((yeniSalonlar) => {
     salonlarGuncelle(yeniSalonlar);
@@ -676,6 +729,8 @@ const AnaSayfaContent = React.memo(() => {
 
   // Yerleştirme sonuçlarını temizle - useCallback ile optimize edildi
   const handleYerlestirmeTemizle = useCallback(() => {
+    planManager.clearCurrentPlan();
+    setActivePlanMeta(null);
     yerlestirmeTemizle(); // Yerleştirme sonucunu temizle
     tabDegistir('planlama'); // Planlama sekmesine geri dön
   }, [yerlestirmeTemizle, tabDegistir]);
@@ -687,12 +742,41 @@ const AnaSayfaContent = React.memo(() => {
       console.log('🔍 AnaSayfa.handlePlanYukle - plan tip:', typeof plan);
       console.log('🔍 AnaSayfa.handlePlanYukle - plan.id:', plan?.id);
       
-      // Eğer plan zaten data objesi ise (KayitliPlanlar'dan geliyor), direkt kullan
-      let planData;
-      if (plan && !plan.id && (plan.tumSalonlar || plan.salon)) {
-        // Plan zaten yüklenmiş data objesi
-        console.log('✅ Plan verisi zaten yüklenmiş, direkt kullanılıyor');
+      // Plan meta ve data referanslarını ayır
+      let planMeta = null;
+      let planData = null;
+
+      if (plan && plan.data) {
+        // KayitliPlanlar'dan { id, name, data } yapısı geldi
+        planMeta = plan;
+        planData = plan.data;
+        console.log('✅ Plan meta + data birlikte geldi', {
+          planId: planMeta.id,
+          dataKeys: Object.keys(planData || {}),
+          ayarlarVar: !!planData?.ayarlar,
+          dersSayisi: planData?.ayarlar?.dersler?.length || 0
+        });
+        if (planMeta.id) {
+          const activeName = planMeta.name || planData?.ayarlar?.planAdi || '';
+          planManager.setCurrentPlan({
+            id: planMeta.id,
+            name: activeName
+          });
+          console.log('✅ Aktif plan set edildi (meta+data):', {
+            id: planMeta.id,
+            name: activeName,
+            isActive: planManager.isCurrentPlanActive()
+          });
+        } else {
+          planManager.clearCurrentPlan();
+          console.log('ℹ️ Plan ID bulunamadı, aktif plan temizlendi');
+        }
+      } else if (plan && !plan.id && (plan.tumSalonlar || plan.salon)) {
+        // Plan sadece data objesi olarak geldi
+        console.log('✅ Plan verisi (yalnız data objesi) kullanılıyor');
         planData = plan;
+        planManager.clearCurrentPlan();
+        console.log('ℹ️ Yalnız data objesi yüklendi, aktif plan temizlendi');
       } else if (plan && plan.id) {
         // Plan ID'si var, veritabanından yükle
         console.log('📥 Plan ID ile yükleniyor:', plan.id);
@@ -703,12 +787,39 @@ const AnaSayfaContent = React.memo(() => {
           return;
         }
 
+        planMeta = loadedPlan;
         planData = loadedPlan.data;
+        planManager.setCurrentPlan({
+          id: loadedPlan.id,
+          name: loadedPlan.name || loadedPlan.data?.ayarlar?.planAdi || ''
+        });
+        console.log('✅ Aktif plan set edildi (loadPlan):', {
+          id: loadedPlan.id,
+          name: loadedPlan.name || loadedPlan.data?.ayarlar?.planAdi || '',
+          isActive: planManager.isCurrentPlanActive()
+        });
       } else {
         // Geçersiz plan objesi
         console.error('❌ Geçersiz plan objesi:', plan);
         showError('Plan verisi geçersiz!');
         return;
+      }
+
+      const resolvedPlanId = planMeta?.id ?? plan?.id ?? null;
+      const resolvedPlanName = (planMeta?.name || planData?.ayarlar?.planAdi || plan?.name || '').trim();
+      if (resolvedPlanId) {
+        setActivePlanMeta({
+          id: resolvedPlanId,
+          name: resolvedPlanName || planMeta?.name || plan?.name || ''
+        });
+        console.log('✅ activePlanMeta güncellendi:', {
+          id: resolvedPlanId,
+          name: resolvedPlanName || planMeta?.name || plan?.name || '',
+          source: 'handlePlanYukle'
+        });
+      } else {
+        setActivePlanMeta(null);
+        console.log('ℹ️ activePlanMeta temizlendi (plan ID bulunamadı)');
       }
 
       // Plan verisini yerlestirmeSonucu formatına dönüştür
@@ -756,9 +867,30 @@ const AnaSayfaContent = React.memo(() => {
 
       // Ayarlar ve dersler bilgilerini yükle (salonlar listesi değiştirilmez)
       if (planData.ayarlar) {
+        console.log('🔄 Plan yükleme: ayarlar verisi bulundu', {
+          dersSayisi: planData.ayarlar?.dersler?.length || 0,
+          sinavTarihi: planData.ayarlar?.sinavTarihi,
+          keys: Object.keys(planData.ayarlar)
+        });
         // Salonlar listesini ayarlardan kaldır (sistemde zaten kayıtlı olduğu için güncellemeye gerek yok)
         const { kayitliSalonlar, ...ayarlarTemiz } = planData.ayarlar;
+        console.log('🔄 Plan yükleme: ayarlarTemiz', ayarlarTemiz);
         ayarlarGuncelle(ayarlarTemiz);
+      } else {
+        console.warn('⚠️ Plan yükleme: ayarlar verisi bulunamadı, meta üzerinden toparlanmaya çalışılıyor');
+        if (planMeta) {
+          const metaFallback = {
+            sinavTarihi: planMeta.sinavTarihi || ayarlar.sinavTarihi || '',
+            sinavSaati: planMeta.sinavSaati || ayarlar.sinavSaati || '',
+            sinavDonemi: planMeta.sinavDonemi || ayarlar.sinavDonemi || '1',
+            donem: planMeta.donem || ayarlar.donem || '1',
+            dersler: planData?.dersler || ayarlar.dersler || []
+          };
+          console.log('🔄 Plan yükleme: meta fallback ayarlar kullanılıyor', metaFallback);
+          ayarlarGuncelle(metaFallback);
+        } else {
+          console.warn('⚠️ Plan meta bulunamadı, mevcut ayarlar korunacak');
+        }
       }
 
       // NOT: Salonlar listesi sistemde zaten kayıtlı olduğu için plan yükleme sırasında güncellenmez
@@ -791,6 +923,12 @@ const AnaSayfaContent = React.memo(() => {
           yerlestirmeFormatinda.salon.masalar = yerlestirmeFormatinda.tumSalonlar[0]?.masalar || yerlestirmeFormatinda.salon.masalar;
         }
       }
+
+      console.log('🔄 Plan yükleme: yerlestirmeFormatinda hazırlandı', {
+        salon: yerlestirmeFormatinda.salon?.salonAdi,
+        tumSalonlar: yerlestirmeFormatinda.tumSalonlar?.length,
+        dersler: planData.ayarlar?.dersler?.length || 0
+      });
 
       yerlestirmeGuncelle(yerlestirmeFormatinda);
       
@@ -1116,6 +1254,9 @@ const AnaSayfaContent = React.memo(() => {
       return;
     }
 
+    planManager.invalidateCurrentPlan('yerlestirme_yap');
+    setActivePlanMeta(null);
+
     try {
       yuklemeBaslat();
       
@@ -1286,63 +1427,75 @@ const AnaSayfaContent = React.memo(() => {
     };
   };
 
+  const genelAyarlarContent = useMemo(() => (
+    <GenelAyarlarFormu
+      ayarlar={ayarlar}
+      onAyarlarDegistir={handleAyarlarDegistir}
+    />
+  ), [ayarlar, handleAyarlarDegistir]);
+
+  const ogrencilerContent = useMemo(() => (
+    <OgrenciListesi
+      ogrenciler={ogrenciler}
+      yerlestirmeSonucu={yerlestirmeSonucu}
+    />
+  ), [ogrenciler, yerlestirmeSonucu]);
+
+  const salonlarContent = useMemo(() => (
+    <SalonFormu
+      salonlar={salonlar}
+      onSalonlarDegistir={handleSalonlarDegistir}
+      yerlestirmeSonucu={yerlestirmeSonucu}
+    />
+  ), [salonlar, handleSalonlarDegistir, yerlestirmeSonucu]);
+
+  const ayarlarTabContent = useMemo(() => (
+    <AyarlarFormu
+      ayarlar={ayarlar}
+      onAyarlarDegistir={handleAyarlarDegistir}
+      ogrenciler={ogrenciler}
+      yerlestirmeSonucu={yerlestirmeSonucu}
+    />
+  ), [ayarlar, handleAyarlarDegistir, ogrenciler, yerlestirmeSonucu]);
+
+  const sabitAtamalarContent = useMemo(() => (
+    <ErrorBoundary componentName="SabitAtamalar">
+      <SabitAtamalarLazy />
+    </ErrorBoundary>
+  ), []);
+
+  const planlamaContent = useMemo(() => (
+    <ErrorBoundary componentName="PlanlamaYap">
+      <PlanlamaYapLazy
+        ogrenciler={ogrenciler}
+        ayarlar={ayarlar}
+        salonlar={salonlar}
+        onYerlestirmeYap={handleYerlestirmeYap}
+        yukleme={yukleme}
+      />
+    </ErrorBoundary>
+  ), [ogrenciler, ayarlar, salonlar, handleYerlestirmeYap, yukleme]);
+
   // Tab içerik render fonksiyonu
   const renderTabIcerik = () => {
     switch (aktifTab) {
       case 'genel-ayarlar':
-        return (
-          <GenelAyarlarFormu 
-            ayarlar={ayarlar}
-            onAyarlarDegistir={handleAyarlarDegistir}
-          />
-        );
+        return genelAyarlarContent;
       
       case 'ogrenciler':
-        return (
-          <OgrenciListesi 
-            ogrenciler={ogrenciler}
-            yerlestirmeSonucu={yerlestirmeSonucu}
-          />
-        );
+        return ogrencilerContent;
       
       case 'salonlar':
-        return (
-          <SalonFormu 
-            salonlar={salonlar}
-            onSalonlarDegistir={handleSalonlarDegistir}
-            yerlestirmeSonucu={yerlestirmeSonucu}
-          />
-        );
+        return salonlarContent;
       
       case 'ayarlar':
-        return (
-          <AyarlarFormu 
-            ayarlar={ayarlar}
-            onAyarlarDegistir={handleAyarlarDegistir}
-            ogrenciler={ogrenciler}
-            yerlestirmeSonucu={yerlestirmeSonucu}
-          />
-        );
+        return ayarlarTabContent;
       
       case 'sabit-atamalar':
-        return (
-          <ErrorBoundary componentName="SabitAtamalar">
-            <SabitAtamalarLazy />
-          </ErrorBoundary>
-        );
+        return sabitAtamalarContent;
       
       case 'planlama':
-        return (
-          <ErrorBoundary componentName="PlanlamaYap">
-            <PlanlamaYapLazy 
-              ogrenciler={ogrenciler}
-              ayarlar={ayarlar}
-              salonlar={salonlar}
-              onYerlestirmeYap={handleYerlestirmeYap}
-              yukleme={yukleme}
-            />
-          </ErrorBoundary>
-        );
+        return planlamaContent;
       
       case 'salon-plani':
         // Sadece aktif salonları göster
@@ -1393,6 +1546,7 @@ const AnaSayfaContent = React.memo(() => {
                 salonlar={aktifSalonlar}
                 seciliSalonId={seciliSalonId}
                 onSeciliSalonDegistir={setSeciliSalonId}
+                aktifPlanAdi={currentPlanDisplayName}
               />
               </Box>
             </ErrorBoundary>
@@ -1441,6 +1595,7 @@ const AnaSayfaContent = React.memo(() => {
                   onSeciliSalonDegistir={setSeciliSalonId}
                   onStudentTransfer={handleStudentTransfer}
                   yerlestirmeSonucu={yerlestirmeSonucu}
+                  aktifPlanAdi={currentPlanDisplayName}
                 />
                 
                 {/* Yerleşmeyen Öğrenciler Bölümü */}
@@ -1543,6 +1698,7 @@ const AnaSayfaContent = React.memo(() => {
                       seciliSalonId={seciliSalonId}
                       onSeciliSalonDegistir={setSeciliSalonId}
                       onStudentTransfer={handleStudentTransfer}
+                      aktifPlanAdi={currentPlanDisplayName}
                     />
                   );
                 })()}
@@ -1917,7 +2073,7 @@ const AnaSayfaContent = React.memo(() => {
       <PlanKaydetmeDialog
         open={saveDialogOpen}
         onClose={handleSaveDialogClose}
-        onSave={(planAdi) => handleSavePlan(planAdi, handleSaveDialogClose)}
+        onSave={(planAdi) => handleSavePlan(planAdi, { onCloseCallback: handleSaveDialogClose })}
       />
     </DndProvider>
   );
