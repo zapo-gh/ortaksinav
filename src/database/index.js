@@ -1,6 +1,7 @@
 import Dexie from 'dexie';
 import firestoreClient from './firestoreClient';
 import logger from '../utils/logger';
+import { waitForAuth, getCurrentUserId, getUserRole } from '../firebase/authState';
 
 /**
  * Database Adapter - Firestore + IndexedDB Fallback
@@ -13,6 +14,62 @@ class DatabaseAdapter {
     this.useFirestore = true; // Firestore aktif - birincil veritabanı
     this.firestore = firestoreClient;
     this.indexedDB = null; // IndexedDB lazy load (fallback için)
+    this.writeAccessExplicit = null;
+    this.writeAccessCache = false;
+    this.writeAccessCacheTime = 0;
+  }
+
+  setWriteAccess(enabled) {
+    this.writeAccessExplicit = enabled === null ? null : Boolean(enabled);
+    if (enabled === true && !this.useFirestore) {
+      this.useFirestore = true;
+      logger.info('✅ Firestore yazma izinleri yeniden etkinleştirildi (setWriteAccess)');
+    }
+  }
+
+  _isPermissionError(error) {
+    if (!error) return false;
+    const code = error.code || error.name || '';
+    const message = (error.message || '').toLowerCase();
+    return (
+      code === 'permission-denied' ||
+      code === 'unauthenticated' ||
+      message.includes('permission-denied') ||
+      message.includes('kimlik doğrulaması olmadan') ||
+      message.includes('permission denied') ||
+      message.includes('missing or insufficient permissions')
+    );
+  }
+
+  async _canWriteToFirestore() {
+    if (this.writeAccessExplicit === true) {
+      return true;
+    }
+    if (this.writeAccessExplicit === false) {
+      return false;
+    }
+
+    const now = Date.now();
+    if (now - this.writeAccessCacheTime < 5_000) {
+      return this.writeAccessCache;
+    }
+
+    try {
+      await waitForAuth();
+      const userId = getCurrentUserId();
+      if (!userId) {
+        this.writeAccessCache = false;
+      } else {
+        const role = await getUserRole();
+        this.writeAccessCache = role === 'admin';
+      }
+    } catch (error) {
+      logger.warn('⚠️ Firestore yazma yetkisi kontrolü başarısız:', error);
+      this.writeAccessCache = false;
+    }
+
+    this.writeAccessCacheTime = now;
+    return this.writeAccessCache;
   }
 
   /**
@@ -82,6 +139,11 @@ class DatabaseAdapter {
         planName: planData?.name,
         useFirestore: this.useFirestore
       });
+
+      const canWrite = await this._canWriteToFirestore();
+      if (!canWrite) {
+        throw new Error('Yazma izni olmayan oturumda plan güncellenemez.');
+      }
       
       // Firestore birincil - veriyi sanitize et
       const payload = this.sanitizeForFirestore(planData);
@@ -97,6 +159,10 @@ class DatabaseAdapter {
       return result;
     } catch (error) {
       logger.error('❌ Plan güncelleme hatası:', error);
+
+      if (this._isPermissionError(error)) {
+        throw new Error('Firestore izin hatası: Plan güncellenemedi.');
+      }
       
       // Firestore hatası durumunda IndexedDB'ye geç
       if (this.useFirestore) {
@@ -128,6 +194,11 @@ class DatabaseAdapter {
         useFirestore: this.useFirestore,
         planDataKeys: Object.keys(planData || {})
       });
+
+      const canWrite = await this._canWriteToFirestore();
+      if (!canWrite) {
+        throw new Error('Yazma izni olmayan oturumda plan kaydedilemez.');
+      }
       
       // Firestore birincil - veriyi sanitize et
       const payload = this.sanitizeForFirestore(planData);
@@ -165,6 +236,10 @@ class DatabaseAdapter {
     } catch (error) {
       logger.error('❌ Plan kaydetme hatası:', error);
       console.error('❌ DatabaseAdapter savePlan hatası:', error);
+
+      if (this._isPermissionError(error)) {
+        throw new Error('Firestore izin hatası: Plan kaydedilemedi.');
+      }
       
       // Firestore hatası durumunda IndexedDB'ye geç
       if (this.useFirestore) {
@@ -311,6 +386,14 @@ class DatabaseAdapter {
    */
   async saveStudents(students) {
     try {
+      const canWrite = await this._canWriteToFirestore();
+      if (!canWrite) {
+        const indexedDB = await this.getIndexedDB();
+        await indexedDB.saveStudents(students);
+        logger.info('ℹ️ Öğrenciler yalnızca IndexedDB\'ye kaydedildi (yazma izni yok)');
+        return 'local-only';
+      }
+
       // Firestore birincil - veriyi sanitize et
       const payload = this.sanitizeForFirestore(students);
       const db = await this.getActiveDB();
@@ -325,6 +408,13 @@ class DatabaseAdapter {
       return result;
     } catch (error) {
       logger.error('❌ Öğrenci kaydetme hatası:', error);
+
+      if (this._isPermissionError(error)) {
+        const indexedDB = await this.getIndexedDB();
+        await indexedDB.saveStudents(students);
+        logger.warn('⚠️ Öğrenciler sadece IndexedDB\'ye kaydedildi (Firestore izin hatası)');
+        return 'local-only';
+      }
       
       if (this.useFirestore) {
         logger.info('🔄 Firestore hatası, IndexedDB\'ye geçiliyor...');
@@ -376,6 +466,14 @@ class DatabaseAdapter {
    */
   async saveSettings(settings) {
     try {
+      const canWrite = await this._canWriteToFirestore();
+      if (!canWrite) {
+        const indexedDB = await this.getIndexedDB();
+        await indexedDB.saveSettings(settings);
+        logger.info('ℹ️ Ayarlar yalnızca IndexedDB\'ye kaydedildi (yazma izni yok)');
+        return 'local-only';
+      }
+
       // Firestore birincil - veriyi sanitize et
       const payload = this.sanitizeForFirestore(settings);
       const db = await this.getActiveDB();
@@ -390,6 +488,13 @@ class DatabaseAdapter {
       return result;
     } catch (error) {
       logger.error('❌ Ayar kaydetme hatası:', error);
+
+      if (this._isPermissionError(error)) {
+        const indexedDB = await this.getIndexedDB();
+        await indexedDB.saveSettings(settings);
+        logger.warn('⚠️ Ayarlar sadece IndexedDB\'ye kaydedildi (Firestore izin hatası)');
+        return 'local-only';
+      }
       
       if (this.useFirestore) {
         logger.info('🔄 Firestore hatası, IndexedDB\'ye geçiliyor...');
@@ -428,6 +533,14 @@ class DatabaseAdapter {
    */
   async saveSalons(salons) {
     try {
+      const canWrite = await this._canWriteToFirestore();
+      if (!canWrite) {
+        const indexedDB = await this.getIndexedDB();
+        await indexedDB.saveSalons(salons);
+        logger.info('ℹ️ Salonlar yalnızca IndexedDB\'ye kaydedildi (yazma izni yok)');
+        return 'local-only';
+      }
+
       // Firestore birincil - veriyi sanitize et
       const payload = this.sanitizeForFirestore(salons);
       const db = await this.getActiveDB();
@@ -442,6 +555,13 @@ class DatabaseAdapter {
       return result;
     } catch (error) {
       logger.error('❌ Salon kaydetme hatası:', error);
+
+      if (this._isPermissionError(error)) {
+        const indexedDB = await this.getIndexedDB();
+        await indexedDB.saveSalons(salons);
+        logger.warn('⚠️ Salonlar sadece IndexedDB\'ye kaydedildi (Firestore izin hatası)');
+        return 'local-only';
+      }
       
       if (this.useFirestore) {
         logger.info('🔄 Firestore hatası, IndexedDB\'ye geçiliyor...');

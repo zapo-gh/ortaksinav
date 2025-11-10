@@ -948,6 +948,17 @@ export const ExamProvider = ({ children }) => {
 
   const isWriteAllowed = React.useMemo(() => state.role === 'admin', [state.role]);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const { default: db } = await import('../database');
+        db.setWriteAccess(isWriteAllowed);
+      } catch (error) {
+        logger.warn('⚠️ Veritabanı yazma izni güncellenemedi:', error);
+      }
+    })();
+  }, [isWriteAllowed]);
+
   // Firestore'a otomatik kaydetme - DEBOUNCED (Firestore quota koruması için)
   // Ref'ler component içinde tanımlanmalı
   const saveStudentsTimerRef = React.useRef(null);

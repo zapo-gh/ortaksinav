@@ -1281,6 +1281,12 @@ class FirestoreClient {
       logger.debug('💾 Firestore: Salonlar kaydediliyor...');
       
       const chunkSize = 500;
+      const existingSnap = await getDocs(query(collection(this.db, 'salons'), where('ownerId', '==', ownerId)));
+      const existingIds = new Set();
+      existingSnap.forEach(docSnap => existingIds.add(docSnap.id));
+      
+      const incomingIds = new Set();
+      const batches = [];
       
       for (let i = 0; i < salons.length; i += chunkSize) {
         const chunk = salons.slice(i, i + chunkSize);
@@ -1288,17 +1294,45 @@ class FirestoreClient {
         
         chunk.forEach(salon => {
           const sanitizedSalon = sanitizeSalonRecord(salon);
-          const salonRef = doc(this.db, 'salons', sanitizedSalon.id.toString());
+          const salonId = sanitizedSalon.id != null ? sanitizedSalon.id : sanitizedSalon.salonId;
+          if (!salonId) {
+            logger.warn('⚠️ Firestore: ID\'si olmayan salon atlandı:', sanitizedSalon);
+            return;
+          }
+          const idString = String(salonId);
+          incomingIds.add(idString);
+          const salonRef = doc(this.db, 'salons', idString);
           batch.set(salonRef, {
             ...sanitizedSalon,
             ownerId,
             updatedAt: serverTimestamp()
-          });
+          }, { merge: true });
         });
         
-        await batch.commit();
-        logger.debug(`✅ Firestore: Salon chunk kaydedildi (${i + 1}-${i + chunk.length})`);
+        batches.push(batch.commit());
       }
+      
+      // Silinmesi gereken eski salonlar
+      const idsToDelete = [];
+      existingIds.forEach(id => {
+        if (!incomingIds.has(id)) {
+          idsToDelete.push(id);
+        }
+      });
+      
+      // Silmeleri batch ile yap
+      for (let i = 0; i < idsToDelete.length; i += chunkSize) {
+        const chunk = idsToDelete.slice(i, i + chunkSize);
+        const batch = writeBatch(this.db);
+        chunk.forEach(id => {
+          const salonRef = doc(this.db, 'salons', id);
+          batch.delete(salonRef);
+        });
+        batches.push(batch.commit());
+      }
+      
+      await Promise.all(batches);
+      logger.debug(`✅ Firestore: Salonlar senkronize edildi. Yazılan: ${incomingIds.size}, silinen: ${idsToDelete.length}`);
     } catch (error) {
       logger.error('❌ Firestore: Salon kaydetme hatası:', error);
       throw error;
