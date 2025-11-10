@@ -16,6 +16,7 @@ import {
   Book as BookIcon
 } from '@mui/icons-material';
 import { sanitizeText } from '../utils/sanitizer';
+import { useExam } from '../context/ExamContext';
 
 const defaultGeneralSettings = {
   okulAdi: 'Akhisar Farabi Mesleki ve Teknik Anadolu Lisesi',
@@ -66,7 +67,9 @@ const areGeneralSettingsEqual = (prev, next) => {
   }
 };
 
-const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir }) => {
+const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, readOnly: readOnlyProp = null }) => {
+  const { isWriteAllowed } = useExam();
+  const readOnly = readOnlyProp !== null ? readOnlyProp : !isWriteAllowed;
   const [formData, setFormData] = useState(() => normalizeGeneralSettings(ayarlar));
   const [errors, setErrors] = useState(() => validateGeneralSettings(normalizeGeneralSettings(ayarlar)));
 
@@ -83,6 +86,9 @@ const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir }) => {
   }, [ayarlar]);
 
   const handleChange = (e) => {
+    if (readOnly) {
+      return;
+    }
     const { name, value } = e.target;
     const sanitizedValue = sanitizeText(value);
     const yeniFormData = {
@@ -101,6 +107,11 @@ const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir }) => {
   return (
     <Card sx={{ maxWidth: 800, mx: 'auto', mt: 2 }}>
       <CardContent>
+        {readOnly && (
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Bu alanı sadece görüntüleyebilirsiniz. Değişiklik yapmak için yönetici olarak giriş yapın.
+          </Typography>
+        )}
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {/* Okul Bilgileri */}
@@ -122,6 +133,7 @@ const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir }) => {
               variant="outlined"
               error={Boolean(errors.okulAdi)}
               helperText={errors.okulAdi || ''}
+              disabled={readOnly}
             />
           </Box>
 
@@ -135,14 +147,16 @@ const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir }) => {
               variant="outlined"
               error={Boolean(errors.egitimYili)}
               helperText={errors.egitimYili || ''}
+              disabled={readOnly}
             />
-            <FormControl fullWidth variant="outlined" error={Boolean(errors.donem)}>
+            <FormControl fullWidth variant="outlined" error={Boolean(errors.donem)} disabled={readOnly}>
               <InputLabel>Dönem</InputLabel>
               <Select
                 name="donem"
                 value={formData.donem}
                 onChange={handleChange}
                 label="Dönem"
+                disabled={readOnly}
               >
                 <MenuItem value="1">1. Dönem</MenuItem>
                 <MenuItem value="2">2. Dönem</MenuItem>
@@ -160,13 +174,14 @@ const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir }) => {
           </Box>
 
           <Box sx={{ display: 'flex', gap: 2 }}>
-            <FormControl fullWidth variant="outlined" error={Boolean(errors.sinavDonemi)}>
+            <FormControl fullWidth variant="outlined" error={Boolean(errors.sinavDonemi)} disabled={readOnly}>
               <InputLabel>Sınav Dönemi</InputLabel>
               <Select
                 name="sinavDonemi"
                 value={formData.sinavDonemi}
                 onChange={handleChange}
                 label="Sınav Dönemi"
+                disabled={readOnly}
               >
                 <MenuItem value="1">1. Ortak Sınav</MenuItem>
                 <MenuItem value="2">2. Ortak Sınav</MenuItem>
@@ -184,6 +199,7 @@ const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir }) => {
               InputLabelProps={{ shrink: true }}
               error={Boolean(errors.sinavTarihi)}
               helperText={errors.sinavTarihi || ''}
+              disabled={readOnly}
             />
             <TextField
               label="Sınav Saati"
@@ -196,6 +212,7 @@ const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir }) => {
               InputLabelProps={{ shrink: true }}
               error={Boolean(errors.sinavSaati)}
               helperText={errors.sinavSaati || ''}
+              disabled={readOnly}
             />
           </Box>
         </Box>

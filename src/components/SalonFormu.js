@@ -34,6 +34,7 @@ import {
   Warning as WarningIcon
 } from '@mui/icons-material';
 import { useNotifications } from './NotificationSystem';
+import { useExam } from '../context/ExamContext';
 import {
   DndContext,
   closestCenter,
@@ -257,9 +258,53 @@ const SortableSalonItem = ({ form, index, onFormChange, onFormDelete, onFormCopy
   );
 };
 
-const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu = null }) => {
+const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu = null, readOnly: readOnlyProp = false }) => {
   // Notification sistemi
-  const { showSuccess, showWarning, showError } = useNotifications();
+  const { showSuccess, showError, showWarning } = useNotifications();
+  const { isWriteAllowed } = useExam();
+  const readOnly = readOnlyProp || !isWriteAllowed;
+  const showReadOnlyMessage = React.useCallback(() => {
+    showWarning('Bu işlemi gerçekleştirmek için yönetici olarak giriş yapmanız gerekir.');
+  }, [showWarning]);
+
+  if (readOnly) {
+    return (
+      <Card sx={{ maxWidth: 1200, mx: 'auto', mt: 2 }}>
+        <CardContent>
+          <Alert severity="info" sx={{ mb: 3 }}>
+            Salon listesi görüntüleme modunda. Düzenleme yapabilmek için yönetici olarak giriş yapın.
+          </Alert>
+          {Array.isArray(salonlar) && salonlar.length > 0 ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {salonlar.map((salon) => (
+                <Paper key={salon.id || salon.salonId} sx={{ p: 2, border: '1px solid', borderColor: 'divider' }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
+                    <Chip label={salon.salonAdi || 'İsimsiz Salon'} color="primary" variant="outlined" />
+                    <Typography variant="body2" color="text.secondary">
+                      Kapasite: {salon.kapasite ?? '—'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Sıra Tipi: {salon.siraTipi || '—'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Grup Sayısı: {salon.grupSayisi ?? '—'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Aktif: {salon.aktif === false ? 'Hayır' : 'Evet'}
+                    </Typography>
+                  </Box>
+                </Paper>
+              ))}
+            </Box>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              Kayıtlı salon bulunamadı.
+            </Typography>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
   
   // Basit state yönetimi - sadece salonlar listesi
   const [aktifSalonFormlari, setAktifSalonFormlari] = useState([]);
@@ -782,7 +827,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
               startIcon={<AddIcon />}
               size="small"
               onClick={handleSalonFormEkle}
-              disabled={yerlesimPlaniVarMi()}
+              disabled={yerlesimPlaniVarMi() || readOnly}
             >
               Salon Ekle
             </Button>
@@ -795,7 +840,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
                   startIcon={<DeleteIcon />}
                   size="small"
                   onClick={handleTopluSilmeModuToggle}
-                  disabled={yerlesimPlaniVarMi()}
+                  disabled={yerlesimPlaniVarMi() || readOnly}
                 >
                   {topluSilmeModu ? 'İptal' : 'Toplu Sil'}
                 </Button>

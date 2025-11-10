@@ -1,9 +1,10 @@
 import React from 'react';
-import { Box, Card, CardContent, Typography, TextField, MenuItem, Button, Chip } from '@mui/material';
+import { Box, Card, CardContent, Typography, TextField, MenuItem, Button, Chip, Alert } from '@mui/material';
 import { useExam } from '../context/ExamContext';
 
 const SabitAtamalar = () => {
-  const { ogrenciler, salonlar, ayarlar, ogrenciPin, ogrenciUnpin } = useExam();
+  const { ogrenciler, salonlar, ayarlar, ogrenciPin, ogrenciUnpin, isWriteAllowed } = useExam();
+  const readOnly = !isWriteAllowed;
   const [query, setQuery] = React.useState('');
   const [selectedStudentId, setSelectedStudentId] = React.useState('');
   const [selectedSalonId, setSelectedSalonId] = React.useState('');
@@ -63,6 +64,7 @@ const SabitAtamalar = () => {
   }, [ogrenciler, query, selectedClasses, normalizeText]);
 
   const handlePin = () => {
+    if (readOnly) return;
     if (!selectedStudentId || !selectedSalonId) return;
     ogrenciPin(selectedStudentId, selectedSalonId, null);
   };
@@ -79,6 +81,11 @@ const SabitAtamalar = () => {
       <Card>
         <CardContent>
           <Typography variant="h6" sx={{ mb: 2 }}>Sabit Atamalar</Typography>
+          {readOnly && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Bu bölüm görüntüleme modunda. Yönetici olarak giriş yapmadan sabit atama ekleyemez veya silemezsiniz.
+            </Alert>
+          )}
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <TextField
               label="Öğrenci Ara (ad/numara)"
@@ -86,6 +93,7 @@ const SabitAtamalar = () => {
               onChange={(e) => setQuery(e.target.value)}
               size="small"
               sx={{ minWidth: 260 }}
+              disabled={readOnly}
             />
             <TextField
               select
@@ -94,6 +102,7 @@ const SabitAtamalar = () => {
               onChange={(e) => setSelectedStudentId(e.target.value)}
               size="small"
               sx={{ minWidth: 260 }}
+              disabled={readOnly}
             >
               {filteredStudents.slice(0, 300).map(o => (
                 <MenuItem key={o.id} value={o.id}>
@@ -108,12 +117,13 @@ const SabitAtamalar = () => {
               onChange={(e) => setSelectedSalonId(e.target.value)}
               size="small"
               sx={{ minWidth: 220 }}
+              disabled={readOnly}
             >
               {salonlar.map(s => (
                 <MenuItem key={s.id} value={String(s.id)}>{s.salonAdi || s.ad || s.id}</MenuItem>
               ))}
             </TextField>
-            <Button variant="contained" onClick={handlePin}>Sabit Ata</Button>
+            <Button variant="contained" onClick={handlePin} disabled={readOnly}>Sabit Ata</Button>
           </Box>
 
           {selectedStudent && (
@@ -126,6 +136,11 @@ const SabitAtamalar = () => {
                   Hedef salon: {getSalonAdi(selectedStudent.pinnedSalonId)}
                 </Typography>
               )}
+              {readOnly && selectedStudent.pinned && (
+                <Typography variant="caption" sx={{ color: 'error.main' }}>
+                  Sabit atamaları kaldırmak için yönetici olarak giriş yapın.
+                </Typography>
+              )}
             </Box>
           )}
 
@@ -133,7 +148,12 @@ const SabitAtamalar = () => {
             <Typography variant="subtitle2" sx={{ mb: 1 }}>Sabitlenen Öğrenciler</Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
               {ogrenciler.filter(o => o.pinned && (selectedClasses.length === 0 || selectedClasses.includes(o.sinif))).map(o => (
-                <Chip key={o.id} label={`${o.ad} ${o.soyad} • ${getSalonAdi(o.pinnedSalonId)}`} onDelete={() => ogrenciUnpin(o.id)} />
+                <Chip
+                  key={o.id}
+                  label={`${o.ad} ${o.soyad} • ${getSalonAdi(o.pinnedSalonId)}`}
+                  onDelete={readOnly ? undefined : () => ogrenciUnpin(o.id)}
+                  deleteIcon={readOnly ? null : undefined}
+                />
               ))}
               {ogrenciler.filter(o => o.pinned).length === 0 && (
                 <Typography variant="body2" color="text.secondary">Henüz sabit atama yok.</Typography>

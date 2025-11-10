@@ -270,11 +270,7 @@ class PlanManager {
         const authResult = await waitForAuth();
         authOwnerId = authResult?.uid || getCurrentUserId() || null;
       } catch (authError) {
-        console.warn('⚠️ planManager.loadPlan kimlik doğrulaması başarısız, offline mod kullanılacak:', authError);
-      }
-      if (!authOwnerId && db.useFirestore) {
-        console.warn('⚠️ planManager: Firestore kimlik doğrulaması yok, IndexedDB moduna geçiliyor.');
-        db.useFirestore = false;
+        console.warn('⚠️ planManager.loadPlan kimlik doğrulaması başarısız, misafir modunda devam ediliyor:', authError);
       }
       
       // planId validation
@@ -304,7 +300,57 @@ class PlanManager {
       console.log('📥 Normalize edilmiş Plan ID:', normalizedPlanId, '(tip:', typeof normalizedPlanId + ')');
       
       // Veritabanından planı al - hem string hem number ID'leri destekler
-      const plan = await db.getPlan(normalizedPlanId);
+      let plan = await db.getPlan(normalizedPlanId);
+      if (!plan && typeof planId === 'string') {
+        console.warn(`ℹ️ planManager: Plan "${planId}" IndexedDB'de bulunamadı, Firestore'dan yükleniyor...`);
+        try {
+          const loadRemotePlan = async () => {
+            if (db.firestore && typeof db.firestore.loadPlan === 'function') {
+              return await db.firestore.loadPlan(planId);
+            }
+
+            const previousMode = db.useFirestore;
+            try {
+              if (!previousMode) {
+                db.useFirestore = true;
+              }
+              return await db.loadPlan(planId);
+            } finally {
+              db.useFirestore = previousMode;
+            }
+          };
+
+          const remotePlan = await loadRemotePlan();
+          if (remotePlan) {
+            plan = {
+              id: remotePlan.id || planId,
+              name: remotePlan.name || remotePlan.data?.ayarlar?.planAdi || 'İsimsiz Plan',
+              date: remotePlan.date || remotePlan.createdAt || new Date().toISOString(),
+              ownerId: remotePlan.ownerId || authOwnerId || 'public',
+              data: remotePlan.data || {}
+            };
+
+            // IndexedDB'ye senkronize etmeyi dene (public modda offline kullanım için)
+            try {
+              const indexedDB = await db.getIndexedDB();
+              await indexedDB.savePlan({
+                id: plan.id,
+                name: plan.name,
+                date: plan.date,
+                ownerId: plan.ownerId,
+                totalStudents: plan.data?.yerlestirmeSonucu?.toplamOgrenci || plan.data?.plan?.length || 0,
+                salonCount: plan.data?.tumSalonlar?.length || 0,
+                data: plan.data
+              });
+            } catch (mirrorError) {
+              console.warn('⚠️ planManager: Firestore planı IndexedDB\'ye yansıtılamadı:', mirrorError);
+            }
+          }
+        } catch (remoteError) {
+          console.error('❌ planManager: Firestore plan yükleme hatası:', remoteError);
+        }
+      }
+
       if (!plan) {
         throw new Error(`Plan bulunamadı (ID: ${normalizedPlanId})`);
       }

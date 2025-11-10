@@ -261,6 +261,8 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
                     }}
                   >
                     <ListItemText
+                      primaryTypographyProps={{ component: 'div' }}
+                      secondaryTypographyProps={{ component: 'div' }}
                       primary={
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                           <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.125rem' } }}>
@@ -282,12 +284,22 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
                       }
                       secondary={
                         <Box sx={{ mt: 0.5, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                          <Typography
+                            component="span"
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ fontSize: '0.875rem' }}
+                          >
                             <HistoryIcon sx={{ fontSize: '0.875rem', verticalAlign: 'middle', mr: 0.5 }} />
                             {formatDate(plan.date || plan.createdAt)}
                           </Typography>
                           {plan.sinavTarihi && (
-                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                            <Typography
+                              component="span"
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ fontSize: '0.875rem' }}
+                            >
                               📅 {new Date(plan.sinavTarihi).toLocaleDateString('tr-TR')}
                               {plan.sinavSaati && ` • 🕐 ${plan.sinavSaati}`}
                             </Typography>

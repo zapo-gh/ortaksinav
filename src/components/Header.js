@@ -21,6 +21,8 @@ import { FaGraduationCap } from 'react-icons/fa';
 import { BsClipboardCheck } from 'react-icons/bs';
 
 import QuickSearchModal from './QuickSearchModal';
+import LoginDialog from './auth/LoginDialog';
+import { useExam } from '../context/ExamContext';
 
 const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
   const [anchorEl, setAnchorEl] = React.useState(null);
@@ -28,6 +30,26 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
   const [lastKeyPress, setLastKeyPress] = React.useState(0);
   const [lastKeyCode, setLastKeyCode] = React.useState(null);
   const [openSearch, setOpenSearch] = React.useState(false);
+  const [loginDialogOpen, setLoginDialogOpen] = React.useState(false);
+
+  let examContext = null;
+  try {
+    examContext = useExam();
+  } catch (error) {
+    examContext = null;
+  }
+  const contextUser = examContext?.authUser || null;
+  const role = examContext?.role || kullanici?.role || 'public';
+  const isWriteAllowed = examContext?.isWriteAllowed ?? (role === 'admin');
+  const handleLogoutContext = examContext?.logout;
+  const canAuth = Boolean(examContext?.login);
+  const currentUser = kullanici || contextUser;
+  const displayName =
+    currentUser?.displayName ||
+    currentUser?.ad ||
+    currentUser?.email ||
+    (role === 'admin' ? 'Yönetici' : 'Misafir');
+  const roleLabel = role === 'admin' ? 'Admin' : 'Misafir';
 
   // Test Dashboard görünürlüğünü kontrol et
   React.useEffect(() => {
@@ -163,8 +185,19 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
     setAnchorEl(event.currentTarget);
   };
 
+  const avatarLetter = (displayName || 'K').charAt(0).toUpperCase();
+
   const handleClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleLogout = async () => {
+    if (!handleLogoutContext) {
+      handleClose();
+      return;
+    }
+    await handleLogoutContext();
+    handleClose();
   };
 
   return (
@@ -286,10 +319,10 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
           )}
 
           {/* Kullanıcı Bölgesi */}
-          {kullanici ? (
+          {currentUser ? (
             <>
             <Chip 
-              label={`Hoş geldin, ${kullanici.ad}`}
+              label={displayName}
               variant="outlined"
               sx={{ 
                 color: 'white', 
@@ -299,25 +332,37 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
                 }
               }}
             />
+            <Chip
+              label={roleLabel}
+              color={isWriteAllowed ? 'success' : 'warning'}
+              variant="filled"
+              size="small"
+              sx={{
+                color: isWriteAllowed ? 'white' : 'rgba(0,0,0,0.8)',
+                fontWeight: 600
+              }}
+            />
             <IconButton
               size="large"
               onClick={handleMenu}
               color="inherit"
             >
-              <AccountCircle />
+              <Avatar sx={{ width: 32, height: 32, bgcolor: 'white', color: 'primary.main', fontWeight: 600 }}>
+                {avatarLetter}
+              </Avatar>
             </IconButton>
             <Menu
               anchorEl={anchorEl}
               open={Boolean(anchorEl)}
               onClose={handleClose}
             >
-              <MenuItem onClick={handleClose}>
+              <MenuItem disabled>
                 <AccountCircle sx={{ mr: 1 }} />
-                Profil
+                {displayName}
               </MenuItem>
-              <MenuItem onClick={handleClose}>
+              <MenuItem onClick={handleLogout}>
                 <ExitToApp sx={{ mr: 1 }} />
-                Çıkış
+                Çıkış Yap
               </MenuItem>
             </Menu>
             </>
@@ -340,6 +385,8 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
                   fontSize: { xs: '1.2rem', sm: '1.5rem' }
                 }
               }}
+              onClick={canAuth ? () => setLoginDialogOpen(true) : undefined}
+              disabled={!canAuth}
             >
               <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
                 Giriş Yap
@@ -350,6 +397,12 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
       </Toolbar>
     </AppBar>
     <QuickSearchModal open={openSearch} onClose={() => setOpenSearch(false)} />
+    {canAuth ? (
+      <LoginDialog
+        open={loginDialogOpen}
+        onClose={() => setLoginDialogOpen(false)}
+      />
+    ) : null}
     </>
   );
 };

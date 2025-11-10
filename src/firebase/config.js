@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
-import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { DISABLE_FIREBASE, firebaseConfig, createMockFirebase } from '../config/firebaseConfig';
 
 let app, db, auth = null;
@@ -29,30 +29,21 @@ if (DISABLE_FIREBASE) {
 
     // Initialize Auth (anonymous session)
     auth = getAuth(app);
-    setPersistence(auth, browserLocalPersistence)
-      .catch((err) => {
-        console.warn('⚠️ Firebase auth persistence ayarlanamadı:', err);
-      })
-      .finally(() => {
-        signInAnonymously(auth).catch((error) => {
-          console.error('❌ Anonymous authentication failed:', error);
-          authReadyReject(error);
-        });
-      });
+    setPersistence(auth, browserLocalPersistence).catch((err) => {
+      console.warn('⚠️ Firebase auth persistence ayarlanamadı:', err);
+    });
 
-    onAuthStateChanged(
-      auth,
-      (user) => {
-        if (user) {
-          console.log('✅ Firebase Auth hazır - kullanıcı UID:', user.uid);
-          authReadyResolve(user);
-        }
-      },
-      (error) => {
-        console.error('❌ Auth state error:', error);
-        authReadyReject(error);
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log('✅ Firebase Auth hazır - kullanıcı UID:', user.uid);
+      } else {
+        console.log('ℹ️ Firebase Auth: oturum açılmamış kullanıcı');
       }
-    );
+      authReadyResolve(user || null);
+    }, (error) => {
+      console.error('❌ Auth state error:', error);
+      authReadyReject(error);
+    });
 
     // Enable offline persistence (optional)
     enableIndexedDbPersistence(db).catch((err) => {

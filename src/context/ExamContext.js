@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import logger from '../utils/logger';
 import { storageOptimizer } from '../utils/storageOptimizer';
-import { waitForAuth } from '../firebase/authState';
+import { waitForAuth, getUserRole, clearCachedRole, subscribeToAuthChanges, signInWithEmail, signOutUser } from '../firebase/authState';
 
 // localStorage yardımcı fonksiyonları (sıkıştırmasız)
 const loadFromStorage = (key, defaultValue) => {
@@ -99,7 +99,7 @@ const loadFromFirestore = async () => {
       getDatabaseType: db?.getDatabaseType ? db.getDatabaseType() : 'unknown'
     });
     
-    const [firestoreOgrenciler, firestoreAyarlar, firestoreSalonlar, latestPlan] = await Promise.all([
+    const [firestoreOgrenciler, firestoreAyarlar, firestoreSalonlar] = await Promise.all([
       db.getAllStudents().catch((error) => {
         console.error('❌ getAllStudents hatası:', error);
         return [];
@@ -111,10 +111,6 @@ const loadFromFirestore = async () => {
       db.getAllSalons().catch((error) => {
         console.error('❌ getAllSalons hatası:', error);
         return [];
-      }),
-      db.getLatestPlan().catch((error) => {
-        console.error('❌ getLatestPlan hatası:', error);
-        return null;
       })
     ]);
     
@@ -122,25 +118,13 @@ const loadFromFirestore = async () => {
       ogrenciler: firestoreOgrenciler?.length || 0,
       ayarlar: firestoreAyarlar ? Object.keys(firestoreAyarlar).length : 0,
       salonlar: firestoreSalonlar?.length || 0,
-      latestPlan: latestPlan ? latestPlan.name : 'Yok'
+      latestPlan: 'Yok'
     });
     console.log('🔍 Firestore\'dan yüklenen salonlar:', firestoreSalonlar?.map(s => s.ad || s.salonAdi || 'İsimsiz') || []);
-    console.log('🔍 Firestore\'dan yüklenen en son plan:', latestPlan ? latestPlan.name : 'Yok');
+    console.log('🔍 Firestore\'dan yüklenen en son plan: Yok');
     
-    // Yerleştirme sonucunu en son plandan çıkar
-    let yerlestirmeSonucu = null;
-    if (latestPlan && latestPlan.data) {
-      // Plan verisini yerleştirme sonucu formatına dönüştür
-      yerlestirmeSonucu = latestPlan.data;
-      
-      // Eğer salon objesi yoksa, tumSalonlar[0]'dan oluştur
-      if (!yerlestirmeSonucu.salon && yerlestirmeSonucu.tumSalonlar && yerlestirmeSonucu.tumSalonlar.length > 0) {
-        yerlestirmeSonucu.salon = yerlestirmeSonucu.tumSalonlar[0];
-        console.log('✅ Salon objesi tumSalonlar ilk elemanından oluşturuldu');
-      }
-      
-      console.log('✅ Yerleştirme sonucu en son plandan yüklendi');
-    }
+    // Otomatik plan yükleme kaldırıldı; sayfa yenilendiğinde yerleştirme boş kalır
+    const yerlestirmeSonucu = null;
     
     // Firestore'dan TÜM mevcut verileri kullan (birincil veritabanı)
     // Öğrenci, salon, ayar verilerinden hangisi varsa onları kullan
@@ -333,7 +317,9 @@ const initialState = {
   // UI durumu
   aktifTab: 'ayarlar',
   yukleme: true, // Başlangıçta yükleme durumunda
-  hata: null
+  hata: null,
+  role: 'public',
+  authUser: null
 };
 
 // Action Types
@@ -371,7 +357,9 @@ export const ACTIONS = {
   YUKLEME_BASLAT: 'YUKLEME_BASLAT',
   YUKLEME_BITIR: 'YUKLEME_BITIR',
   HATA_AYARLA: 'HATA_AYARLA',
-  HATA_TEMIZLE: 'HATA_TEMIZLE'
+  HATA_TEMIZLE: 'HATA_TEMIZLE',
+  ROLE_GUNCELLE: 'ROLE_GUNCELLE',
+  AUTH_GUNCELLE: 'AUTH_GUNCELLE'
 };
 
 // Reducer
@@ -610,21 +598,12 @@ const examReducer = (state, action) => {
       return newState;
       
     case ACTIONS.YERLESTIRME_GUNCELLE:
-      newState = {
-        ...state,
-        yerlestirmeSonucu: { 
-          ...state.yerlestirmeSonucu, 
-          ...action.payload,
-          // Salon objesini deep copy et
-          salon: action.payload.salon ? {
-            ...action.payload.salon,
-            masalar: action.payload.salon.masalar ? [...action.payload.salon.masalar] : []
-          } : state.yerlestirmeSonucu?.salon
-        },
-        placementIndex: (() => {
+      (() => {
+        const buildPlacementIndex = (yerlestirme) => {
           const index = {};
+          if (!yerlestirme) return index;
           try {
-            const tumSalonlar = (action.payload?.tumSalonlar) || state.yerlestirmeSonucu?.tumSalonlar;
+            const tumSalonlar = yerlestirme.tumSalonlar;
             if (Array.isArray(tumSalonlar)) {
               tumSalonlar.forEach(salon => {
                 const salonAdi = salon.salonAdi || salon.ad || String(salon.id || salon.salonId || '');
@@ -641,16 +620,24 @@ const examReducer = (state, action) => {
             logger.debug('build index (YERLESTIRME_GUNCELLE) error:', e);
           }
           return index;
-        })()
-      };
-      
-      // CRITICAL: Hem localStorage hem IndexedDB'ye kaydet (yerleştirme sonucu acil kaydedilmeli)
-      saveToStorage('exam_yerlestirme', newState.yerlestirmeSonucu, true); // immediate = true
-      try { localStorage.setItem('exam_placement_index', JSON.stringify(newState.placementIndex)); } catch (e) { logger.debug('localStorage mirror failed (exam_placement_index):', e); }
-      
-      logger.debug('🔄 Context: State güncellendi, salon:', !!newState.yerlestirmeSonucu?.salon);
-      logger.debug('🔄 Context: Masalar sayısı:', newState.yerlestirmeSonucu?.salon?.masalar?.length);
-      logger.debug('✅ Context: Yerleştirme sonucu localStorage\'a kaydedildi');
+        };
+
+        const incoming = action.payload || {};
+        const normalizedTumSalonlar = incoming.tumSalonlar ? normalizeSalonList(incoming.tumSalonlar) : state.yerlestirmeSonucu?.tumSalonlar;
+        const merged = {
+          ...(state.yerlestirmeSonucu || {}),
+          ...incoming,
+          tumSalonlar: normalizedTumSalonlar
+        };
+        newState = {
+          ...state,
+          yerlestirmeSonucu: merged,
+          placementIndex: buildPlacementIndex(merged),
+          yukleme: false
+        };
+        saveToStorage('exam_yerlestirme', newState.yerlestirmeSonucu, true);
+        try { localStorage.setItem('exam_placement_index', JSON.stringify(newState.placementIndex)); } catch (e) { logger.debug('localStorage mirror failed (exam_placement_index):', e); }
+      })();
       return newState;
       
     case ACTIONS.YERLESTIRME_TEMIZLE:
@@ -659,7 +646,7 @@ const examReducer = (state, action) => {
         yerlestirmeSonucu: null,
         placementIndex: {}
       };
-      saveToStorage('exam_yerlestirme', newState.yerlestirmeSonucu, true); // immediate = true (temizleme acil)
+      saveToStorage('exam_yerlestirme', null, true);
       try { localStorage.removeItem('exam_placement_index'); } catch (e) { logger.debug('localStorage remove failed (exam_placement_index):', e); }
       return newState;
       
@@ -697,9 +684,52 @@ const examReducer = (state, action) => {
         hata: null
       };
       
+    case ACTIONS.ROLE_GUNCELLE:
+      return {
+        ...state,
+        role: action.payload
+      };
+    
+    case ACTIONS.AUTH_GUNCELLE:
+      return {
+        ...state,
+        authUser: action.payload
+      };
+      
     default:
       return state;
   }
+};
+
+const mapAuthUser = (user) => {
+  if (!user) return null;
+  return {
+    uid: user.uid,
+    email: user.email || '',
+    displayName: user.displayName || '',
+    isAnonymous: !!user.isAnonymous
+  };
+};
+
+const normalizeSalonList = (list) => {
+  if (!Array.isArray(list)) return [];
+  const unique = new Map();
+  const getScore = (salon) => {
+    if (!salon) return 0;
+    const masalar = Array.isArray(salon.masalar) ? salon.masalar.length : 0;
+    const ogrenciler = Array.isArray(salon.ogrenciler) ? salon.ogrenciler.length : 0;
+    const kapasite = Number.isFinite(salon.kapasite) ? salon.kapasite : 0;
+    return (masalar * 10) + ogrenciler + kapasite;
+  };
+  list.forEach((salon) => {
+    if (!salon) return;
+    const key = salon.id || salon.salonId || salon.salonAdi || salon.ad;
+    const existing = unique.get(key);
+    if (!existing || getScore(salon) > getScore(existing)) {
+      unique.set(key, salon);
+    }
+  });
+  return Array.from(unique.values());
 };
 
 // Context
@@ -709,12 +739,127 @@ const ExamContext = createContext();
 export const ExamProvider = ({ children }) => {
   const [state, dispatch] = useReducer(examReducer, initialState);
   const [isInitialized, setIsInitialized] = React.useState(false);
+  const prevAuthUserRef = React.useRef(null);
 
+  const populateStateFromData = React.useCallback((data) => {
+    if (!data) {
+      console.warn('⚠️ populateStateFromData: data boş, state güncellenmedi');
+      return;
+    }
+
+    console.log('🔍 Veri kontrolü:', {
+      ogrenciler: data.ogrenciler?.length || 0,
+      ayarlar: data.ayarlar ? Object.keys(data.ayarlar).length : 0,
+      salonlar: data.salonlar?.length || 0
+    });
+    console.log('🔍 Salon verileri detayı:', data.salonlar);
+    console.log('🔍 Salon isimleri:', data.salonlar?.map(s => s.ad || s.salonAdi || 'İsimsiz') || []);
+
+    if (Array.isArray(data.ogrenciler) && data.ogrenciler.length > 0) {
+      console.log('✅ Öğrenciler yükleniyor:', data.ogrenciler.length);
+      dispatch({ type: ACTIONS.OGRENCILER_YUKLE, payload: data.ogrenciler });
+    } else {
+      console.log('⚠️ Öğrenci verisi yok, yükleme atlanıyor');
+    }
+
+    if (data.ayarlar && Object.keys(data.ayarlar).length > 0) {
+      console.log('✅ Ayarlar yükleniyor:', Object.keys(data.ayarlar).length);
+      dispatch({ type: ACTIONS.AYARLAR_GUNCELLE, payload: data.ayarlar });
+    } else {
+      console.log('⚠️ Ayar verisi yok, yükleme atlanıyor');
+    }
+
+    if (Array.isArray(data.salonlar) && data.salonlar.length > 0) {
+      console.log('✅ Salonlar yükleniyor:', data.salonlar.length);
+      dispatch({ type: ACTIONS.SALONLAR_GUNCELLE, payload: normalizeSalonList(data.salonlar) });
+    } else {
+      console.log('⚠️ Salon verisi yok, yükleme atlanıyor - TEST SALONLARI YÜKLENMEYECEK');
+    }
+
+    try {
+      if (data.yerlestirmeSonucu) {
+        dispatch({ type: ACTIONS.YERLESTIRME_YAP, payload: {
+          ...data.yerlestirmeSonucu,
+          tumSalonlar: normalizeSalonList(data.yerlestirmeSonucu.tumSalonlar)
+        } });
+        console.log('✅ Yerleştirme sonucu IndexedDB\'den yüklendi');
+      } else {
+        console.log('ℹ️ Yerleştirme sonucu bulunamadı (otomatik yükleme yapılmayacak)');
+      }
+    } catch (error) {
+      console.error('❌ Yerleştirme sonucu yükleme hatası:', error);
+    }
+
+    const aktifTab = loadFromStorage('exam_aktif_tab', 'ayarlar');
+    dispatch({ type: ACTIONS.TAB_DEGISTIR, payload: aktifTab });
+  }, [dispatch]);
+
+  const refreshFromFirestore = React.useCallback(
+    async ({ showLoading = true } = {}) => {
+      if (showLoading) {
+        dispatch({ type: ACTIONS.YUKLEME_BASLAT });
+      }
+      try {
+        const data = await loadFromFirestore();
+        populateStateFromData(data);
+
+        const user = await waitForAuth();
+        dispatch({ type: ACTIONS.AUTH_GUNCELLE, payload: mapAuthUser(user) });
+
+        const role = await getUserRole();
+        dispatch({ type: ACTIONS.ROLE_GUNCELLE, payload: role });
+
+        return { success: true };
+      } catch (error) {
+        logger.error('❌ refreshFromFirestore: Veri yenilenemedi:', error);
+        return { success: false, error };
+      } finally {
+        if (showLoading) {
+          dispatch({ type: ACTIONS.YUKLEME_BITIR });
+        }
+      }
+    },
+    [dispatch, populateStateFromData]
+  );
+
+  const login = React.useCallback(
+    async (email, password) => {
+      try {
+        const trimmedEmail = (email || '').trim();
+        if (!trimmedEmail || !password) {
+          throw new Error('E-posta ve şifre zorunludur.');
+        }
+        await signInWithEmail(trimmedEmail, password);
+        clearCachedRole();
+        prevAuthUserRef.current = null;
+        return await refreshFromFirestore({ showLoading: true });
+      } catch (error) {
+        logger.error('❌ Giriş denemesi başarısız:', error);
+        return { success: false, error };
+      }
+    },
+    [refreshFromFirestore]
+  );
+
+  const logout = React.useCallback(async () => {
+    try {
+      await signOutUser();
+      clearCachedRole();
+      prevAuthUserRef.current = null;
+      dispatch({ type: ACTIONS.AUTH_GUNCELLE, payload: null });
+      dispatch({ type: ACTIONS.ROLE_GUNCELLE, payload: 'public' });
+      return { success: true };
+    } catch (error) {
+      logger.error('❌ Çıkış işlemi başarısız:', error);
+      return { success: false, error };
+    }
+  }, [dispatch]);
   // IndexedDB'den veri yükleme (sadece bir kez)
   useEffect(() => {
     console.log('🚀 ExamProvider useEffect başladı!');
     
     let timeoutId;
+    let isMounted = true;
     
     const initializeData = async () => {
       // Timeout - maksimum 10 saniye sonra yükleme durumunu sonlandır
@@ -731,66 +876,9 @@ export const ExamProvider = ({ children }) => {
         // NOT: setDatabaseType(false) KALDIRILDI - Firestore aktif kalmalı
         // console.log('🔄 ExamProvider: Veriler Firestore\'dan yükleniyor...');
         const data = await loadFromFirestore();
+        if (!isMounted) return;
         
-        // console.log('📊 Yüklenen veriler:', {
-        //   ogrenciler: data.ogrenciler?.length || 0,
-        //   ayarlar: data.ayarlar ? Object.keys(data.ayarlar).length : 0,
-        //   salonlar: data.salonlar?.length || 0
-        // });
-        
-        // Verileri state'e yükle - SADECE VERİ VARSA
-        console.log('🔍 Veri kontrolü:', {
-          ogrenciler: data.ogrenciler?.length || 0,
-          ayarlar: data.ayarlar ? Object.keys(data.ayarlar).length : 0,
-          salonlar: data.salonlar?.length || 0
-        });
-        console.log('🔍 Salon verileri detayı:', data.salonlar);
-        console.log('🔍 Salon isimleri:', data.salonlar?.map(s => s.ad || s.salonAdi || 'İsimsiz') || []);
-        
-        if (data.ogrenciler && data.ogrenciler.length > 0) {
-          console.log('✅ Öğrenciler yükleniyor:', data.ogrenciler.length);
-          dispatch({ type: ACTIONS.OGRENCILER_YUKLE, payload: data.ogrenciler });
-        } else {
-          console.log('⚠️ Öğrenci verisi yok, yükleme atlanıyor');
-        }
-        if (data.ayarlar && Object.keys(data.ayarlar).length > 0) {
-          console.log('✅ Ayarlar yükleniyor:', Object.keys(data.ayarlar).length);
-          dispatch({ type: ACTIONS.AYARLAR_GUNCELLE, payload: data.ayarlar });
-        } else {
-          console.log('⚠️ Ayar verisi yok, yükleme atlanıyor');
-        }
-        if (data.salonlar && data.salonlar.length > 0) {
-          console.log('✅ Salonlar yükleniyor:', data.salonlar.length);
-          dispatch({ type: ACTIONS.SALONLAR_GUNCELLE, payload: data.salonlar });
-        } else {
-          console.log('⚠️ Salon verisi yok, yükleme atlanıyor - TEST SALONLARI YÜKLENMEYECEK');
-        }
-        
-        // console.log('✅ State\'e veriler yüklendi');
-        
-        // Yerleştirme sonucunu yükle - önce IndexedDB'den, yoksa localStorage'dan
-        try {
-          // IndexedDB'den yüklendi mi kontrol et
-          if (data.yerlestirmeSonucu) {
-            dispatch({ type: ACTIONS.YERLESTIRME_YAP, payload: data.yerlestirmeSonucu });
-            console.log('✅ Yerleştirme sonucu IndexedDB\'den yüklendi');
-          } else {
-            // Fallback: localStorage'dan yükle
-            const yerlestirmeSonucu = loadFromStorage('exam_yerlestirme', null);
-            if (yerlestirmeSonucu) {
-              dispatch({ type: ACTIONS.YERLESTIRME_YAP, payload: yerlestirmeSonucu });
-              console.log('✅ Yerleştirme sonucu localStorage\'dan yüklendi');
-            } else {
-              console.log('ℹ️ Yerleştirme sonucu bulunamadı');
-            }
-          }
-        } catch (error) {
-          console.error('❌ Yerleştirme sonucu yükleme hatası:', error);
-        }
-        
-        // Aktif tab'ı localStorage'dan yükle
-        const aktifTab = loadFromStorage('exam_aktif_tab', 'ayarlar');
-        dispatch({ type: ACTIONS.TAB_DEGISTIR, payload: aktifTab });
+        populateStateFromData(data);
         
         // Yükleme durumunu bitir
         dispatch({ type: ACTIONS.YUKLEME_BITIR });
@@ -798,7 +886,13 @@ export const ExamProvider = ({ children }) => {
         // Timeout'u temizle
         clearTimeout(timeoutId);
         
-        setIsInitialized(true);
+        if (isMounted) {
+          const user = await waitForAuth();
+          dispatch({ type: ACTIONS.AUTH_GUNCELLE, payload: mapAuthUser(user) });
+          const role = await getUserRole();
+          dispatch({ type: ACTIONS.ROLE_GUNCELLE, payload: role });
+          setIsInitialized(true);
+        }
         console.log('✅ ExamProvider: Tüm veriler yüklendi ve yükleme durumu sonlandı!');
         
       } catch (error) {
@@ -819,8 +913,40 @@ export const ExamProvider = ({ children }) => {
     // Cleanup function
     return () => {
       clearTimeout(timeoutId);
+      isMounted = false;
+      clearCachedRole();
     };
   }, []); // Sadece component mount olduğunda çalış
+
+  useEffect(() => {
+    const unsubscribe = subscribeToAuthChanges(async (user) => {
+      const userId = user?.uid || null;
+      const prevUserId = prevAuthUserRef.current;
+      prevAuthUserRef.current = userId;
+
+      dispatch({ type: ACTIONS.AUTH_GUNCELLE, payload: mapAuthUser(user) });
+
+      if (!userId) {
+        dispatch({ type: ACTIONS.ROLE_GUNCELLE, payload: 'public' });
+        return;
+      }
+
+      const role = await getUserRole();
+      dispatch({ type: ACTIONS.ROLE_GUNCELLE, payload: role });
+
+      if (isInitialized && userId !== prevUserId) {
+        await refreshFromFirestore({ showLoading: true });
+      }
+    });
+
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
+  }, [dispatch, isInitialized, refreshFromFirestore]);
+
+  const isWriteAllowed = React.useMemo(() => state.role === 'admin', [state.role]);
 
   // Firestore'a otomatik kaydetme - DEBOUNCED (Firestore quota koruması için)
   // Ref'ler component içinde tanımlanmalı
@@ -832,6 +958,7 @@ export const ExamProvider = ({ children }) => {
   // Öğrenciler için debounced save
   useEffect(() => {
     if (!isInitialized) return; // İlk yükleme tamamlanana kadar bekle
+    if (!isWriteAllowed) return;
     // Boş veri ise kaydetme (sayfa yenileme sırasında verileri silme!)
     if (!state.ogrenciler || state.ogrenciler.length === 0) {
       return;
@@ -878,11 +1005,15 @@ export const ExamProvider = ({ children }) => {
         clearTimeout(saveStudentsTimerRef.current);
       }
     };
-  }, [state.ogrenciler, isInitialized]);
+  }, [state.ogrenciler, isInitialized, isWriteAllowed]);
 
   // Ayarlar için debounced save
   useEffect(() => {
     if (!isInitialized) return; // İlk yükleme tamamlanana kadar bekle
+    if (!isWriteAllowed) return;
+    if (!state.ayarlar || Object.keys(state.ayarlar).length === 0) {
+      return;
+    }
     // Quota hatası varsa kaydetmeyi atla
     if (isQuotaExceededRef.current) {
       return;
@@ -924,11 +1055,12 @@ export const ExamProvider = ({ children }) => {
         clearTimeout(saveSettingsTimerRef.current);
       }
     };
-  }, [state.ayarlar, isInitialized]);
+  }, [state.ayarlar, isInitialized, isWriteAllowed]);
 
   // Salonlar için debounced save
   useEffect(() => {
     if (!isInitialized) return; // İlk yükleme tamamlanana kadar bekle
+    if (!isWriteAllowed) return;
     // Boş veri ise kaydetme (sayfa yenileme sırasında verileri silme!)
     if (!state.salonlar || state.salonlar.length === 0) {
       return;
@@ -1065,13 +1197,19 @@ export const ExamProvider = ({ children }) => {
     },
     ogrenciUnpin: (ogrenciId) => {
       dispatch({ type: ACTIONS.OGRENCI_UNPIN, payload: ogrenciId });
-    }
+    },
+    refreshFromFirestore,
+    login,
+    logout
   };
 
   const value = {
     ...state,
     ...actions,
-    isInitialized
+    isInitialized,
+    isWriteAllowed,
+    role: state.role,
+    authUser: state.authUser
   };
 
   return (

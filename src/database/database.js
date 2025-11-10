@@ -231,11 +231,13 @@ class KelebekDatabase extends Dexie {
       // Dexie primary key number bekliyor, string ise number'a çevir
       let normalizedPlanId = planId;
       if (typeof planId === 'string') {
-        const numId = parseInt(planId, 10);
+        const sanitizedId = planId.trim();
+        const numId = parseInt(sanitizedId, 10);
         if (!isNaN(numId)) {
           normalizedPlanId = numId;
         } else {
-          throw new Error(`Invalid argument to Table.get(): planId "${planId}" cannot be converted to number`);
+          console.warn(`ℹ️ IndexedDB getPlan: planId "${planId}" numerik değil, IndexedDB yalnızca sayısal anahtar destekliyor. Firestore'dan devam edilecek.`);
+          return null;
         }
       } else if (typeof planId !== 'number') {
         throw new Error(`Invalid argument to Table.get(): planId must be number or string, got ${typeof planId}`);
@@ -294,11 +296,13 @@ class KelebekDatabase extends Dexie {
       // Dexie primary key number bekliyor, string ise number'a çevir
       let normalizedPlanId = planId;
       if (typeof planId === 'string') {
-        const numId = parseInt(planId, 10);
+        const sanitizedId = planId.trim();
+        const numId = parseInt(sanitizedId, 10);
         if (!isNaN(numId)) {
           normalizedPlanId = numId;
         } else {
-          throw new Error(`Invalid argument to Table.delete(): planId "${planId}" cannot be converted to number`);
+          console.warn(`ℹ️ IndexedDB deletePlan: planId "${planId}" numerik değil, IndexedDB yalnızca sayısal anahtar destekliyor. Silinecek kayıt bulunmadı.`);
+          return false;
         }
       } else if (typeof planId !== 'number') {
         throw new Error(`Invalid argument to Table.delete(): planId must be number or string, got ${typeof planId}`);

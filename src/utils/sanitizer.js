@@ -5,15 +5,25 @@ const PURIFY_OPTIONS = {
   ALLOWED_ATTR: []
 };
 
-export const sanitizeText = (value) => {
+export const sanitizeText = (value, options = {}) => {
   if (typeof value !== 'string') {
     return value;
   }
-  const trimmed = value.trim();
-  if (!trimmed) {
+  const { trim = true } = options;
+
+  let workingValue = trim ? value.trim() : value;
+
+  if (!trim && workingValue.trim().length === 0) {
     return '';
   }
-  return DOMPurify.sanitize(trimmed, PURIFY_OPTIONS);
+
+  const sanitized = DOMPurify.sanitize(workingValue, PURIFY_OPTIONS);
+
+  if (trim) {
+    return sanitized ? sanitized.trim() : '';
+  }
+
+  return sanitized ?? '';
 };
 
 export const sanitizeStringArray = (values) => {

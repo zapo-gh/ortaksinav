@@ -42,7 +42,8 @@ import {
   Warning as WarningIcon,
   Save as SaveIcon,
   BugReport as BugReportIcon,
-  Assignment as AssignmentIcon
+  Assignment as AssignmentIcon,
+  Lock as LockIcon
 } from '@mui/icons-material';
 import { useReactToPrint } from 'react-to-print';
 
@@ -240,6 +241,7 @@ const AnaSayfaContent = React.memo(() => {
     yukleme,
     hata,
     isInitialized,
+    isWriteAllowed,
     
     // Actions
     ogrencilerYukle,
@@ -255,6 +257,8 @@ const AnaSayfaContent = React.memo(() => {
     ogrenciPin,
     ogrenciUnpin
   } = useExam();
+
+  const readOnly = !isWriteAllowed;
 
   // Sadece ilk açılışta giriş sayfası göster
   useEffect(() => {
@@ -640,6 +644,10 @@ const AnaSayfaContent = React.memo(() => {
 
   // Kaydetme fonksiyonları - useCallback ile optimize edildi
   const handleSaveClick = useCallback(() => {
+    if (readOnly) {
+      showError('Bu işlem için yönetici girişi gereklidir.');
+      return;
+    }
     console.log('💾 handleSaveClick - currentPlan state:', {
       isActive: planManager.isCurrentPlanActive(),
       currentPlanId: planManager.getCurrentPlanId(),
@@ -658,7 +666,7 @@ const AnaSayfaContent = React.memo(() => {
       }
     }
     setSaveDialogOpen(true);
-  }, [handleSavePlan, activePlanMeta]);
+  }, [handleSavePlan, activePlanMeta, readOnly, showError]);
 
   const handleSaveDialogClose = useCallback(() => {
     setSaveDialogOpen(false);
@@ -670,6 +678,10 @@ const AnaSayfaContent = React.memo(() => {
   // useEffect kaldırıldı çünkü ExamContext localStorage'dan veriyi otomatik yüklüyor
 
   const handleAyarlarDegistir = useCallback((yeniAyarlar) => {
+    if (readOnly) {
+      showError('Bu alanları düzenlemek için yönetici girişi gerekiyor.');
+      return;
+    }
     ayarlarGuncelle(yeniAyarlar);
     
     // LocalStorage'a kaydet
@@ -678,9 +690,13 @@ const AnaSayfaContent = React.memo(() => {
     } catch (error) {
       console.error('❌ Ayarlar LocalStorage\'a kaydedilemedi:', error);
     }
-  }, [ayarlarGuncelle]);
+  }, [ayarlarGuncelle, readOnly, showError]);
 
   const handleSalonlarDegistir = useCallback((yeniSalonlar) => {
+    if (readOnly) {
+      showError('Salon düzenleme yetkisi için yönetici girişi gerekli.');
+      return;
+    }
     salonlarGuncelle(yeniSalonlar);
     
     // LocalStorage'a kaydet
@@ -725,15 +741,15 @@ const AnaSayfaContent = React.memo(() => {
         tumSalonlar: guncellenmisTumSalonlar
       });
     }
-  }, [salonlarGuncelle, yerlestirmeSonucu, yerlestirmeGuncelle]);
+  }, [salonlarGuncelle, yerlestirmeSonucu, yerlestirmeGuncelle, readOnly]);
 
   // Yerleştirme sonuçlarını temizle - useCallback ile optimize edildi
   const handleYerlestirmeTemizle = useCallback(() => {
-    planManager.clearCurrentPlan();
-    setActivePlanMeta(null);
     yerlestirmeTemizle(); // Yerleştirme sonucunu temizle
     tabDegistir('planlama'); // Planlama sekmesine geri dön
-  }, [yerlestirmeTemizle, tabDegistir]);
+    planManager.clearCurrentPlan(); // Aktif planı temizle
+    setActivePlanMeta(null); // activePlanMeta'yı da temizle
+  }, [yerlestirmeTemizle, tabDegistir, setActivePlanMeta]);
 
   // Plan yükleme fonksiyonu
   const handlePlanYukle = async (plan) => {
@@ -1198,6 +1214,10 @@ const AnaSayfaContent = React.memo(() => {
 
   // Transfer işlemi
   const handleStudentTransfer = useCallback(async (transferData) => {
+    if (readOnly) {
+      showError('Öğrenci transferi yapmak için yönetici olarak giriş yapmalısınız.');
+      return;
+    }
     try {
       const result = await transferManager.executeTransfer(transferData);
       
@@ -1239,6 +1259,10 @@ const AnaSayfaContent = React.memo(() => {
   }, [yerlestirmeSonucu, yerlestirmeGuncelle, showSuccess, showError]);
 
   const handleYerlestirmeYap = () => {
+    if (readOnly) {
+      showError('Yerleştirme yapmak için yönetici olarak giriş yapmalısınız.');
+      return;
+    }
     if (ogrenciler.length === 0) {
       hataAyarla('Lütfen öğrenci ekleyin!');
       return;
@@ -1428,11 +1452,12 @@ const AnaSayfaContent = React.memo(() => {
   };
 
   const genelAyarlarContent = useMemo(() => (
-    <GenelAyarlarFormu
+    <GenelAyarlarFormu 
       ayarlar={ayarlar}
       onAyarlarDegistir={handleAyarlarDegistir}
+      readOnly={readOnly}
     />
-  ), [ayarlar, handleAyarlarDegistir]);
+  ), [ayarlar, handleAyarlarDegistir, readOnly]);
 
   const ogrencilerContent = useMemo(() => (
     <OgrenciListesi
@@ -1442,21 +1467,23 @@ const AnaSayfaContent = React.memo(() => {
   ), [ogrenciler, yerlestirmeSonucu]);
 
   const salonlarContent = useMemo(() => (
-    <SalonFormu
+    <SalonFormu 
       salonlar={salonlar}
       onSalonlarDegistir={handleSalonlarDegistir}
       yerlestirmeSonucu={yerlestirmeSonucu}
+      readOnly={readOnly}
     />
-  ), [salonlar, handleSalonlarDegistir, yerlestirmeSonucu]);
+  ), [salonlar, handleSalonlarDegistir, yerlestirmeSonucu, readOnly]);
 
   const ayarlarTabContent = useMemo(() => (
-    <AyarlarFormu
+    <AyarlarFormu 
       ayarlar={ayarlar}
       onAyarlarDegistir={handleAyarlarDegistir}
       ogrenciler={ogrenciler}
       yerlestirmeSonucu={yerlestirmeSonucu}
+      readOnly={readOnly}
     />
-  ), [ayarlar, handleAyarlarDegistir, ogrenciler, yerlestirmeSonucu]);
+  ), [ayarlar, handleAyarlarDegistir, ogrenciler, yerlestirmeSonucu, readOnly]);
 
   const sabitAtamalarContent = useMemo(() => (
     <ErrorBoundary componentName="SabitAtamalar">
@@ -1839,6 +1866,18 @@ const AnaSayfaContent = React.memo(() => {
           </Alert>
         )}
 
+        {readOnly && (
+          <Alert
+            severity="info"
+            icon={<LockIcon fontSize="inherit" />}
+            sx={{ mb: 3 }}
+          >
+            Bu oturumda <strong>sadece görüntüleme</strong> yetkisine sahipsiniz. Planları
+            yükleyebilir ve yazdırabilirsiniz, ancak değişiklik yapmak için yönetici
+            girişi gereklidir.
+          </Alert>
+        )}
+
         {/* Tab Navigation */}
         <Paper 
           elevation={1} 
@@ -1976,7 +2015,8 @@ const AnaSayfaContent = React.memo(() => {
             height: { xs: 48, sm: 56 }
           }}
           onClick={handleSaveClick}
-          title="Planı Kaydet"
+          title={readOnly ? 'Bu işlem için yönetici girişi gerekir' : 'Planı Kaydet'}
+          disabled={readOnly}
         >
           <SaveIcon sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }} />
         </Fab>

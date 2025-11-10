@@ -1,5 +1,6 @@
 import db from '../database';
 import logger from './logger';
+import { getUserRole } from '../firebase/authState';
 
 /**
  * Geçici drag & drop kayıtlarını temizle
@@ -7,6 +8,17 @@ import logger from './logger';
  */
 export const cleanupTempPlans = async () => {
   try {
+    const role = await getUserRole();
+    if (role !== 'admin') {
+      console.log('ℹ️ Geçici plan temizliği yalnızca yönetici oturumlarında çalışır. Public oturum, işlem atlandı.');
+      return {
+        success: true,
+        deletedCount: 0,
+        keptCount: 0,
+        message: 'Public oturumda geçici plan temizliği yapılmadı'
+      };
+    }
+
     console.log('🧹 Geçici planlar temizleniyor...');
     
     // Tüm planları al

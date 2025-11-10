@@ -18,6 +18,7 @@ import {
   AlertTitle
 } from '@mui/material';
 import { useNotifications } from './NotificationSystem';
+import { useExam } from '../context/ExamContext';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
@@ -84,8 +85,21 @@ const areSettingsEqual = (prev, next) => {
   }
 };
 
-const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirmeSonucu = null }) => {
+const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirmeSonucu = null, readOnly: readOnlyProp = false }) => {
   const { showError } = useNotifications();
+  const { isWriteAllowed } = useExam();
+  const readOnly = readOnlyProp || !isWriteAllowed;
+  const showReadOnlyMessage = React.useCallback(() => {
+    showError('Bu işlemi gerçekleştirmek için yönetici olarak giriş yapmalısınız.');
+  }, [showError]);
+
+  const ensureWriteAllowed = React.useCallback(() => {
+    if (readOnly) {
+      showReadOnlyMessage();
+      return false;
+    }
+    return true;
+  }, [readOnly, showReadOnlyMessage]);
   const [formData, setFormData] = useState(() => normalizeSettings(ayarlar));
   const [errors, setErrors] = useState(() => computeErrors(normalizeSettings(ayarlar)));
   const [seciliSiniflar, setSeciliSiniflar] = useState(() => {
@@ -125,13 +139,16 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
   void kaydedildi; // Kullanılmayan state
 
   const applyFormUpdate = React.useCallback((nextData) => {
+    if (readOnly) {
+      return;
+    }
     setFormData(nextData);
     const validationErrors = computeErrors(nextData);
     setErrors(validationErrors);
     if (onAyarlarDegistir) {
       onAyarlarDegistir(nextData);
     }
-  }, [onAyarlarDegistir]);
+  }, [onAyarlarDegistir, readOnly]);
 
   // Yerleştirme planı kontrolü
   const yerlesimPlaniVarMi = () => {
@@ -158,6 +175,9 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
   });
 
   const handleDersEkle = () => {
+    if (!ensureWriteAllowed()) {
+      return;
+    }
     // Yerleştirme planı kontrolü
     if (yerlesimPlaniVarMi()) {
       showError('Mevcut bir yerleştirme planı bulunduğu için ders eklenemez. Önce mevcut planı temizleyin.');
@@ -186,6 +206,9 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
   };
 
   const handleDersSil = (dersId) => {
+    if (!ensureWriteAllowed()) {
+      return;
+    }
     // Yerleştirme planı kontrolü
     if (yerlesimPlaniVarMi()) {
       showError('Mevcut bir yerleştirme planı bulunduğu için ders silinemez. Önce mevcut planı temizleyin.');
@@ -206,13 +229,16 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
   };
 
   const handleDersAdiDegistir = (dersId, yeniAd) => {
+    if (!ensureWriteAllowed()) {
+      return;
+    }
     // Yerleştirme planı kontrolü
     if (yerlesimPlaniVarMi()) {
       showError('Mevcut bir yerleştirme planı bulunduğu için ders adı değiştirilemez. Önce mevcut planı temizleyin.');
       return;
     }
 
-    const safeAd = sanitizeText(yeniAd);
+    const safeAd = sanitizeText(yeniAd, { trim: false });
 
     const yeniFormData = {
       ...formData,
@@ -225,12 +251,14 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
   };
 
   const handleSinifEkle = (dersId, sinif) => {
+    if (!ensureWriteAllowed()) {
+      return;
+    }
     // Yerleştirme planı kontrolü
     if (yerlesimPlaniVarMi()) {
       showError('Mevcut bir yerleştirme planı bulunduğu için sınıf eklenemez. Önce mevcut planı temizleyin.');
       return;
     }
-    void handleSinifEkle; // Kullanılmayan fonksiyon
 
     const yeniFormData = {
       ...formData,
@@ -245,6 +273,9 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
   };
 
   const handleSinifSecimi = (dersId, siniflar) => {
+    if (!ensureWriteAllowed()) {
+      return;
+    }
     const sanitized = sanitizeStringArray(siniflar);
     setSeciliSiniflar(prev => ({
       ...prev,
@@ -253,6 +284,9 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
   };
 
   const handleSinifEkleButon = (dersId) => {
+    if (!ensureWriteAllowed()) {
+      return;
+    }
     const secilenSiniflar = seciliSiniflar[dersId] || [];
     if (secilenSiniflar.length === 0) {
       showError('Lütfen önce en az bir sınıf seçin!');
@@ -285,6 +319,9 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
   };
 
   const handleSinifSil = (dersId, sinif) => {
+    if (!ensureWriteAllowed()) {
+      return;
+    }
     // Yerleştirme planı kontrolü
     if (yerlesimPlaniVarMi()) {
       showError('Mevcut bir yerleştirme planı bulunduğu için sınıf silinemez. Önce mevcut planı temizleyin.');
@@ -311,6 +348,9 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!ensureWriteAllowed()) {
+      return;
+    }
     if (Object.keys(errors).length > 0) {
       showError('Lütfen formdaki hataları düzeltin.');
       return;
@@ -325,6 +365,11 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
   return (
     <Card sx={{ maxWidth: 800, mx: 'auto', mt: 2 }}>
       <CardContent>
+        {readOnly && (
+          <Alert severity="info" sx={{ mb: 3 }}>
+            Bu bölüm görüntüleme modunda. Değişiklik yapabilmek için yönetici olarak giriş yapın.
+          </Alert>
+        )}
         {/* Yerleştirme Planı Uyarısı */}
         {yerlesimPlaniVarMi() && (
           <Alert 
@@ -372,6 +417,7 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                         onClick={() => handleDersSil(dersIdForHandlers)}
                         color="error"
                         size="small"
+                        disabled={readOnly}
                       >
                         <DeleteIcon />
                       </IconButton>
@@ -388,6 +434,7 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                           placeholder="Örn: Matematik, Türkçe, Fizik"
                           error={Boolean(errors[`ders_${dersIdForHandlers}`])}
                           helperText={errors[`ders_${dersIdForHandlers}`] || ''}
+                          disabled={readOnly}
                         />
                       </Grid>
 
@@ -425,6 +472,7 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                                   minWidth: '180px'
                                 }
                               }}
+                              disabled={readOnly}
                             >
                               {mevcutSiniflar
                                 .filter(sinif => {
@@ -471,13 +519,13 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                             variant="outlined"
                             size="small"
                             onClick={() => handleSinifEkleButon(dersIdForHandlers)}
-                            disabled={mevcutSiniflar.filter(sinif => {
+                            disabled={readOnly || mevcutSiniflar.filter(sinif => {
                               // Bu derse zaten eklenmiş sınıfları filtrele
                               if (ders.siniflar.includes(sinif)) return false;
                               
                               // Diğer derslere eklenmiş sınıfları filtrele
                               const digerDerslerdeKullanilanSiniflar = formData.dersler
-                                .filter(d => d !== ders)
+                                .filter(d => (d.id ?? d.uuid ?? `${d.ad || 'ders'}-${index}`) !== dersIdForHandlers)
                                 .flatMap(d => d.siniflar);
                               
                               return !digerDerslerdeKullanilanSiniflar.includes(sinif);
@@ -504,10 +552,11 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                               <Chip
                                 key={`${dersKey}-${sinif}`}
                                 label={sinif}
-                                onDelete={() => handleSinifSil(dersIdForHandlers, sinif)}
+                                onDelete={!readOnly ? () => handleSinifSil(dersIdForHandlers, sinif) : undefined}
                                 color="primary"
                                 variant="outlined"
                                 size="small"
+                                sx={{ opacity: readOnly ? 0.7 : 1 }}
                               />
                             ))}
                           </Box>
@@ -523,7 +572,7 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                 variant="outlined"
                 startIcon={<AddIcon />}
                 onClick={handleDersEkle}
-                disabled={formData.dersler.length >= 4 || yerlesimPlaniVarMi()}
+                disabled={readOnly || formData.dersler.length >= 4 || yerlesimPlaniVarMi()}
                 sx={{ mt: 1 }}
               >
                 Ders Ekle {formData.dersler.length >= 4 && '(Maksimum 4 ders)'}

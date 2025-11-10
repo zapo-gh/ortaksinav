@@ -487,7 +487,21 @@ const SalonOgrenciListesiPrintable = forwardRef(({ ogrenciler, yerlestirmeSonucu
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {sinifOgrencileri.map((ogrenci, index) => (
+                  {[...sinifOgrencileri]
+                    .sort((a, b) => {
+                      const numA = parseInt((a?.numara ?? a?.number ?? '').toString().replace(/[^0-9]/g, ''), 10);
+                      const numB = parseInt((b?.numara ?? b?.number ?? '').toString().replace(/[^0-9]/g, ''), 10);
+                      if (!isNaN(numA) && !isNaN(numB)) {
+                        return numA - numB;
+                      }
+                      if (isNaN(numA) && isNaN(numB)) {
+                        return (a?.numara ?? a?.number ?? '').toString().localeCompare((b?.numara ?? b?.number ?? '').toString(), 'tr', { sensitivity: 'base' });
+                      }
+                      if (isNaN(numA)) return 1;
+                      if (isNaN(numB)) return -1;
+                      return 0;
+                    })
+                    .map((ogrenci, index) => (
                     <TableRow key={ogrenci.id}>
                       <TableCell>{index + 1}</TableCell>
                       <TableCell>{ogrenci.numara}</TableCell>

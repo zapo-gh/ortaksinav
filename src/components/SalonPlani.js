@@ -48,6 +48,38 @@ const ITEM_TYPES = {
   STUDENT: 'student'
 };
 
+const getSalonYerlesenSayisi = (salon) => {
+  if (!salon) return 0;
+  const uniqueIds = new Set();
+
+  const addStudent = (ogrenci) => {
+    if (ogrenci && ogrenci.id != null) {
+      uniqueIds.add(String(ogrenci.id));
+    }
+  };
+
+  const addFromSeatArray = (koleksiyon) => {
+    if (!Array.isArray(koleksiyon)) return;
+    koleksiyon.forEach(koltuk => {
+      if (!koltuk) return;
+      if (koltuk.ogrenci) {
+        addStudent(koltuk.ogrenci);
+      }
+    });
+  };
+
+  addFromSeatArray(salon.masalar);
+  addFromSeatArray(salon.plan);
+  addFromSeatArray(salon?.koltukMatrisi?.masalar);
+  addFromSeatArray(salon?.salon?.masalar);
+
+  if (Array.isArray(salon.ogrenciler)) {
+    salon.ogrenciler.forEach(addStudent);
+  }
+
+  return uniqueIds.size;
+};
+
 
 
 // Droppable Seat Component - Optimized
@@ -790,14 +822,26 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
   // KULLANICI DEĞİŞTİRMEDİĞİ SÜRECE SIRALAMA DEĞİŞMESİN
   const sortedTumSalonlar = useMemo(() => {
     if (!tumSalonlar || tumSalonlar.length === 0) return [];
-    // Orijinal sırayı koru - sıralama yapma
-    return [...tumSalonlar];
+    const unique = new Map();
+    tumSalonlar.forEach((salon) => {
+      const key = salon?.salonId ?? salon?.id ?? JSON.stringify(salon);
+      if (!unique.has(key)) {
+        unique.set(key, salon);
+      }
+    });
+    return Array.from(unique.values());
   }, [tumSalonlar]);
 
   const sortedSalonlar = useMemo(() => {
     if (!salonlar || salonlar.length === 0) return [];
-    // Orijinal sırayı koru - sıralama yapma
-    return [...salonlar];
+    const unique = new Map();
+    salonlar.forEach((salon) => {
+      const key = salon?.id ?? salon?.salonId ?? JSON.stringify(salon);
+      if (!unique.has(key)) {
+        unique.set(key, salon);
+      }
+    });
+    return Array.from(unique.values());
   }, [salonlar]);
 
 
@@ -945,22 +989,52 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
             {/* Öğrenci Sayıları */}
             <SalonStatsChips {...useMemo(() => {
               if (yerlestirmeSonucu && Array.isArray(yerlestirmeSonucu.tumSalonlar)) {
-                const countFilled = (s) => {
-                  if (s && s.gruplar) {
-                    let c = 0;
-                    Object.values(s.gruplar).forEach(grup => {
-                      grup.forEach(m => { if (m && m.ogrenci) c++; });
+                const countFilled = (salonKaydi) => {
+                  if (!salonKaydi) return 0;
+                  const uniqueStudentIds = new Set();
+
+                  const normalizeId = (value) => {
+                    if (value === null || value === undefined) return null;
+                    const str = String(value).trim();
+                    return str.length > 0 ? str : null;
+                  };
+
+                  const addStudent = (ogrenci) => {
+                    if (!ogrenci) return;
+                    const normalizedId = normalizeId(ogrenci.id);
+                    if (normalizedId) {
+                      uniqueStudentIds.add(normalizedId);
+                    }
+                  };
+
+                  const addFromSeatArray = (seatArray) => {
+                    if (!Array.isArray(seatArray)) return;
+                    seatArray.forEach(seat => {
+                      if (!seat) return;
+                      if (seat.ogrenci) {
+                        addStudent(seat.ogrenci);
+                      }
                     });
-                    return c;
+                  };
+
+                  // gruplar hem obje hem dizi olabiliyor
+                  if (salonKaydi.gruplar) {
+                    const grupValues = Array.isArray(salonKaydi.gruplar)
+                      ? salonKaydi.gruplar
+                      : Object.values(salonKaydi.gruplar);
+                    grupValues.forEach(grup => addFromSeatArray(grup));
                   }
-                  if (Array.isArray(s?.masalar)) {
-                    return s.masalar.filter(m => m && m.ogrenci).length;
+
+                  addFromSeatArray(salonKaydi.masalar);
+                  addFromSeatArray(salonKaydi.plan);
+                  addFromSeatArray(salonKaydi?.koltukMatrisi?.masalar);
+                  addFromSeatArray(salonKaydi?.salon?.masalar);
+
+                  if (Array.isArray(salonKaydi.ogrenciler)) {
+                    salonKaydi.ogrenciler.forEach(addStudent);
                   }
-                  if (Array.isArray(s?.ogrenciler)) {
-                    const ids = new Set(s.ogrenciler.filter(o => o && o.id != null).map(o => o.id));
-                    return ids.size;
-                  }
-                  return 0;
+
+                  return uniqueStudentIds.size;
                 };
                 const toplamYerlesen = yerlestirmeSonucu.tumSalonlar.reduce((toplam, s) => toplam + countFilled(s), 0);
                 const toplamYerlesilemeyen = Array.isArray(yerlestirmeSonucu.yerlesilemeyenOgrenciler)
@@ -1022,28 +1096,32 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                   }}
                 />
               ) : null}
-            <Tooltip title="Dağıtımı Sil">
-              <IconButton 
-                color="error" 
+            <Tooltip title="Yerleşimi Temizle">
+              <Button
+                variant="outlined"
+                color="error"
+                startIcon={<DeleteIcon />}
                 onClick={async () => {
-                  const confirmed = await showConfirm('Tüm yerleştirme sonuçlarını silmek istediğinizden emin misiniz?');
+                  const confirmed = await showConfirm('Tüm yerleştirme sonuçlarını temizlemek istediğinizden emin misiniz?');
                   if (confirmed) {
-                    // Yerleştirme sonuçlarını temizle
                     if (typeof onOgrenciSec === 'function') {
-                      onOgrenciSec('clear'); // Context'e temizleme sinyali gönder
+                      onOgrenciSec('clear');
                     }
                   }
                 }}
-                sx={{ 
+                sx={{
                   bgcolor: 'error.50',
+                  borderColor: 'error.200',
+                  color: 'error.main',
+                  fontSize: { xs: '0.7rem', sm: '0.75rem' },
                   '&:hover': {
-                    bgcolor: 'error.100'
-                  },
-                  size: { xs: 'small', sm: 'medium' }
+                    bgcolor: 'error.100',
+                    borderColor: 'error.300'
+                  }
                 }}
               >
-                <DeleteIcon />
-              </IconButton>
+                Yerleşimi Temizle
+              </Button>
             </Tooltip>
             </Box>
           </Box>
@@ -1137,25 +1215,9 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                       {salon.salonAdi}
                     </Typography>
                     <Chip 
-                      label={(() => {
-                        // En sağlıklı yöntem: masalar üzerinde dolu koltukları say
-                        if (Array.isArray(salon.masalar)) {
-                          // DOLU KOLTUK: ogrenci nesnesi var ise dolu kabul et (id eksik olabilir)
-                          return salon.masalar.filter(m => m && m.ogrenci).length;
-                        }
-                        // Yedek: ogrenciler listesinden benzersiz id sayısı
-                        if (Array.isArray(salon.ogrenciler)) {
-                          const uniqueIds = new Set(
-                            salon.ogrenciler
-                              .filter(o => o && o.id != null)
-                              .map(o => o.id)
-                          );
-                          return uniqueIds.size;
-                        }
-                        return 0;
-                      })()} 
+                      label={getSalonYerlesenSayisi(salon)} 
                       size="small" 
-                      title="Bu salonun toplam öğrenci sayısı (tüm sınıflardan)"
+                      title="Bu salonda yerleşen öğrenci sayısı"
                       sx={{ 
                         ml: 0,
                         mt: 0,
@@ -1228,8 +1290,9 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                       {salon.ad || salon.salonAdi || `Salon ${salon.id}`}
                     </Typography>
                     <Chip 
-                      label={0} 
+                      label={getSalonYerlesenSayisi(salon)} 
                       size="small" 
+                      title="Bu salonda yerleşen öğrenci sayısı"
                       sx={{ 
                         ml: 0,
                         mt: 0,

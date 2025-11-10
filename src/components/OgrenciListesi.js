@@ -47,7 +47,8 @@ import { useExam } from '../context/ExamContext';
 import { useNotifications } from './NotificationSystem';
 
 const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
-const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
+const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle, isWriteAllowed } = useExam();
+  const readOnly = !isWriteAllowed;
   const { showSuccess, showError, showWarning } = useNotifications();
   const [yukleme, setYukleme] = useState(false);
   const [aramaTerimi, setAramaTerimi] = useState('');
@@ -1065,6 +1066,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
                   startIcon={<AddIcon />}
                   size="small"
                   onClick={() => setManualEklemeAcik(true)}
+                  disabled={readOnly}
                 >
                   Öğrenci Ekle
                 </Button>
@@ -1203,6 +1205,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
               startIcon={<DeleteIcon />}
               onClick={handleTumOgrencileriSil}
               sx={{ ml: 'auto' }}
+              disabled={readOnly}
             >
               Tümünü Sil
             </Button>
@@ -1275,6 +1278,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
                         color="error"
                         onClick={() => handleOgrenciSil(ogrenci.id)}
                         title="Öğrenciyi Sil"
+                        disabled={readOnly}
                       >
                         <DeleteIcon />
                       </IconButton>
@@ -1302,6 +1306,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
               size="small"
               onClick={() => setAramaTerimi('')}
               sx={{ mt: 2 }}
+              disabled={readOnly}
             >
               Aramayı Temizle
             </Button>
@@ -1413,6 +1418,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
             textTransform: 'none',
             fontWeight: 500
           }}
+          disabled={readOnly}
         >
           İptal
         </Button>
@@ -1428,6 +1434,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
             fontWeight: 500,
             boxShadow: '0 2px 8px rgba(211, 47, 47, 0.3)'
           }}
+          disabled={readOnly}
         >
           Evet, Sil
         </Button>
@@ -1483,6 +1490,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
             textTransform: 'none',
             fontWeight: 500
           }}
+          disabled={readOnly}
         >
           İptal
         </Button>
@@ -1498,6 +1506,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
             fontWeight: 500,
             boxShadow: '0 2px 8px rgba(211, 47, 47, 0.3)'
           }}
+          disabled={readOnly}
         >
           Evet, Tümünü Sil
         </Button>
@@ -1633,6 +1642,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
             fontWeight: 500,
             minWidth: 100
           }}
+          disabled={readOnly}
         >
           İptal
         </Button>
@@ -1649,6 +1659,7 @@ const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle } = useExam();
             boxShadow: '0 2px 8px rgba(25, 118, 210, 0.3)',
             minWidth: 140
           }}
+          disabled={readOnly}
         >
           Öğrenci Ekle
         </Button>
