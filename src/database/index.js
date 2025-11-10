@@ -412,7 +412,7 @@ class DatabaseAdapter {
       if (this._isPermissionError(error)) {
         const indexedDB = await this.getIndexedDB();
         await indexedDB.saveStudents(students);
-        logger.warn('⚠️ Öğrenciler sadece IndexedDB\'ye kaydedildi (Firestore izin hatası)');
+        logger.info('ℹ️ Öğrenciler sadece IndexedDB\'ye kaydedildi (Firestore izin hatası)');
         return 'local-only';
       }
       
@@ -492,7 +492,7 @@ class DatabaseAdapter {
       if (this._isPermissionError(error)) {
         const indexedDB = await this.getIndexedDB();
         await indexedDB.saveSettings(settings);
-        logger.warn('⚠️ Ayarlar sadece IndexedDB\'ye kaydedildi (Firestore izin hatası)');
+        logger.info('ℹ️ Ayarlar sadece IndexedDB\'ye kaydedildi (Firestore izin hatası)');
         return 'local-only';
       }
       
@@ -559,7 +559,7 @@ class DatabaseAdapter {
       if (this._isPermissionError(error)) {
         const indexedDB = await this.getIndexedDB();
         await indexedDB.saveSalons(salons);
-        logger.warn('⚠️ Salonlar sadece IndexedDB\'ye kaydedildi (Firestore izin hatası)');
+        logger.info('ℹ️ Salonlar sadece IndexedDB\'ye kaydedildi (Firestore izin hatası)');
         return 'local-only';
       }
       

@@ -1,6 +1,8 @@
 import db from '../database';
 import logger from './logger';
-import { getUserRole } from '../firebase/authState';
+import { getUserRole, getCurrentUserId, waitForAuth } from '../firebase/authState';
+import firestoreClient from '../database/firestoreClient';
+import { collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 
 /**
  * Geçici drag & drop kayıtlarını temizle
@@ -184,6 +186,116 @@ export const updateTempPlan = async (planData) => {
   } catch (error) {
     logger.error('❌ Geçici plan güncellenirken hata:', error);
     throw error;
+  }
+};
+
+/**
+ * Firestore'da aynı salonun birden fazla kaydını temizle
+ * Yalnızca admin oturumunda çalışır
+ */
+export const cleanupDuplicateSalons = async () => {
+  try {
+    const role = await getUserRole();
+    if (role !== 'admin') {
+      console.log('ℹ️ Salon duplikasyon temizliği yalnızca yönetici oturumlarında çalışır. Public oturum, işlem atlandı.');
+      return {
+        success: true,
+        deletedCount: 0,
+        keptCount: 0,
+        message: 'Public oturumda salon temizliği yapılmadı'
+      };
+    }
+
+    await waitForAuth();
+    const ownerId = getCurrentUserId();
+    if (!ownerId) {
+      console.log('ℹ️ Salon temizliği için geçerli bir kullanıcı bulunamadı.');
+      return {
+        success: true,
+        deletedCount: 0,
+        keptCount: 0,
+        message: 'Aktif kullanıcı bulunamadı'
+      };
+    }
+
+    console.log('🧹 Firestore salon duplikasyon temizliği başlatılıyor...');
+    const salonsRef = collection(firestoreClient.db, 'salons');
+    const salonsQuery = query(salonsRef, where('ownerId', '==', ownerId));
+    const snapshot = await getDocs(salonsQuery);
+
+    if (snapshot.empty) {
+      console.log('ℹ️ Firestore\'da temizlenecek salon bulunamadı.');
+      return {
+        success: true,
+        deletedCount: 0,
+        keptCount: 0,
+        message: 'Temizlenecek salon bulunamadı'
+      };
+    }
+
+    const seen = new Map();
+    const duplicates = [];
+    const scoreSalon = (salon) => {
+      if (!salon) return 0;
+      const masalar = Array.isArray(salon.masalar) ? salon.masalar.length : 0;
+      const ogrenciler = Array.isArray(salon.ogrenciler) ? salon.ogrenciler.length : 0;
+      const kapasite = Number.isFinite(salon.kapasite) ? salon.kapasite : 0;
+      return (masalar * 10) + ogrenciler + kapasite;
+    };
+
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      const key = data.id || data.salonId || data.salonAdi || docSnap.id;
+      const entry = {
+        ref: docSnap.ref,
+        id: docSnap.id,
+        key,
+        score: scoreSalon(data),
+        updatedAt: data.updatedAt
+      };
+
+      const existing = seen.get(key);
+      if (!existing) {
+        seen.set(key, entry);
+      } else {
+        // Daha yüksek skorlu kayıt kalsın
+        if (entry.score > existing.score) {
+          duplicates.push(existing);
+          seen.set(key, entry);
+        } else {
+          duplicates.push(entry);
+        }
+      }
+    });
+
+    if (duplicates.length === 0) {
+      console.log('ℹ️ Firestore salon kayıtlarında duplikasyon bulunmadı.');
+      return {
+        success: true,
+        deletedCount: 0,
+        keptCount: seen.size,
+        message: 'Duplikasyon bulunmadı'
+      };
+    }
+
+    const batch = writeBatch(firestoreClient.db);
+    duplicates.forEach(item => batch.delete(item.ref));
+    await batch.commit();
+
+    console.log(`✅ Firestore salon duplikasyon temizliği tamamlandı. Silinen: ${duplicates.length}, Kalan: ${seen.size}`);
+    return {
+      success: true,
+      deletedCount: duplicates.length,
+      keptCount: seen.size,
+      message: `${duplicates.length} salon kaydı silindi, ${seen.size} kayıt korundu`
+    };
+  } catch (error) {
+    console.error('❌ Salon duplikasyon temizliği sırasında hata:', error);
+    logger.error('❌ Salon duplikasyon temizliği sırasında hata:', error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
 };
 

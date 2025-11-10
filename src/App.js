@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanupTempPlans } from './utils/cleanupTempPlans';
+import { cleanupTempPlans, cleanupDuplicateSalons } from './utils/cleanupTempPlans';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { ExamProvider } from './context/ExamContext';
@@ -60,6 +60,7 @@ function App() {
   React.useEffect(() => {
     // Production hygiene: purge empty temporary plans once
     cleanupTempPlans().catch(() => {});
+    cleanupDuplicateSalons().catch(() => {});
   }, []);
   return (
     <ErrorBoundary>

@@ -1,12 +1,12 @@
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  setDoc, 
-  getDoc, 
-  getDocs, 
+import {
+  collection,
+  doc,
+  addDoc,
+  setDoc,
+  getDoc,
+  getDocs,
   getDocsFromServer,
-  deleteDoc, 
+  deleteDoc,
   updateDoc,
   writeBatch,
   query,
@@ -21,7 +21,14 @@ import logger from '../utils/logger';
 import { sanitizeForFirestore, sanitizeFromFirestore, checkDataSize, chunkArray } from '../utils/firestoreUtils';
 import { DISABLE_FIREBASE } from '../config/firebaseConfig';
 import { waitForAuth, getCurrentUserId, getUserRole } from '../firebase/authState';
-import { sanitizeStudentRecord, sanitizeSettingsMap, sanitizeSalonRecord, sanitizePlanMeta, sanitizeText, sanitizeStringArray } from '../utils/sanitizer';
+import {
+  sanitizeStudentRecord,
+  sanitizeSettingsMap,
+  sanitizeSalonRecord,
+  sanitizePlanMeta,
+  sanitizeText,
+  sanitizeStringArray
+} from '../utils/sanitizer';
 
 /**
  * Firestore Database Client - Parçalı Model
@@ -1281,58 +1288,86 @@ class FirestoreClient {
       logger.debug('💾 Firestore: Salonlar kaydediliyor...');
       
       const chunkSize = 500;
+
+      const sanitize = (salon) => {
+        const sanitizedSalon = sanitizeSalonRecord(salon);
+        let resolvedId = sanitizedSalon.id ?? sanitizedSalon.salonId ?? sanitizedSalon.salonAdi ?? sanitizedSalon.ad;
+        if (!resolvedId) return null;
+        resolvedId = String(resolvedId).trim();
+        if (!resolvedId) return null;
+        sanitizedSalon.id = resolvedId;
+        sanitizedSalon.salonId = resolvedId;
+        sanitizedSalon.ownerId = ownerId;
+        return sanitizedSalon;
+      };
+
+      const normalizedSalons = (Array.isArray(salons) ? salons : [])
+        .map(sanitize)
+        .filter(Boolean);
+
       const existingSnap = await getDocs(query(collection(this.db, 'salons'), where('ownerId', '==', ownerId)));
-      const existingIds = new Set();
-      existingSnap.forEach(docSnap => existingIds.add(docSnap.id));
-      
-      const incomingIds = new Set();
-      const batches = [];
-      
-      for (let i = 0; i < salons.length; i += chunkSize) {
-        const chunk = salons.slice(i, i + chunkSize);
-        const batch = writeBatch(this.db);
-        
-        chunk.forEach(salon => {
-          const sanitizedSalon = sanitizeSalonRecord(salon);
-          const salonId = sanitizedSalon.id != null ? sanitizedSalon.id : sanitizedSalon.salonId;
-          if (!salonId) {
-            logger.warn('⚠️ Firestore: ID\'si olmayan salon atlandı:', sanitizedSalon);
-            return;
-          }
-          const idString = String(salonId);
-          incomingIds.add(idString);
-          const salonRef = doc(this.db, 'salons', idString);
-          batch.set(salonRef, {
-            ...sanitizedSalon,
-            ownerId,
-            updatedAt: serverTimestamp()
-          }, { merge: true });
-        });
-        
-        batches.push(batch.commit());
-      }
-      
-      // Silinmesi gereken eski salonlar
-      const idsToDelete = [];
-      existingIds.forEach(id => {
-        if (!incomingIds.has(id)) {
-          idsToDelete.push(id);
+      const existingDocs = new Map();
+      existingSnap.forEach((docSnap) => {
+        const data = docSnap.data();
+        const key =
+          data.id ??
+          data.salonId ??
+          data.salonAdi ??
+          data.ad ??
+          docSnap.id;
+        if (key) {
+          const normalizedKey = String(key).trim();
+          existingDocs.set(normalizedKey, { ref: docSnap.ref, data, docId: docSnap.id });
         }
       });
-      
-      // Silmeleri batch ile yap
-      for (let i = 0; i < idsToDelete.length; i += chunkSize) {
-        const chunk = idsToDelete.slice(i, i + chunkSize);
+
+      const existingIds = new Set(existingDocs.keys());
+      const incomingIds = new Set();
+
+      const batches = [];
+      for (let i = 0; i < normalizedSalons.length; i += chunkSize) {
+        const chunk = normalizedSalons.slice(i, i + chunkSize);
         const batch = writeBatch(this.db);
-        chunk.forEach(id => {
-          const salonRef = doc(this.db, 'salons', id);
-          batch.delete(salonRef);
+
+        chunk.forEach((sanitizedSalon) => {
+          const salonId = sanitizedSalon.id;
+          incomingIds.add(salonId);
+          const salonRef = doc(this.db, 'salons', salonId);
+          batch.set(
+            salonRef,
+            {
+              ...sanitizedSalon,
+              ownerId,
+              updatedAt: serverTimestamp()
+            },
+            { merge: true }
+          );
         });
+
         batches.push(batch.commit());
       }
-      
+
+      existingIds.forEach((existingId) => {
+        if (!incomingIds.has(existingId)) {
+          const existing = existingDocs.get(existingId);
+          if (existing) {
+            batches.push(
+              (() => {
+                const batch = writeBatch(this.db);
+                batch.delete(existing.ref);
+                return batch.commit();
+              })()
+            );
+          }
+        }
+      });
+
       await Promise.all(batches);
-      logger.debug(`✅ Firestore: Salonlar senkronize edildi. Yazılan: ${incomingIds.size}, silinen: ${idsToDelete.length}`);
+      logger.debug(
+        `✅ Firestore: Salonlar senkronize edildi. Yazılan: ${incomingIds.size}, silinen: ${
+          [...existingIds].filter((id) => !incomingIds.has(id)).length
+        }`
+      );
     } catch (error) {
       logger.error('❌ Firestore: Salon kaydetme hatası:', error);
       throw error;
