@@ -197,6 +197,6 @@ describe('OgrenciListesi Component', () => {
   it('should show upload instructions', () => {
     renderWithProvider(<OgrenciListesi ogrenciler={mockOgrenciler} />);
 
-    expect(screen.getByText('e-Okul\'dan indirdiğiniz Excel dosyasını yükleyebilirsiniz.')).toBeInTheDocument();
+    expect(screen.getByText('e-Okul\'dan indirdiğiniz Excel dosyasını yükleyebilir veya manuel olarak öğrenci ekleyebilirsiniz.')).toBeInTheDocument();
   });
 });

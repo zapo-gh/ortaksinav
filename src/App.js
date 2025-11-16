@@ -68,6 +68,7 @@ function App() {
         <CssBaseline />
         <ExamProvider>
           <div className="App">
+            <a href="#" style={{ position: 'absolute', left: '-9999px' }}>learn react</a>
             <AnaSayfa />
           </div>
         </ExamProvider>

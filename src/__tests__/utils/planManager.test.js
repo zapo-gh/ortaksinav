@@ -90,7 +90,7 @@ describe('PlanManager', () => {
         }
       };
 
-      const planName = 'Test Plan';
+      const planName = 'Plan1';
       const result = await planManager.savePlan(planName, planData);
 
       expect(result).toBeDefined();

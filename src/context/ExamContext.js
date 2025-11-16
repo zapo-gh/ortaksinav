@@ -14,6 +14,48 @@ const loadFromStorage = (key, defaultValue) => {
   }
 };
 
+const normalizeSalonList = (list) => {
+  if (!Array.isArray(list)) return [];
+  const unique = new Map();
+  const getScore = (salon) => {
+    if (!salon) return 0;
+    const masalar = Array.isArray(salon.masalar) ? salon.masalar.length : 0;
+    const ogrenciler = Array.isArray(salon.ogrenciler) ? salon.ogrenciler.length : 0;
+    const kapasite = Number.isFinite(salon.kapasite) ? salon.kapasite : 0;
+    return (masalar * 10) + ogrenciler + kapasite;
+  };
+  list.forEach((salon) => {
+    if (!salon) return;
+    const key = salon.id || salon.salonId || salon.salonAdi || salon.ad;
+    const existing = unique.get(key);
+    if (!existing || getScore(salon) > getScore(existing)) {
+      unique.set(key, salon);
+    }
+  });
+  return Array.from(unique.values());
+};
+
+const createEmptySettings = () => ({
+  sinavAdi: '',
+  sinavTarihi: '',
+  sinavSaati: '',
+  dersler: []
+});
+
+const hasMeaningfulSettings = (settings) => {
+  if (!settings) return false;
+  const sinavAdi = typeof settings.sinavAdi === 'string' ? settings.sinavAdi.trim() : '';
+  const sinavTarihi = typeof settings.sinavTarihi === 'string' ? settings.sinavTarihi.trim() : '';
+  const sinavSaati = typeof settings.sinavSaati === 'string' ? settings.sinavSaati.trim() : '';
+  const dersler = Array.isArray(settings.dersler) ? settings.dersler : [];
+  const hasNamedCourse = dersler.some((ders) => {
+    if (!ders) return false;
+    const name = ders.ad ?? ders.adi ?? ders.name ?? ders.label ?? '';
+    return typeof name === 'string' && name.trim().length > 0;
+  });
+  return hasNamedCourse || sinavAdi.length > 0 || sinavTarihi.length > 0 || sinavSaati.length > 0;
+};
+
 // Gerçek kaydetme fonksiyonu (optimizer tarafından çağrılır)
 const _saveToStorage = async (key, value) => {
   try {
@@ -37,7 +79,8 @@ const _saveToStorage = async (key, value) => {
       // Kullanıcı "Kaydet" butonuna bastığında plan kaydedilmeli (handleSavePlan)
       // Otomatik kaydetme gereksiz plan oluşturuyor ve kota sorunlarına yol açıyor
       if (!value) {
-        logger.debug('ℹ️ Yerleştirme sonucu boş, kaydetme atlandı');
+        try { localStorage.removeItem('exam_yerlestirme'); } catch (e) { logger.debug('localStorage remove failed (exam_yerlestirme):', e); }
+        logger.debug('ℹ️ Yerleştirme sonucu boş, localStorage temizlendi');
         return; // Erken çıkış
       }
       
@@ -99,7 +142,7 @@ const loadFromFirestore = async () => {
       getDatabaseType: db?.getDatabaseType ? db.getDatabaseType() : 'unknown'
     });
     
-    const [firestoreOgrenciler, firestoreAyarlar, firestoreSalonlar] = await Promise.all([
+    const [firestoreOgrenciler, firestoreAyarlar, firestoreSalonlarRaw] = await Promise.all([
       db.getAllStudents().catch((error) => {
         console.error('❌ getAllStudents hatası:', error);
         return [];
@@ -113,31 +156,57 @@ const loadFromFirestore = async () => {
         return [];
       })
     ]);
+
+    const localStorageOgrenciler = loadFromStorage('exam_ogrenciler', []);
+    const localStorageSalonlarRaw = loadFromStorage('exam_salonlar', []);
+    const localStorageAyarlar = loadFromStorage('exam_ayarlar', createEmptySettings());
+    const normalizedFirestoreSalonlar = normalizeSalonList(firestoreSalonlarRaw);
+    const normalizedLocalSalonlar = normalizeSalonList(localStorageSalonlarRaw);
+    const firestoreSettingsHasData = hasMeaningfulSettings(firestoreAyarlar);
+    const localSettingsHasData = hasMeaningfulSettings(localStorageAyarlar);
+
+    const cachedPlacementRaw = loadFromStorage('exam_yerlestirme', null);
+    const cachedPlacement = cachedPlacementRaw
+      ? {
+          ...cachedPlacementRaw,
+          tumSalonlar: normalizeSalonList(cachedPlacementRaw.tumSalonlar || [])
+        }
+      : null;
     
     console.log('📥 Firestore\'dan yüklenen veriler:', {
       ogrenciler: firestoreOgrenciler?.length || 0,
-      ayarlar: firestoreAyarlar ? Object.keys(firestoreAyarlar).length : 0,
-      salonlar: firestoreSalonlar?.length || 0,
-      latestPlan: 'Yok'
+      ayarlar: firestoreSettingsHasData ? Object.keys(firestoreAyarlar || {}).length : 0,
+      salonlar: normalizedFirestoreSalonlar.length || 0,
+      latestPlan: cachedPlacement ? 'LocalStorage' : 'Yok'
     });
-    console.log('🔍 Firestore\'dan yüklenen salonlar:', firestoreSalonlar?.map(s => s.ad || s.salonAdi || 'İsimsiz') || []);
-    console.log('🔍 Firestore\'dan yüklenen en son plan: Yok');
+    console.log('🔍 Firestore\'dan yüklenen salonlar:', normalizedFirestoreSalonlar?.map(s => s.ad || s.salonAdi || 'İsimsiz') || []);
+    console.log('🔍 Firestore\'dan yüklenen en son plan:', cachedPlacement ? 'LocalStorage üzerinden geri yüklenecek' : 'Yok');
     
-    // Otomatik plan yükleme kaldırıldı; sayfa yenilendiğinde yerleştirme boş kalır
-    const yerlestirmeSonucu = null;
+    // Sayfa yenilense bile son yerleştirme sonucu localStorage'dan geri yüklenir
+    const yerlestirmeSonucu = cachedPlacement;
     
     // Firestore'dan TÜM mevcut verileri kullan (birincil veritabanı)
     // Öğrenci, salon, ayar verilerinden hangisi varsa onları kullan
     const hasAnyFirestoreData = 
       (firestoreOgrenciler && firestoreOgrenciler.length > 0) ||
-      (firestoreSalonlar && firestoreSalonlar.length > 0) ||
-      (firestoreAyarlar && Object.keys(firestoreAyarlar).length > 0);
+      (normalizedFirestoreSalonlar && normalizedFirestoreSalonlar.length > 0) ||
+      firestoreSettingsHasData;
+    
+    const effectiveOgrenciler = localStorageOgrenciler.length > 0
+      ? localStorageOgrenciler
+      : (firestoreOgrenciler || []);
+    const effectiveSalonlar = normalizedLocalSalonlar.length > 0
+      ? normalizedLocalSalonlar
+      : normalizedFirestoreSalonlar;
+    const effectiveAyarlar = localSettingsHasData
+      ? localStorageAyarlar
+      : (firestoreSettingsHasData ? firestoreAyarlar : createEmptySettings());
     
     if (hasAnyFirestoreData) {
       console.log('✅ Firestore\'dan veriler yükleniyor:', {
         ogrenciler: firestoreOgrenciler?.length || 0,
-        salonlar: firestoreSalonlar?.length || 0,
-        ayarlar: firestoreAyarlar ? Object.keys(firestoreAyarlar).length : 0
+        salonlar: normalizedFirestoreSalonlar?.length || 0,
+        ayarlar: firestoreSettingsHasData ? Object.keys(firestoreAyarlar || {}).length : 0
       });
       
       // Firestore'dan yüklenen verileri IndexedDB ve localStorage'a da senkronize et (cache temizleme için)
@@ -159,19 +228,19 @@ const loadFromFirestore = async () => {
           }
         }
         
-        if (firestoreSalonlar && firestoreSalonlar.length > 0) {
+        if (normalizedFirestoreSalonlar && normalizedFirestoreSalonlar.length > 0) {
           const { default: indexedDB } = await import('../database/database');
-          await indexedDB.saveSalons(firestoreSalonlar).catch(err => {
+          await indexedDB.saveSalons(normalizedFirestoreSalonlar).catch(err => {
             console.debug('IndexedDB salon senkronizasyon hatası (önemsiz):', err);
           });
           try {
-            localStorage.setItem('exam_salonlar', JSON.stringify(firestoreSalonlar));
+            localStorage.setItem('exam_salonlar', JSON.stringify(normalizedFirestoreSalonlar));
           } catch (e) {
             console.debug('localStorage salon senkronizasyon hatası (önemsiz):', e);
           }
         }
         
-        if (firestoreAyarlar && Object.keys(firestoreAyarlar).length > 0) {
+        if (firestoreSettingsHasData) {
           const { default: indexedDB } = await import('../database/database');
           await indexedDB.saveSettings(firestoreAyarlar).catch(err => {
             console.debug('IndexedDB ayar senkronizasyon hatası (önemsiz):', err);
@@ -188,15 +257,10 @@ const loadFromFirestore = async () => {
       }
       
       return {
-        // Firestore'dan hangi veriler varsa onları kullan, yoksa boş array/object
-        ogrenciler: firestoreOgrenciler && firestoreOgrenciler.length > 0 ? firestoreOgrenciler : [],
-        salonlar: firestoreSalonlar && firestoreSalonlar.length > 0 ? firestoreSalonlar : [],
-        ayarlar: firestoreAyarlar && Object.keys(firestoreAyarlar).length > 0 ? firestoreAyarlar : {
-          sinavAdi: '',
-          sinavTarihi: '',
-          sinavSaati: '',
-          dersler: []
-        },
+        // Firestore ve yerel verileri karşılaştır, en güncel (yerel) görünümü koru
+        ogrenciler: effectiveOgrenciler,
+        salonlar: effectiveSalonlar,
+        ayarlar: effectiveAyarlar,
         yerlestirmeSonucu: yerlestirmeSonucu
       };
     }
@@ -230,15 +294,7 @@ const loadFromFirestore = async () => {
     
     // IndexedDB'de veri yoksa localStorage'dan yükle
     // console.log('⚠️ IndexedDB\'de öğrenci verisi yok, localStorage\'dan yükleniyor...');
-    const localStorageOgrenciler = loadFromStorage('exam_ogrenciler', []);
-    const localStorageAyarlar = loadFromStorage('exam_ayarlar', {
-      sinavAdi: '',
-      sinavTarihi: '',
-      sinavSaati: '',
-      dersler: []
-    });
-    const localStorageSalonlar = loadFromStorage('exam_salonlar', []);
-    console.log('🔍 localStorage\'dan yüklenen salonlar:', localStorageSalonlar?.map(s => s.ad || s.salonAdi || 'İsimsiz') || []);
+    console.log('🔍 localStorage\'dan yüklenen salonlar:', normalizedLocalSalonlar?.map(s => s.ad || s.salonAdi || 'İsimsiz') || []);
     
     // console.log('📋 localStorage verileri:', {
     //   ogrenciler: localStorageOgrenciler.length,
@@ -262,13 +318,11 @@ const loadFromFirestore = async () => {
     }
     
     // localStorage'dan yerleştirme sonucu yoksa IndexedDB'den kontrol et
-    const localStorageYerlestirme = loadFromStorage('exam_yerlestirme', null);
-    
     return {
       ogrenciler: localStorageOgrenciler,
       ayarlar: localStorageAyarlar,
-      salonlar: localStorageSalonlar,
-      yerlestirmeSonucu: localStorageYerlestirme || yerlestirmeSonucu
+      salonlar: normalizedLocalSalonlar,
+      yerlestirmeSonucu: yerlestirmeSonucu
     };
     
   } catch (error) {
@@ -377,12 +431,12 @@ const examReducer = (state, action) => {
         ogrenciler: action.payload,
         yukleme: false
       };
-      // SADECE VERİ VARSA IndexedDB'ye kaydet
-      if (action.payload && action.payload.length > 0) {
-        // Anında localStorage'a yaz (sayfa yenileme için senkron yedek)
+      if (Array.isArray(action.payload) && action.payload.length > 0) {
         try { localStorage.setItem('exam_ogrenciler', JSON.stringify(newState.ogrenciler)); } catch (e) { logger.debug('localStorage immediate write failed (exam_ogrenciler):', e); }
-        saveToStorage('exam_ogrenciler', newState.ogrenciler);
+      } else {
+        try { localStorage.removeItem('exam_ogrenciler'); } catch (e) { logger.debug('localStorage remove failed (exam_ogrenciler):', e); }
       }
+      saveToStorage('exam_ogrenciler', newState.ogrenciler);
       return newState;
       
     case ACTIONS.OGRENCILER_EKLE:
@@ -518,12 +572,12 @@ const examReducer = (state, action) => {
         ...state,
         salonlar: action.payload
       };
-      // SADECE VERİ VARSA IndexedDB'ye kaydet
-      if (action.payload && action.payload.length > 0) {
-        // Anında localStorage'a yaz
+      if (Array.isArray(action.payload) && action.payload.length > 0) {
         try { localStorage.setItem('exam_salonlar', JSON.stringify(newState.salonlar)); } catch (e) { logger.debug('localStorage immediate write failed (exam_salonlar):', e); }
-        saveToStorage('exam_salonlar', newState.salonlar);
+      } else {
+        try { localStorage.removeItem('exam_salonlar'); } catch (e) { logger.debug('localStorage remove failed (exam_salonlar):', e); }
       }
+      saveToStorage('exam_salonlar', newState.salonlar);
       return newState;
       
     case ACTIONS.SALON_EKLE:
@@ -550,10 +604,12 @@ const examReducer = (state, action) => {
         ayarlar: { ...state.ayarlar, ...action.payload }
       };
       
-      // SADECE VERİ VARSA IndexedDB'ye kaydet
       if (action.payload && Object.keys(action.payload).length > 0) {
-        saveToStorage('exam_ayarlar', newState.ayarlar);
+        try { localStorage.setItem('exam_ayarlar', JSON.stringify(newState.ayarlar)); } catch (e) { logger.debug('localStorage immediate write failed (exam_ayarlar):', e); }
+      } else {
+        try { localStorage.removeItem('exam_ayarlar'); } catch (e) { logger.debug('localStorage remove failed (exam_ayarlar):', e); }
       }
+      saveToStorage('exam_ayarlar', newState.ayarlar);
       return newState;
       
     case ACTIONS.YERLESTIRME_YAP:
@@ -646,6 +702,7 @@ const examReducer = (state, action) => {
         yerlestirmeSonucu: null,
         placementIndex: {}
       };
+      try { localStorage.removeItem('exam_yerlestirme'); } catch (e) { logger.debug('localStorage remove failed (exam_yerlestirme):', e); }
       saveToStorage('exam_yerlestirme', null, true);
       try { localStorage.removeItem('exam_placement_index'); } catch (e) { logger.debug('localStorage remove failed (exam_placement_index):', e); }
       return newState;
@@ -709,27 +766,6 @@ const mapAuthUser = (user) => {
     displayName: user.displayName || '',
     isAnonymous: !!user.isAnonymous
   };
-};
-
-const normalizeSalonList = (list) => {
-  if (!Array.isArray(list)) return [];
-  const unique = new Map();
-  const getScore = (salon) => {
-    if (!salon) return 0;
-    const masalar = Array.isArray(salon.masalar) ? salon.masalar.length : 0;
-    const ogrenciler = Array.isArray(salon.ogrenciler) ? salon.ogrenciler.length : 0;
-    const kapasite = Number.isFinite(salon.kapasite) ? salon.kapasite : 0;
-    return (masalar * 10) + ogrenciler + kapasite;
-  };
-  list.forEach((salon) => {
-    if (!salon) return;
-    const key = salon.id || salon.salonId || salon.salonAdi || salon.ad;
-    const existing = unique.get(key);
-    if (!existing || getScore(salon) > getScore(existing)) {
-      unique.set(key, salon);
-    }
-  });
-  return Array.from(unique.values());
 };
 
 // Context

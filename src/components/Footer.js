@@ -23,6 +23,7 @@ const Footer = () => {
   return (
     <Box
       component="footer"
+      className="app-footer"
       sx={{
         py: 1,
         px: 2,
@@ -47,7 +48,7 @@ const Footer = () => {
       />
       
       <Container maxWidth="lg">
-        <Stack spacing={3}>
+        <Stack spacing={3} className="footer-icerik">
           {/* Ana içerik */}
           <Box
             sx={{
@@ -75,7 +76,7 @@ const Footer = () => {
                     fontSize: '1.1rem'
                   }}
                 >
-                  Akhisar Farabi MTAL
+                  Akhisar Farabi Mesleki ve Teknik Anadolu Lisesi
                 </Typography>
                 <Typography 
                   variant="body2" 

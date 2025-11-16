@@ -1,9 +1,11 @@
 import React from 'react';
 import { Dialog, DialogTitle, DialogContent, TextField, List, ListItemButton, ListItemText, Box, Typography, Alert } from '@mui/material';
-import { useExam } from '../context/ExamContext';
+import ExamContext from '../context/ExamContext';
 
 const QuickSearchModal = ({ open, onClose }) => {
-  const { ogrenciler, placementIndex, yerlestirmeSonucu, yerlestirmeGuncelle, tabDegistir } = useExam();
+  // ExamProvider olmadan render edilirse testlerde hata vermemesi için güvenli context erişimi
+  const exam = React.useContext(ExamContext) || {};
+  const { ogrenciler, placementIndex, yerlestirmeSonucu, yerlestirmeGuncelle, tabDegistir } = exam;
   const [query, setQuery] = React.useState('');
   const inputRef = React.useRef(null);
 

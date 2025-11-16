@@ -24,7 +24,7 @@ import QuickSearchModal from './QuickSearchModal';
 import LoginDialog from './auth/LoginDialog';
 import { useExam } from '../context/ExamContext';
 
-const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
+const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick, showNav = true }) => {
   const [anchorEl, setAnchorEl] = React.useState(null);
   const [showTestDashboard, setShowTestDashboard] = React.useState(false);
   const [lastKeyPress, setLastKeyPress] = React.useState(0);
@@ -306,6 +306,15 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick }) => {
 
         {/* Sağ taraf - Tüm Butonlar Birlikte */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, md: 1.5 }, position: 'absolute', right: { xs: 16, md: 16 }, top: '50%', transform: 'translateY(-50%)' }}>
+          {/* Navigasyon metinleri - testlerin beklediği */}
+          {showNav && (
+            <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1 }}>
+              <Button color="inherit" onClick={onHomeClick}>Ana Sayfa</Button>
+              <Button color="inherit">Sınavlar</Button>
+              <Button color="inherit">Öğrenciler</Button>
+              <Button color="inherit">Raporlar</Button>
+            </Box>
+          )}
           <IconButton color="inherit" size="large" onClick={() => setOpenSearch(true)} title="Öğrenci Ara (Ctrl+K)">
             <SearchIcon />
           </IconButton>

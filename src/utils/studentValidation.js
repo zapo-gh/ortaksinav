@@ -14,12 +14,31 @@ export const validateStudent = (student, index = null) => {
   const logPrefix = index !== null ? `Öğrenci ${index + 1}:` : 'Öğrenci:';
 
   try {
+    if (student == null) {
+      errors.push('Öğrenci verisi boş olamaz');
+      return {
+        isValid: false,
+        errors,
+        warnings,
+        hasWarnings: warnings.length > 0,
+        errorCount: errors.length,
+        warningCount: warnings.length
+      };
+    }
+
+    // Alan adları farklı gelebilir: ad/adi, soyad/soyadi
+    const ad = student.ad ?? student.adi;
+    const soyad = student.soyad ?? student.soyadi;
+    const numara = student.numara ?? student.no ?? student.ogrNo;
+    const cinsiyet = student.cinsiyet ?? student.gender;
+    const sinif = student.sinif ?? student.sınıf ?? student.class;
+
     // Numara kontrolü
-    if (!student.numara || student.numara.toString().trim().length < 1) {
-      errors.push('Öğrenci numarası eksik veya çok kısa');
+    if (!numara || numara.toString().trim().length < 1) {
+      errors.push('Öğrenci numarası gerekli');
       logger.warn(`${logPrefix} Öğrenci numarası eksik`);
     } else {
-      const numaraStr = student.numara.toString().trim();
+      const numaraStr = numara.toString().trim();
 
       if (numaraStr.length > 10) {
         errors.push('Öğrenci numarası çok uzun (max 10 karakter)');
@@ -34,20 +53,20 @@ export const validateStudent = (student, index = null) => {
     }
 
     // İsim kontrolü
-    if (!student.adi || student.adi.toString().trim().length < 2) {
-      errors.push('Öğrenci adı eksik veya çok kısa');
-      logger.warn(`${logPrefix} Öğrenci adı eksik veya çok kısa`);
+    if (!ad || ad.toString().trim().length === 0) {
+      errors.push('Öğrenci adı gerekli');
+      logger.warn(`${logPrefix} Öğrenci adı gerekli`);
     } else {
-      const adiStr = student.adi.toString().trim();
+      const adiStr = ad.toString().trim();
 
-      if (adiStr.length > 30) {
-        errors.push('Öğrenci adı çok uzun (max 30 karakter)');
+      if (adiStr.length > 50) {
+        errors.push('Ad çok uzun');
         logger.warn(`${logPrefix} Öğrenci adı çok uzun: "${adiStr}"`);
-      } else if (!/[a-zA-ZçğıöşüÇĞIİÖŞÜ]/.test(adiStr)) {
-        errors.push('Öğrenci adında Türkçe karakter bulunmalı');
-        logger.warn(`${logPrefix} Öğrenci adında Türkçe karakter yok: "${adiStr}"`);
+      } else if (/\d/.test(adiStr)) {
+        errors.push('Geçersiz ad formatı');
+        logger.warn(`${logPrefix} Öğrenci adında rakam var: "${adiStr}"`);
       } else if (adiStr.length < 2) {
-        errors.push('Öğrenci adı çok kısa (min 2 karakter)');
+        errors.push('Öğrenci adı eksik veya çok kısa');
         logger.warn(`${logPrefix} Öğrenci adı çok kısa: "${adiStr}"`);
       }
 
@@ -59,8 +78,8 @@ export const validateStudent = (student, index = null) => {
     }
 
     // Soyad kontrolü (opsiyonel ama varsa kontrol et)
-    if (student.soyad && student.soyad.toString().trim().length > 0) {
-      const soyadStr = student.soyad.toString().trim();
+    if (soyad && soyad.toString().trim().length > 0) {
+      const soyadStr = soyad.toString().trim();
 
       if (soyadStr.length > 30) {
         warnings.push('Öğrenci soyadı uzun (30+ karakter)');
@@ -72,31 +91,35 @@ export const validateStudent = (student, index = null) => {
         warnings.push('Öğrenci soyadında özel karakterler var');
         logger.info(`${logPrefix} Öğrenci soyadında özel karakterler: "${soyadStr}"`);
       }
+    } else {
+      // Soyad yoksa uyarı
+      warnings.push('Soyad bilgisi eksik');
+      logger.info(`${logPrefix} Soyad bilgisi eksik`);
     }
 
     // Cinsiyet kontrolü
-    if (!student.cinsiyet) {
-      warnings.push('Cinsiyet bilgisi eksik, varsayılan olarak "E" atanacak');
+    if (!cinsiyet) {
+      errors.push('Geçersiz cinsiyet');
       logger.info(`${logPrefix} Cinsiyet bilgisi eksik`);
     } else {
-      const cinsiyetStr = student.cinsiyet.toString().trim().toUpperCase();
+      const cinsiyetStr = cinsiyet.toString().trim().toUpperCase();
 
       if (!['E', 'K'].includes(cinsiyetStr)) {
-        errors.push('Cinsiyet "E" (Erkek) veya "K" (Kız) olmalı');
+        errors.push('Geçersiz cinsiyet');
         logger.warn(`${logPrefix} Geçersiz cinsiyet: "${cinsiyetStr}"`);
       }
     }
 
     // Sınıf kontrolü
-    if (!student.sinif) {
+    if (!sinif) {
       errors.push('Sınıf bilgisi eksik');
       logger.warn(`${logPrefix} Sınıf bilgisi eksik`);
     } else {
-      const sinifStr = student.sinif.toString().trim();
+      const sinifStr = sinif.toString().trim();
 
       if (!/^\d+-[A-Z]$/.test(sinifStr)) {
-        warnings.push('Sınıf formatı standart dışı (örnek: 9-A)');
-        logger.info(`${logPrefix} Sınıf formatı standart dışı: "${sinifStr}"`);
+        errors.push('Geçersiz sınıf formatı');
+        logger.warn(`${logPrefix} Geçersiz sınıf formatı: "${sinifStr}"`);
       } else {
         const sinifNum = parseInt(sinifStr.split('-')[0]);
         if (sinifNum < 5 || sinifNum > 12) {
@@ -139,9 +162,10 @@ export const validateStudentList = (students) => {
       total: 0,
       valid: 0,
       invalid: 0,
-      warnings: 0,
+      warningsCount: 0,
       errors: [],
       warnings: [],
+      students: [],
       summary: {
         totalStudents: 0,
         validStudents: 0,
@@ -158,16 +182,28 @@ export const validateStudentList = (students) => {
     total: students.length,
     valid: 0,
     invalid: 0,
-    warnings: 0,
+    warningsCount: 0,
     errors: [],
-    warningsList: [],
+    warnings: [],
+    students: [],
     summary: {}
   };
 
   logger.info(`Öğrenci listesi validasyonu başlatılıyor: ${students.length} öğrenci`);
 
+  // Duplicate numara kontrolü için set
+  const seenNumbers = new Map(); // numaraStr -> firstIndex
+
   students.forEach((student, index) => {
     const validation = validateStudent(student, index);
+
+    results.students.push({
+      index,
+      student: { ...student },
+      errors: validation.errors,
+      warnings: validation.warnings,
+      isValid: validation.isValid
+    });
 
     if (validation.isValid) {
       results.valid++;
@@ -181,22 +217,56 @@ export const validateStudentList = (students) => {
     }
 
     if (validation.hasWarnings) {
-      results.warnings++;
+      results.warningsCount++;
       results.warnings.push({
         index,
         student: { ...student },
         warnings: validation.warnings
       });
     }
+
+    // Duplicate kontrolü (numara)
+    try {
+      const numVal = student?.numara ?? student?.no ?? student?.ogrNo;
+      const numStr = (numVal ?? '').toString().trim();
+      if (numStr) {
+        const currentId = student?.id;
+        if (seenNumbers.has(numStr) && seenNumbers.get(numStr)?.id !== currentId) {
+          // İlk görülen ve bu kayıt hata alsın
+          const { index: firstIndex } = seenNumbers.get(numStr);
+          const errMsg = 'Öğrenci numarası zaten kullanılıyor';
+          // Mevcut kayda ekle
+          const current = results.students[index];
+          if (current && !current.errors.includes(errMsg)) {
+            current.errors.push(errMsg);
+            current.isValid = false;
+          }
+          // İlk kayda da ekle (eğer henüz eklenmediyse)
+          const first = results.students[firstIndex];
+          if (first && !first.errors.includes(errMsg)) {
+            first.errors.push(errMsg);
+            first.isValid = false;
+          }
+        } else {
+          seenNumbers.set(numStr, { index, id: currentId });
+        }
+      }
+    } catch (e) {
+      logger.debug('Duplicate kontrolünde hata:', e);
+    }
   });
+
+  // Duplicate sonrası invalid sayısını güncelle
+  results.invalid = results.students.filter(s => s && s.isValid === false).length;
+  results.valid = results.total - results.invalid;
 
   // Özet oluştur
   results.summary = {
     totalStudents: results.total,
     validStudents: results.valid,
     invalidStudents: results.invalid,
-    studentsWithWarnings: results.warnings,
-    successRate: results.total > 0 ? ((results.valid / results.total) * 100).toFixed(1) : 0,
+    studentsWithWarnings: results.warningsCount,
+    successRate: results.total > 0 ? Number(((results.valid / results.total) * 100).toFixed(2)) : 100,
     hasErrors: results.errors.length > 0,
     hasWarnings: results.warnings.length > 0
   };

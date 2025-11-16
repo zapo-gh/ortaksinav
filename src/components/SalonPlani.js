@@ -68,13 +68,21 @@ const getSalonYerlesenSayisi = (salon) => {
     });
   };
 
+  // KRİTİK DÜZELTME: Sadece masalar array'inden say
+  // masalar array'i zaten gerçek yerleşimi gösteriyor
+  // ogrenciler array'i duplicate saymaya neden olabilir
   addFromSeatArray(salon.masalar);
-  addFromSeatArray(salon.plan);
-  addFromSeatArray(salon?.koltukMatrisi?.masalar);
-  addFromSeatArray(salon?.salon?.masalar);
-
-  if (Array.isArray(salon.ogrenciler)) {
-    salon.ogrenciler.forEach(addStudent);
+  
+  // Fallback: Eğer masalar yoksa diğer kaynaklardan say
+  if (!salon.masalar || salon.masalar.length === 0) {
+    addFromSeatArray(salon.plan);
+    addFromSeatArray(salon?.koltukMatrisi?.masalar);
+    addFromSeatArray(salon?.salon?.masalar);
+    
+    // Son çare: ogrenciler array'inden say (ama sadece masalar yoksa)
+    if (Array.isArray(salon.ogrenciler)) {
+      salon.ogrenciler.forEach(addStudent);
+    }
   }
 
   return uniqueIds.size;
@@ -954,8 +962,8 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
         <Card sx={{ maxWidth: 1400, mx: 'auto' }}>
           <CardContent>
           <Typography variant="h6" color="text.secondary" textAlign="center">
-            Salon yükleniyor...
-                </Typography>
+            {sinif ? 'Salon yükleniyor...' : 'Salon bilgisi bulunamadı'}
+          </Typography>
           </CardContent>
         </Card>
     );
@@ -983,8 +991,8 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
             }}>
             <ChairIcon sx={{ mr: 1, color: 'primary.main' }} />
               <Typography variant="h5" component="h2" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-              Salon Planları
-            </Typography>
+                {(sinif?.ad || sinif?.salonAdi) ? `${sinif.ad || sinif.salonAdi} Salon Planı` : 'Salon Planları'}
+              </Typography>
             
             {/* Öğrenci Sayıları */}
             <SalonStatsChips {...useMemo(() => {
@@ -1017,21 +1025,28 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                     });
                   };
 
-                  // gruplar hem obje hem dizi olabiliyor
-                  if (salonKaydi.gruplar) {
-                    const grupValues = Array.isArray(salonKaydi.gruplar)
-                      ? salonKaydi.gruplar
-                      : Object.values(salonKaydi.gruplar);
-                    grupValues.forEach(grup => addFromSeatArray(grup));
-                  }
-
+                  // KRİTİK DÜZELTME: Sadece masalar array'inden say
+                  // masalar array'i zaten gerçek yerleşimi gösteriyor
+                  // ogrenciler array'i duplicate saymaya neden olabilir
                   addFromSeatArray(salonKaydi.masalar);
-                  addFromSeatArray(salonKaydi.plan);
-                  addFromSeatArray(salonKaydi?.koltukMatrisi?.masalar);
-                  addFromSeatArray(salonKaydi?.salon?.masalar);
-
-                  if (Array.isArray(salonKaydi.ogrenciler)) {
-                    salonKaydi.ogrenciler.forEach(addStudent);
+                  
+                  // Fallback: Eğer masalar yoksa diğer kaynaklardan say
+                  if (!salonKaydi.masalar || salonKaydi.masalar.length === 0) {
+                    // gruplar hem obje hem dizi olabiliyor
+                    if (salonKaydi.gruplar) {
+                      const grupValues = Array.isArray(salonKaydi.gruplar)
+                        ? salonKaydi.gruplar
+                        : Object.values(salonKaydi.gruplar);
+                      grupValues.forEach(grup => addFromSeatArray(grup));
+                    }
+                    addFromSeatArray(salonKaydi.plan);
+                    addFromSeatArray(salonKaydi?.koltukMatrisi?.masalar);
+                    addFromSeatArray(salonKaydi?.salon?.masalar);
+                    
+                    // Son çare: ogrenciler array'inden say (ama sadece masalar yoksa)
+                    if (Array.isArray(salonKaydi.ogrenciler)) {
+                      salonKaydi.ogrenciler.forEach(addStudent);
+                    }
                   }
 
                   return uniqueStudentIds.size;
@@ -1040,9 +1055,14 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                 const toplamYerlesilemeyen = Array.isArray(yerlestirmeSonucu.yerlesilemeyenOgrenciler)
                   ? yerlestirmeSonucu.yerlesilemeyenOgrenciler.length
                   : 0;
+                
+                // KRİTİK DÜZELTME: Toplam öğrenci sayısını istatistiklerden al
+                // Transfer işlemi sonrasında toplam öğrenci sayısı değişmemeli
+                const toplamOgrenci = yerlestirmeSonucu.istatistikler?.toplamOgrenci || (toplamYerlesen + toplamYerlesilemeyen);
+                
                 return {
                   mode: 'plan',
-                  toplam: toplamYerlesen + toplamYerlesilemeyen,
+                  toplam: toplamOgrenci, // İstatistiklerden al
                   yerlesen: toplamYerlesen,
                   yerlesmeyen: toplamYerlesilemeyen
                 };
@@ -1169,7 +1189,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                       }
                     }}
                     sx={{ 
-                      minWidth: { xs: 'auto', sm: 100 },
+                      minWidth: { xs: 'auto', sm: 70 },
                       maxWidth: { xs: '110px', sm: 'none' },
                       width: { xs: 'auto', sm: 'auto' },
                       flexShrink: 0,
@@ -1177,7 +1197,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                       textTransform: 'none',
                       fontWeight: isActive ? 'bold' : 'normal',
                       boxShadow: 'none',
-                      px: { xs: 0.75, sm: 2 },
+                      px: { xs: 0.75, sm: 1.25 },
                       py: { xs: 0.5, sm: 0.5 },
                       minHeight: { xs: 28, sm: 'auto' },
                       height: { xs: 28, sm: 'auto' },
@@ -1185,7 +1205,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                       flexDirection: 'row',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: { xs: 0.5, sm: 1 },
+                      gap: { xs: 0.5, sm: 0.75 },
                       '& > *': {
                         display: 'flex',
                         alignItems: 'center'
@@ -1228,7 +1248,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                         color: isActive ? 'primary.main' : 'white',
                         alignSelf: 'center',
                         '& .MuiChip-label': {
-                          px: { xs: 0.5, sm: 1 }
+                          px: { xs: 0.5, sm: 0.75 }
                         }
                       }}
                     />
@@ -1246,7 +1266,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                     variant={isActive ? 'contained' : 'outlined'}
                     onClick={() => onSeciliSalonDegistir && onSeciliSalonDegistir(salon.id)}
                     sx={{ 
-                      minWidth: { xs: 'auto', sm: 100 },
+                      minWidth: { xs: 'auto', sm: 70 },
                       maxWidth: { xs: '110px', sm: 'none' },
                       width: { xs: 'auto', sm: 'auto' },
                       flexShrink: 0,
@@ -1254,7 +1274,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                       textTransform: 'none',
                       fontWeight: isActive ? 'bold' : 'normal',
                       boxShadow: 'none',
-                      px: { xs: 0.75, sm: 2 },
+                      px: { xs: 0.75, sm: 1.25 },
                       py: { xs: 0.5, sm: 0.5 },
                       minHeight: { xs: 28, sm: 'auto' },
                       height: { xs: 28, sm: 'auto' },
@@ -1262,7 +1282,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                       flexDirection: 'row',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: { xs: 0.5, sm: 1 },
+                      gap: { xs: 0.5, sm: 0.75 },
                       '& > *': {
                         display: 'flex',
                         alignItems: 'center'
@@ -1303,7 +1323,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                         color: isActive ? 'primary.main' : 'white',
                         alignSelf: 'center',
                         '& .MuiChip-label': {
-                          px: { xs: 0.5, sm: 1 }
+                          px: { xs: 0.5, sm: 0.75 }
                         }
                       }}
                     />
@@ -1565,13 +1585,30 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
         <Divider sx={{ my: 2 }} />
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
           <Chip 
-            label={`Toplam Kapasite: ${sinif?.koltukMatrisi?.masalar?.length || 42} koltuk`}
+            label={`Toplam Kapasite: ${(() => {
+              // Önce kapasite property'sini kontrol et (en güvenilir)
+              if (sinif?.kapasite && typeof sinif.kapasite === 'number' && sinif.kapasite > 0) {
+                return sinif.kapasite;
+              }
+              // Sonra masalar array'inin uzunluğunu kontrol et
+              if (sinif?.masalar && Array.isArray(sinif.masalar) && sinif.masalar.length > 0) {
+                return sinif.masalar.length;
+              }
+              // Sonra koltukMatrisi.masalar array'inin uzunluğunu kontrol et
+              if (sinif?.koltukMatrisi?.masalar && Array.isArray(sinif.koltukMatrisi.masalar) && sinif.koltukMatrisi.masalar.length > 0) {
+                return sinif.koltukMatrisi.masalar.length;
+              }
+              // Son olarak siraDizilimi'nden hesapla
+              if (sinif?.siraDizilimi) {
+                return (sinif.siraDizilimi.satir || 0) * (sinif.siraDizilimi.sutun || 0);
+              }
+              return 0;
+            })()} koltuk`}
             color="primary"
             variant="outlined"
           />
           <Chip 
             label={`Yerleşen: ${(() => {
-              // GÜVENLİK: Benzersiz öğrenci sayısını hesapla
               if (!Array.isArray(ogrenciler)) return 0;
               const uniqueIds = new Set(ogrenciler.map(o => o.id));
               return uniqueIds.size;
@@ -1640,7 +1677,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <PersonIcon color="primary" />
               <Typography variant="h6">
-                {seciliOgrenci ? 'Öğrenci Bilgileri' : 'Masa Bilgileri'}
+                {seciliOgrenci ? 'Öğrenci Detayları' : 'Masa Bilgileri'}
               </Typography>
             </Box>
           </DialogTitle>

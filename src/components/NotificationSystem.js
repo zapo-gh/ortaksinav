@@ -130,24 +130,32 @@ export const NotificationProvider = ({ children }) => {
       {children}
       
       {/* Toast Notifications */}
-      <Box sx={{ position: 'fixed', top: 20, right: 20, zIndex: 9999 }}>
+      <Box sx={{ 
+        position: 'fixed', 
+        top: 20, 
+        right: 20, 
+        zIndex: 9999,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1,
+        maxWidth: '400px',
+        pointerEvents: 'none' // Box'ın kendisi pointer event'leri engellemesin
+      }}>
         {notifications.map((notification) => (
-          <Snackbar
+          <Alert
             key={notification.id}
-            open={true}
-            autoHideDuration={notification.duration}
+            severity={notification.type}
             onClose={() => removeNotification(notification.id)}
-            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-            sx={{ mb: 1 }}
+            sx={{ 
+              minWidth: 300, 
+              width: '100%',
+              pointerEvents: 'auto', // Alert'in kendisi pointer event'leri alabilsin
+              boxShadow: 3,
+              animation: 'slideIn 0.3s ease-out'
+            }}
           >
-            <Alert
-              severity={notification.type}
-              onClose={() => removeNotification(notification.id)}
-              sx={{ minWidth: 300 }}
-            >
-              {notification.message}
-            </Alert>
-          </Snackbar>
+            {notification.message}
+          </Alert>
         ))}
       </Box>
 

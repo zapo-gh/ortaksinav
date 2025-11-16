@@ -63,26 +63,53 @@ class TransferManager {
 
   // Transfer işlemini gerçekleştir
   async performTransfer(student, fromSalon, toSalon, mode) {
-    const updatedFromSalon = { ...fromSalon };
-    const updatedToSalon = { ...toSalon };
+    // Deep copy yap - masalar array'ini de kopyala
+    const updatedFromSalon = {
+      ...fromSalon,
+      ogrenciler: [...(fromSalon.ogrenciler || [])],
+      masalar: fromSalon.masalar ? fromSalon.masalar.map(masa => ({
+        ...masa,
+        ogrenci: masa.ogrenci ? { ...masa.ogrenci } : null
+      })) : []
+    };
+    
+    const updatedToSalon = {
+      ...toSalon,
+      ogrenciler: [...(toSalon.ogrenciler || [])],
+      masalar: toSalon.masalar ? toSalon.masalar.map(masa => ({
+        ...masa,
+        ogrenci: masa.ogrenci ? { ...masa.ogrenci } : null
+      })) : []
+    };
 
     // Hedef salona öğrenci ekle
-    updatedToSalon.ogrenciler = [...(toSalon.ogrenciler || []), student];
+    updatedToSalon.ogrenciler = [...updatedToSalon.ogrenciler, student];
     
-    // Hedef salondaki masalara öğrenci yerleştir
-    const availableSeat = this.findAvailableSeat(updatedToSalon);
-    if (availableSeat) {
-      availableSeat.ogrenci = student;
+    // Hedef salondaki masalara öğrenci yerleştir - Immutable update
+    const availableSeatIndex = updatedToSalon.masalar.findIndex(masa => !masa.ogrenci);
+    if (availableSeatIndex !== -1) {
+      updatedToSalon.masalar = updatedToSalon.masalar.map((masa, index) => {
+        if (index === availableSeatIndex) {
+          return { ...masa, ogrenci: student };
+        }
+        return masa;
+      });
     }
 
     // Move modunda kaynak salondan kaldır
     if (mode === 'move') {
-      updatedFromSalon.ogrenciler = (fromSalon.ogrenciler || []).filter(
+      // Öğrenciyi ogrenciler array'inden çıkar
+      updatedFromSalon.ogrenciler = updatedFromSalon.ogrenciler.filter(
         s => s.id !== student.id
       );
       
       // Kaynak salondaki masayı boşalt
-      this.clearStudentFromSeats(student, updatedFromSalon);
+      updatedFromSalon.masalar = updatedFromSalon.masalar.map(masa => {
+        if (masa.ogrenci && masa.ogrenci.id === student.id) {
+          return { ...masa, ogrenci: null };
+        }
+        return masa;
+      });
     }
 
     return {

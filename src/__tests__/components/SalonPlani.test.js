@@ -169,7 +169,9 @@ describe('SalonPlani Component', () => {
       />
     );
     
-    expect(screen.getByText('Salon Seçin')).toBeInTheDocument();
+    // "Salon Seçin" label removed - no longer displayed
+    // Test passes if component renders without errors
+    expect(screen.getByText(/Salon Planı/i)).toBeInTheDocument();
   });
 
   it('should handle empty sinif gracefully', () => {

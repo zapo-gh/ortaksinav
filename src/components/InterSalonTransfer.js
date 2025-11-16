@@ -137,16 +137,14 @@ const InterSalonTransfer = ({
         mode: transferMode
       });
       
-      showSuccess(
-        `${student.ad} ${student.soyad} ${selectedTargetSalon.salonAdi} salonuna taşındı!`
-      );
+      // Bildirim AnaSayfa'da gönderiliyor, burada tekrar göndermeye gerek yok
       handleClose();
     } catch (error) {
       showError('Transfer işlemi başarısız: ' + error.message);
     } finally {
       setIsTransferring(false);
     }
-  }, [student, currentSalon, selectedTargetSalon, transferMode, onTransfer, showSuccess, showError, validateTransfer, handleClose]);
+  }, [student, currentSalon, selectedTargetSalon, transferMode, onTransfer, showError, validateTransfer, handleClose]);
 
   if (!student || !currentSalon) return null;
 
