@@ -91,15 +91,20 @@ const getSalonYerlesenSayisi = (salon) => {
 
 
 // Droppable Seat Component - Optimized
-const DroppableSeat = memo(({ masa, onStudentMove, children }) => {
+const DroppableSeat = memo(({ masa, onStudentMove, children, readOnly = false }) => {
   const [{ isOver, canDrop }, drop] = useDrop({
     accept: ITEM_TYPES.STUDENT,
     drop: (item, monitor) => {
+      // Public modda yerleşim planları değiştirilemez
+      if (readOnly) {
+        return { dropped: false };
+      }
       if (item.masaId !== masa.id && onStudentMove) {
         onStudentMove(item.masaId, masa.id, item.ogrenci);
       }
       return { dropped: true };
     },
+    canDrop: () => !readOnly,
     collect: (monitor) => ({
       isOver: monitor.isOver(),
       canDrop: monitor.canDrop(),
@@ -167,7 +172,7 @@ const SalonStatsChips = React.memo(({ mode, toplam, yerlesen, yerlesmeyen }) => 
   return null;
 });
 
-const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler = [], onOgrenciSec, tumSalonlar, onSalonDegistir, ayarlar = {}, salonlar = [], seciliSalonId, onSeciliSalonDegistir, onStudentTransfer, yerlestirmeSonucu, tumOgrenciSayisi, aktifPlanAdi = '' }) => {
+const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler = [], onOgrenciSec, tumSalonlar, onSalonDegistir, ayarlar = {}, salonlar = [], seciliSalonId, onSeciliSalonDegistir, onStudentTransfer, yerlestirmeSonucu, tumOgrenciSayisi, aktifPlanAdi = '', readOnly = false }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { showConfirm } = useNotifications();
@@ -295,7 +300,7 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
   }, [onOgrenciSec, sinif]);
 
   const handleMasaClick = useCallback((masa, ogrenci) => {
-    // Sadece öğrenci varsa modal aç
+    // Sadece öğrenci varsa modal aç (public modda da görüntüleme için izin ver)
     if (ogrenci) {
       setSeciliMasa(masa);
       setSeciliOgrenci(ogrenci);
@@ -314,9 +319,13 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
 
   // Transfer işlemleri
   const handleTransferClick = useCallback((student, currentSalon, targetSalon) => {
+    // Public modda yerleşim planları değiştirilemez
+    if (readOnly) {
+      return;
+    }
     setTransferOgrenci(student);
     setTransferModalAcik(true);
-  }, []);
+  }, [readOnly]);
 
   const handleTransferClose = useCallback(() => {
     setTransferModalAcik(false);
@@ -381,14 +390,14 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
   
 
   // Draggable Student Component - Optimized
-const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHover, onStudentLeave, isSecili, isHovered, onStudentMove, conflict, onTransferClick, currentSalon, allSalons }) => {
+const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHover, onStudentLeave, isSecili, isHovered, onStudentMove, conflict, onTransferClick, currentSalon, allSalons, readOnly = false }) => {
   const [{ isDragging }, drag] = useDrag({
     type: ITEM_TYPES.STUDENT,
     item: () => ({ 
       masaId: masa.id,
       ogrenci: masa.ogrenci 
     }),
-    canDrag: !!masa.ogrenci,
+    canDrag: !!masa.ogrenci && !readOnly,
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
@@ -1426,7 +1435,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                         enterDelay={300}
                         leaveDelay={100}
                       >
-                        <DroppableSeat masa={masa} onStudentMove={handleStudentMove}>
+                        <DroppableSeat masa={masa} onStudentMove={handleStudentMove} readOnly={readOnly}>
                           <DraggableStudent
                             masa={masa}
                             getGenderColor={getGenderColor}
@@ -1439,6 +1448,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                             onTransferClick={handleTransferClick}
                             currentSalon={sinif}
                             allSalons={tumSalonlar || []}
+                            readOnly={readOnly}
                             conflict={(() => {
                               // Güvenlik kontrolü: sinifDuzeni ve masalar kontrolü
                               if (!sinifDuzeni || !sinifDuzeni.masalar || !Array.isArray(sinifDuzeni.masalar)) {
@@ -1535,6 +1545,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                 <DroppableSeat 
                   masa={masa} 
                   onStudentMove={handleStudentMove}
+                  readOnly={readOnly}
                 >
                   <DraggableStudent
                     masa={masa}
@@ -1548,6 +1559,7 @@ const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHov
                     onTransferClick={handleTransferClick}
                     currentSalon={sinif}
                     allSalons={tumSalonlar || []}
+                    readOnly={readOnly}
                     conflict={(() => {
                       // Güvenlik kontrolü: sinifDuzeni ve masalar kontrolü
                       if (!sinifDuzeni || !sinifDuzeni.masalar || !Array.isArray(sinifDuzeni.masalar)) {
