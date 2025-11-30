@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Veritabanı Debug</title>
+    <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
+</head>
+<body>
+    <h1>Veritabanı Debug</h1>
+    <button onclick="testDatabase()">Veritabanını Test Et</button>
+    <div id="result"></div>
+
+    <script>
+        class TestDB extends Dexie {
+            constructor() {
+                super('KelebekSinavDB');
+                this.version(1).stores({
+                    plans: '++id, name, date, totalStudents, salonCount, data, createdAt, updatedAt'
+                });
+            }
+        }
+
+        const db = new TestDB();
+
+        async function testDatabase() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>🔍 Veritabanı test ediliyor...</p>';
+            
+            try {
+                // Veritabanını aç
+                await db.open();
+                resultDiv.innerHTML += '<p>✅ Veritabanı açıldı</p>';
+                
+                // Tüm planları listele
+                const plans = await db.plans.toArray();
+                resultDiv.innerHTML += `<p>📋 Toplam plan sayısı: ${plans.length}</p>`;
+                
+                if (plans.length > 0) {
+                    resultDiv.innerHTML += '<p>📋 Planlar:</p><ul>';
+                    plans.forEach((plan, index) => {
+                        resultDiv.innerHTML += `<li>${index + 1}. ${plan.name} (${plan.date})</li>`;
+                    });
+                    resultDiv.innerHTML += '</ul>';
+                } else {
+                    resultDiv.innerHTML += '<p>⚠️ Veritabanında hiç plan yok</p>';
+                }
+                
+                // Veritabanını kapat
+                await db.close();
+                resultDiv.innerHTML += '<p>✅ Test tamamlandı</p>';
+                
+            } catch (error) {
+                resultDiv.innerHTML += `<p>❌ Veritabanı test hatası: ${error.message}</p>`;
+                console.error('❌ Veritabanı test hatası:', error);
+            }
+        }
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

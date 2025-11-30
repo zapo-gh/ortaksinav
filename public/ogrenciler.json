@@ -1,0 +1,252 @@
+[
+  {
+    "id": 1,
+    "ad": "Ahmet",
+    "soyad": "Yılmaz",
+    "numara": "2024001",
+    "sinif": "12-A",
+    "cinsiyet": "E",
+    "gecmisSkor": 85,
+    "ozelDurum": false
+  },
+  {
+    "id": 2,
+    "ad": "Ayşe",
+    "soyad": "Kaya",
+    "numara": "2024002",
+    "sinif": "12-A",
+    "cinsiyet": "K",
+    "gecmisSkor": 92,
+    "ozelDurum": false
+  },
+  {
+    "id": 3,
+    "ad": "Mehmet",
+    "soyad": "Demir",
+    "numara": "2024003",
+    "sinif": "12-B",
+    "cinsiyet": "E",
+    "gecmisSkor": 78,
+    "ozelDurum": false
+  },
+  {
+    "id": 4,
+    "ad": "Fatma",
+    "soyad": "Çelik",
+    "numara": "2024004",
+    "sinif": "12-A",
+    "cinsiyet": "K",
+    "gecmisSkor": 88,
+    "ozelDurum": false
+  },
+  {
+    "id": 5,
+    "ad": "Ali",
+    "soyad": "Özkan",
+    "numara": "2024005",
+    "sinif": "12-B",
+    "cinsiyet": "E",
+    "gecmisSkor": 45,
+    "ozelDurum": "on_sira"
+  },
+  {
+    "id": 6,
+    "ad": "Zeynep",
+    "soyad": "Arslan",
+    "numara": "2024006",
+    "sinif": "12-A",
+    "cinsiyet": "K",
+    "gecmisSkor": 95,
+    "ozelDurum": false
+  },
+  {
+    "id": 7,
+    "ad": "Mustafa",
+    "soyad": "Şahin",
+    "numara": "2024007",
+    "sinif": "12-B",
+    "cinsiyet": "E",
+    "gecmisSkor": 67,
+    "ozelDurum": false
+  },
+  {
+    "id": 8,
+    "ad": "Elif",
+    "soyad": "Kurt",
+    "numara": "2024008",
+    "sinif": "12-A",
+    "cinsiyet": "K",
+    "gecmisSkor": 89,
+    "ozelDurum": false
+  },
+  {
+    "id": 9,
+    "ad": "Emre",
+    "soyad": "Yıldız",
+    "numara": "2024009",
+    "sinif": "12-B",
+    "cinsiyet": "E",
+    "gecmisSkor": 52,
+    "ozelDurum": "kenar"
+  },
+  {
+    "id": 10,
+    "ad": "Selin",
+    "soyad": "Doğan",
+    "numara": "2024010",
+    "sinif": "12-A",
+    "cinsiyet": "K",
+    "gecmisSkor": 91,
+    "ozelDurum": false
+  },
+  {
+    "id": 11,
+    "ad": "Burak",
+    "soyad": "Aydın",
+    "numara": "2024011",
+    "sinif": "12-B",
+    "cinsiyet": "E",
+    "gecmisSkor": 76,
+    "ozelDurum": false
+  },
+  {
+    "id": 12,
+    "ad": "Gizem",
+    "soyad": "Öztürk",
+    "numara": "2024012",
+    "sinif": "12-A",
+    "cinsiyet": "K",
+    "gecmisSkor": 83,
+    "ozelDurum": false
+  },
+  {
+    "id": 13,
+    "ad": "Can",
+    "soyad": "Erdoğan",
+    "numara": "2024013",
+    "sinif": "12-B",
+    "cinsiyet": "E",
+    "gecmisSkor": 58,
+    "ozelDurum": false
+  },
+  {
+    "id": 14,
+    "ad": "Duygu",
+    "soyad": "Polat",
+    "numara": "2024014",
+    "sinif": "12-A",
+    "cinsiyet": "K",
+    "gecmisSkor": 87,
+    "ozelDurum": false
+  },
+  {
+    "id": 15,
+    "ad": "Kerem",
+    "soyad": "Güneş",
+    "numara": "2024015",
+    "sinif": "12-B",
+    "cinsiyet": "E",
+    "gecmisSkor": 72,
+    "ozelDurum": false
+  },
+  {
+    "id": 16,
+    "ad": "İpek",
+    "soyad": "Bulut",
+    "numara": "2024016",
+    "sinif": "12-A",
+    "cinsiyet": "K",
+    "gecmisSkor": 94,
+    "ozelDurum": false
+  },
+  {
+    "id": 17,
+    "ad": "Oğuz",
+    "soyad": "Aktaş",
+    "numara": "2024017",
+    "sinif": "12-B",
+    "cinsiyet": "E",
+    "gecmisSkor": 49,
+    "ozelDurum": "gozetmen_yani"
+  },
+  {
+    "id": 18,
+    "ad": "Pınar",
+    "soyad": "Kılıç",
+    "numara": "2024018",
+    "sinif": "12-A",
+    "cinsiyet": "K",
+    "gecmisSkor": 86,
+    "ozelDurum": false
+  },
+  {
+    "id": 19,
+    "ad": "Tolga",
+    "soyad": "Yılmaz",
+    "numara": "2024019",
+    "sinif": "12-B",
+    "cinsiyet": "E",
+    "gecmisSkor": 79,
+    "ozelDurum": false
+  },
+  {
+    "id": 20,
+    "ad": "Begüm",
+    "soyad": "Koç",
+    "numara": "2024020",
+    "sinif": "12-A",
+    "cinsiyet": "K",
+    "gecmisSkor": 93,
+    "ozelDurum": false
+  },
+  {
+    "id": 21,
+    "ad": "Deniz",
+    "soyad": "Aslan",
+    "numara": "2024021",
+    "sinif": "12-B",
+    "cinsiyet": "E",
+    "gecmisSkor": 61,
+    "ozelDurum": false
+  },
+  {
+    "id": 22,
+    "ad": "Cemre",
+    "soyad": "Kaplan",
+    "numara": "2024022",
+    "sinif": "12-A",
+    "cinsiyet": "K",
+    "gecmisSkor": 90,
+    "ozelDurum": false
+  },
+  {
+    "id": 23,
+    "ad": "Eren",
+    "soyad": "Çetin",
+    "numara": "2024023",
+    "sinif": "12-B",
+    "cinsiyet": "E",
+    "gecmisSkor": 55,
+    "ozelDurum": "on_sira"
+  },
+  {
+    "id": 24,
+    "ad": "Melisa",
+    "soyad": "Özdemir",
+    "numara": "2024024",
+    "sinif": "12-A",
+    "cinsiyet": "K",
+    "gecmisSkor": 88,
+    "ozelDurum": false
+  },
+  {
+    "id": 25,
+    "ad": "Berk",
+    "soyad": "Karaca",
+    "numara": "2024025",
+    "sinif": "12-B",
+    "cinsiyet": "E",
+    "gecmisSkor": 74,
+    "ozelDurum": false
+  }
+]

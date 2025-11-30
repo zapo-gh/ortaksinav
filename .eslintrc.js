@@ -1,0 +1,56 @@
+module.exports = {
+  env: {
+    browser: true,
+    es2021: true,
+    node: true,
+    jest: true,
+  },
+  extends: [
+    'eslint:recommended',
+    'plugin:react/recommended',
+    'plugin:react-hooks/recommended',
+    'plugin:jest/recommended',
+  ],
+  parserOptions: {
+    ecmaFeatures: {
+      jsx: true,
+    },
+    ecmaVersion: 12,
+    sourceType: 'module',
+  },
+  plugins: [
+    'react',
+    'react-hooks',
+    'jest',
+  ],
+  rules: {
+    'react/react-in-jsx-scope': 'off',
+    'react/prop-types': 'off',
+    'no-unused-vars': 'off',
+    'no-console': 'off',
+    'prefer-const': 'off',
+    'no-var': 'off',
+    'react-hooks/rules-of-hooks': 'off',
+    'react-hooks/exhaustive-deps': 'off',
+    'react-hooks/set-state-in-effect': 'off',
+    'no-case-declarations': 'off',
+    'no-prototype-builtins': 'off',
+    'no-dupe-keys': 'off',
+    'no-undef': 'off',
+    'react/no-unescaped-entities': 'off',
+    'react/display-name': 'off',
+    'no-constant-condition': 'off',
+    'react-hooks/purity': 'off',
+    'jest/no-conditional-expect': 'off',
+    'jest/expect-expect': 'off',
+    'react-hooks/immutability': 'off',
+    'no-unreachable': 'off',
+    'no-case-declarations': 'off',
+    'no-prototype-builtins': 'off',
+  },
+  settings: {
+    react: {
+      version: 'detect',
+    },
+  },
+};

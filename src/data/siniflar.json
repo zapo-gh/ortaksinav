@@ -1,0 +1,134 @@
+[
+  {
+    "id": 1,
+    "ad": "A101 - Matematik Sınıfı",
+    "kapasite": 30,
+    "satir": 6,
+    "sutun": 5,
+    "kat": 1,
+    "binadi": "Ana Bina",
+    "ozellikler": ["Projektör", "Klima", "Akıllı Tahta"],
+    "durum": "aktif"
+  },
+  {
+    "id": 2,
+    "ad": "B202 - Fizik Laboratuvarı",
+    "kapasite": 24,
+    "satir": 4,
+    "sutun": 6,
+    "kat": 2,
+    "binadi": "Ana Bina",
+    "ozellikler": ["Laboratuvar Masaları", "Güvenlik Ekipmanları", "Klima"],
+    "durum": "aktif"
+  },
+  {
+    "id": 3,
+    "ad": "C301 - Türkçe Sınıfı",
+    "kapasite": 35,
+    "satir": 7,
+    "sutun": 5,
+    "kat": 3,
+    "binadi": "Ana Bina",
+    "ozellikler": ["Projektör", "Ses Sistemi", "Klima"],
+    "durum": "aktif"
+  },
+  {
+    "id": 4,
+    "ad": "D401 - Kimya Laboratuvarı",
+    "kapasite": 20,
+    "satir": 4,
+    "sutun": 5,
+    "kat": 4,
+    "binadi": "Ana Bina",
+    "ozellikler": ["Laboratuvar Masaları", "Havalandırma", "Güvenlik Ekipmanları"],
+    "durum": "aktif"
+  },
+  {
+    "id": 5,
+    "ad": "E102 - İngilizce Sınıfı",
+    "kapasite": 28,
+    "satir": 7,
+    "sutun": 4,
+    "kat": 1,
+    "binadi": "Ana Bina",
+    "ozellikler": ["Projektör", "Ses Sistemi", "Klima", "Akıllı Tahta"],
+    "durum": "aktif"
+  },
+  {
+    "id": 6,
+    "ad": "F203 - Tarih Sınıfı",
+    "kapasite": 32,
+    "satir": 8,
+    "sutun": 4,
+    "kat": 2,
+    "binadi": "Ana Bina",
+    "ozellikler": ["Projektör", "Klima"],
+    "durum": "aktif"
+  },
+  {
+    "id": 7,
+    "ad": "G302 - Biyoloji Laboratuvarı",
+    "kapasite": 22,
+    "satir": 4,
+    "sutun": 6,
+    "kat": 3,
+    "binadi": "Ana Bina",
+    "ozellikler": ["Laboratuvar Masaları", "Mikroskop", "Klima"],
+    "durum": "aktif"
+  },
+  {
+    "id": 8,
+    "ad": "H402 - Coğrafya Sınıfı",
+    "kapasite": 30,
+    "satir": 6,
+    "sutun": 5,
+    "kat": 4,
+    "binadi": "Ana Bina",
+    "ozellikler": ["Dünya Küresi", "Projektör", "Klima"],
+    "durum": "aktif"
+  },
+  {
+    "id": 9,
+    "ad": "I103 - Müzik Sınıfı",
+    "kapasite": 25,
+    "satir": 5,
+    "sutun": 5,
+    "kat": 1,
+    "binadi": "Ana Bina",
+    "ozellikler": ["Piyano", "Ses Sistemi", "Klima"],
+    "durum": "bakım"
+  },
+  {
+    "id": 10,
+    "ad": "J204 - Resim Atölyesi",
+    "kapasite": 18,
+    "satir": 3,
+    "sutun": 6,
+    "kat": 2,
+    "binadi": "Ana Bina",
+    "ozellikler": ["Çizim Masaları", "Doğal Işık", "Havalandırma"],
+    "durum": "aktif"
+  },
+  {
+    "id": 11,
+    "ad": "K303 - Bilgisayar Laboratuvarı",
+    "kapasite": 30,
+    "satir": 6,
+    "sutun": 5,
+    "kat": 3,
+    "binadi": "Ana Bina",
+    "ozellikler": ["Bilgisayar", "Projektör", "Klima", "İnternet"],
+    "durum": "aktif"
+  },
+  {
+    "id": 12,
+    "ad": "L403 - Konferans Salonu",
+    "kapasite": 50,
+    "satir": 10,
+    "sutun": 5,
+    "kat": 4,
+    "binadi": "Ana Bina",
+    "ozellikler": ["Büyük Ekran", "Ses Sistemi", "Klima", "Sahne"],
+    "durum": "aktif"
+  }
+]
