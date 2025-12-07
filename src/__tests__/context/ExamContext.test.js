@@ -1,16 +1,31 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { render, screen, act, waitFor } from '@testing-library/react';
 import { ExamProvider, useExam } from '../../context/ExamContext';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+  },
+});
+
+const Wrapper = ({ children }) => (
+  <QueryClientProvider client={queryClient}>
+    <ExamProvider>{children}</ExamProvider>
+  </QueryClientProvider>
+);
 
 // Mock logger
 jest.mock('../../utils/logger', () => ({
   __esModule: true,
   default: {
-    info: jest.fn(() => {}),
-    error: jest.fn(() => {}),
-    warn: jest.fn(() => {}),
-    debug: jest.fn(() => {}),
-    log: jest.fn(() => {})
+    info: jest.fn(() => { }),
+    error: jest.fn(() => { }),
+    warn: jest.fn(() => { }),
+    debug: jest.fn(() => { }),
+    log: jest.fn(() => { })
   }
 }));
 
@@ -26,14 +41,21 @@ jest.mock('../../database', () => ({
     saveSettings: jest.fn(() => Promise.resolve()),
     saveSalons: jest.fn(() => Promise.resolve()),
     savePlan: jest.fn(() => Promise.resolve()),
-    setDatabaseType: jest.fn(() => {})
+    setDatabaseType: jest.fn(() => { })
   }
 }));
+
+import * as useExamData from '../../hooks/queries/useExamData';
+
+// ...
+
+// Mock React Query hooks
+jest.mock('../../hooks/queries/useExamData');
 
 // Test component to access context
 const TestComponent = ({ onContextReady }) => {
   const context = useExam();
-  
+
   React.useEffect(() => {
     if (onContextReady && context.isInitialized) {
       onContextReady(context);
@@ -92,15 +114,18 @@ describe('ExamContext', () => {
     // Clear localStorage before each test
     localStorage.clear();
     jest.clearAllMocks();
-    // Reset module mocks
-    jest.resetModules();
+
+    // Setup default mock values
+    useExamData.useStudentsQuery.mockReturnValue({ data: [], isLoading: false });
+    useExamData.useSalonsQuery.mockReturnValue({ data: [], isLoading: false });
+    useExamData.useSettingsQuery.mockReturnValue({ data: {}, isLoading: false });
   });
 
   it('should provide initial state values', async () => {
     render(
-      <ExamProvider>
+      <Wrapper>
         <TestComponent />
-      </ExamProvider>
+      </Wrapper>
     );
 
     // Wait for initialization
@@ -117,9 +142,9 @@ describe('ExamContext', () => {
   describe('State Management', () => {
     it('should update students when ogrencilerYukle is called', async () => {
       render(
-        <ExamProvider>
+        <Wrapper>
           <TestComponent />
-        </ExamProvider>
+        </Wrapper>
       );
 
       await waitFor(() => {
@@ -153,10 +178,10 @@ describe('ExamContext', () => {
       };
 
       render(
-        <ExamProvider>
+        <Wrapper>
           <TestWrapper />
           <TestComponent />
-        </ExamProvider>
+        </Wrapper>
       );
 
       await waitFor(() => {
@@ -186,9 +211,9 @@ describe('ExamContext', () => {
 
     it('should update settings when ayarlarGuncelle is called', async () => {
       render(
-        <ExamProvider>
+        <Wrapper>
           <TestComponent />
-        </ExamProvider>
+        </Wrapper>
       );
 
       await waitFor(() => {
@@ -208,9 +233,9 @@ describe('ExamContext', () => {
 
     it('should update salons when salonlarGuncelle is called', async () => {
       render(
-        <ExamProvider>
+        <Wrapper>
           <TestComponent />
-        </ExamProvider>
+        </Wrapper>
       );
 
       await waitFor(() => {
@@ -227,9 +252,9 @@ describe('ExamContext', () => {
 
     it('should change active tab when tabDegistir is called', async () => {
       render(
-        <ExamProvider>
+        <Wrapper>
           <TestComponent />
-        </ExamProvider>
+        </Wrapper>
       );
 
       await waitFor(() => {
@@ -245,9 +270,9 @@ describe('ExamContext', () => {
 
     it('should start loading when yuklemeBaslat is called', async () => {
       render(
-        <ExamProvider>
+        <Wrapper>
           <TestComponent />
-        </ExamProvider>
+        </Wrapper>
       );
 
       await waitFor(() => {
@@ -263,9 +288,9 @@ describe('ExamContext', () => {
 
     it('should set error when hataAyarla is called', async () => {
       render(
-        <ExamProvider>
+        <Wrapper>
           <TestComponent />
-        </ExamProvider>
+        </Wrapper>
       );
 
       await waitFor(() => {
@@ -281,9 +306,9 @@ describe('ExamContext', () => {
 
     it('should clear error when hataTemizle is called', async () => {
       render(
-        <ExamProvider>
+        <Wrapper>
           <TestComponent />
-        </ExamProvider>
+        </Wrapper>
       );
 
       await waitFor(() => {
@@ -320,10 +345,10 @@ describe('ExamContext', () => {
       };
 
       render(
-        <ExamProvider>
+        <Wrapper>
           <TestWrapper />
           <TestComponent />
-        </ExamProvider>
+        </Wrapper>
       );
 
       await waitFor(() => {
@@ -332,7 +357,7 @@ describe('ExamContext', () => {
 
       // First add a student
       const testStudent = { id: '1', ad: 'Ahmet', soyad: 'Yılmaz', numara: '1001', sinif: '9-A', cinsiyet: 'E' };
-      
+
       act(() => {
         if (contextValue) {
           contextValue.ogrencilerYukle([testStudent]);
@@ -373,10 +398,10 @@ describe('ExamContext', () => {
       };
 
       render(
-        <ExamProvider>
+        <Wrapper>
           <TestWrapper />
           <TestComponent />
-        </ExamProvider>
+        </Wrapper>
       );
 
       await waitFor(() => {
@@ -384,18 +409,18 @@ describe('ExamContext', () => {
       });
 
       // Add and pin a student
-      const testStudent = { 
-        id: '1', 
-        ad: 'Ahmet', 
-        soyad: 'Yılmaz', 
-        numara: '1001', 
-        sinif: '9-A', 
+      const testStudent = {
+        id: '1',
+        ad: 'Ahmet',
+        soyad: 'Yılmaz',
+        numara: '1001',
+        sinif: '9-A',
         cinsiyet: 'E',
         pinned: true,
         pinnedSalonId: 'salon1',
         pinnedMasaId: '5'
       };
-      
+
       act(() => {
         if (contextValue) {
           contextValue.ogrencilerYukle([testStudent]);
@@ -436,10 +461,10 @@ describe('ExamContext', () => {
       };
 
       render(
-        <ExamProvider>
+        <Wrapper>
           <TestWrapper />
           <TestComponent />
-        </ExamProvider>
+        </Wrapper>
       );
 
       await waitFor(() => {
@@ -448,7 +473,7 @@ describe('ExamContext', () => {
 
       // Add a student
       const testStudent = { id: '1', ad: 'Ahmet', soyad: 'Yılmaz', numara: '1001', sinif: '9-A', cinsiyet: 'E' };
-      
+
       act(() => {
         if (contextValue) {
           contextValue.ogrencilerYukle([testStudent]);
@@ -485,10 +510,10 @@ describe('ExamContext', () => {
       };
 
       render(
-        <ExamProvider>
+        <Wrapper>
           <TestWrapper />
           <TestComponent />
-        </ExamProvider>
+        </Wrapper>
       );
 
       await waitFor(() => {
@@ -532,10 +557,10 @@ describe('ExamContext', () => {
       };
 
       render(
-        <ExamProvider>
+        <Wrapper>
           <TestWrapper />
           <TestComponent />
-        </ExamProvider>
+        </Wrapper>
       );
 
       await waitFor(() => {
@@ -588,10 +613,10 @@ describe('ExamContext', () => {
       };
 
       render(
-        <ExamProvider>
+        <Wrapper>
           <TestWrapper />
           <TestComponent />
-        </ExamProvider>
+        </Wrapper>
       );
 
       await waitFor(() => {
@@ -643,9 +668,9 @@ describe('ExamContext', () => {
       localStorage.setItem('exam_salonlar', JSON.stringify([{ id: 1, ad: 'A101', salonAdi: 'A101', kapasite: 30 }]));
 
       render(
-        <ExamProvider>
+        <Wrapper>
           <TestComponent />
-        </ExamProvider>
+        </Wrapper>
       );
 
       await waitFor(() => {
@@ -667,9 +692,9 @@ describe('ExamContext', () => {
       // Should not crash the app
       expect(() => {
         render(
-          <ExamProvider>
+          <Wrapper>
             <TestComponent />
-          </ExamProvider>
+          </Wrapper>
         );
       }).not.toThrow();
 
@@ -690,10 +715,10 @@ describe('ExamContext', () => {
       };
 
       render(
-        <ExamProvider>
+        <Wrapper>
           <TestWrapper />
           <TestComponent />
-        </ExamProvider>
+        </Wrapper>
       );
 
       await waitFor(() => {
@@ -721,9 +746,9 @@ describe('ExamContext', () => {
   describe('Reducer Logic', () => {
     it('should provide all required context values', async () => {
       render(
-        <ExamProvider>
+        <Wrapper>
           <TestComponent />
-        </ExamProvider>
+        </Wrapper>
       );
 
       await waitFor(() => {
@@ -750,10 +775,10 @@ describe('ExamContext', () => {
       };
 
       render(
-        <ExamProvider>
+        <Wrapper>
           <TestWrapper />
           <TestComponent />
-        </ExamProvider>
+        </Wrapper>
       );
 
       await waitFor(() => {
