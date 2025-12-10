@@ -17,12 +17,14 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  TextField
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
   CloudDownload as CloudDownloadIcon,
-  History as HistoryIcon
+  History as HistoryIcon,
+  Edit as EditIcon
 } from '@mui/icons-material';
 import planManager from '../utils/planManager';
 import { useNotifications } from './NotificationSystem';
@@ -34,6 +36,10 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [planToDelete, setPlanToDelete] = useState(null);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [planToRename, setPlanToRename] = useState(null);
+  const [newPlanName, setNewPlanName] = useState('');
+  const [isRenaming, setIsRenaming] = useState(false);
   const { showSuccess, showError } = useNotifications();
 
   const loadPlans = async () => {
@@ -163,6 +169,47 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
     setDeleteDialogOpen(true);
   };
 
+  const handleRenameClick = (plan) => {
+    setPlanToRename(plan);
+    setNewPlanName(plan.name || '');
+    setRenameDialogOpen(true);
+  };
+
+  const handleRenameConfirm = async () => {
+    if (!planToRename || !newPlanName.trim()) {
+      showError('Plan adı boş olamaz!');
+      return;
+    }
+
+    setIsRenaming(true);
+
+    try {
+      // Plan verisini yükle
+      const planData = await planManager.loadPlan(planToRename.id);
+      if (!planData || !planData.data) {
+        throw new Error('Plan verisi yüklenemedi');
+      }
+
+      // Planı yeni isimle güncelle
+      await planManager.updatePlan(planToRename.id, newPlanName.trim(), planData.data);
+
+      showSuccess(`"${planToRename.name}" planının adı "${newPlanName.trim()}" olarak güncellendi!`);
+
+      // Dialog'u kapat ve state'i temizle
+      setRenameDialogOpen(false);
+      setPlanToRename(null);
+      setNewPlanName('');
+
+      // Planları yeniden yükle
+      await loadPlans();
+    } catch (error) {
+      logger.error('❌ Plan adı güncelleme hatası:', error);
+      showError(`Plan adı güncellenirken hata oluştu: ${error.message}`);
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+
   const handleCleanupTempPlans = async () => {
     try {
       setIsLoading(true);
@@ -228,6 +275,13 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
           {isLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress />
+            </Box>
+          ) : isRenaming ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4, gap: 2 }}>
+              <CircularProgress size={40} />
+              <Typography variant="body1" color="text.secondary">
+                Plan adı güncelleniyor...
+              </Typography>
             </Box>
           ) : kayitliPlanlar.length === 0 ? (
             <Alert severity="info" sx={{ mt: 2 }}>
@@ -320,7 +374,7 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
                             handlePlanYukle({ ...plan, id: planId });
                           }}
                           title="Planı Yükle"
-                          sx={{ 
+                          sx={{
                             '&:hover': { bgcolor: 'primary.light', color: 'white' }
                           }}
                         >
@@ -328,10 +382,21 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
                         </IconButton>
                         <IconButton
                           edge="end"
+                          color="secondary"
+                          onClick={() => handleRenameClick(plan)}
+                          title="Plan Adını Değiştir"
+                          sx={{
+                            '&:hover': { bgcolor: 'secondary.light', color: 'white' }
+                          }}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton
+                          edge="end"
                           color="error"
                           onClick={() => handleDeleteClick(planId)}
                           title="Planı Sil"
-                          sx={{ 
+                          sx={{
                             '&:hover': { bgcolor: 'error.light', color: 'white' }
                           }}
                         >
@@ -386,6 +451,78 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
           >
             Sil
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* İsim Değiştirme Dialog */}
+      <Dialog
+        open={renameDialogOpen}
+        onClose={() => {
+          if (!isRenaming) {
+            setRenameDialogOpen(false);
+            setPlanToRename(null);
+            setNewPlanName('');
+          }
+        }}
+        maxWidth="sm"
+        fullWidth
+        disableEscapeKeyDown={isRenaming}
+      >
+        <DialogTitle>
+          {isRenaming ? 'Plan Adı Güncelleniyor' : 'Plan Adını Değiştir'}
+        </DialogTitle>
+        <DialogContent>
+          {isRenaming ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 2, gap: 2 }}>
+              <CircularProgress size={40} />
+              <Typography variant="body1" color="text.secondary">
+                Plan adı güncelleniyor, lütfen bekleyin...
+              </Typography>
+            </Box>
+          ) : (
+            <>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {planToRename?.name} planının yeni adını girin:
+              </Typography>
+              <TextField
+                autoFocus
+                fullWidth
+                label="Yeni Plan Adı"
+                value={newPlanName}
+                onChange={(e) => setNewPlanName(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !isRenaming) {
+                    handleRenameConfirm();
+                  }
+                }}
+                variant="outlined"
+                sx={{ mt: 1 }}
+                disabled={isRenaming}
+              />
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setRenameDialogOpen(false);
+              setPlanToRename(null);
+              setNewPlanName('');
+            }}
+            disabled={isRenaming}
+          >
+            İptal
+          </Button>
+          {!isRenaming && (
+            <Button
+              onClick={handleRenameConfirm}
+              color="primary"
+              variant="contained"
+              disabled={!newPlanName.trim() || isRenaming}
+            >
+              Kaydet
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </Container>
