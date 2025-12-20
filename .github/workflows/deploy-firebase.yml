@@ -1,0 +1,46 @@
+name: Deploy to Firebase
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  CI: true
+
+jobs:
+  deploy:
+    name: Deploy to Firebase Hosting
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Node.js 20
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Bağımlılıkları yükle
+      run: npm ci
+      
+    - name: Production build
+      run: npm run build
+      
+    - name: Build dosyalarını kontrol et
+      run: |
+        if [ ! -f "build/index.html" ]; then
+          echo "❌ Build başarısız - index.html bulunamadı"
+          exit 1
+        fi
+        echo "✅ Build başarılı!"
+        
+    - name: Firebase CLI yükle
+      run: npm install -g firebase-tools
+      
+    - name: Firebase deploy
+      run: firebase deploy --only hosting --token ${{ secrets.FIREBASE_TOKEN }} --project ortak-sinav
+

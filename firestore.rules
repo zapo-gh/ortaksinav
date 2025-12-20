@@ -1,0 +1,94 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function userRole() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/roles/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role
+        : null;
+    }
+
+    function isAdmin() {
+      return userRole() == 'admin';
+    }
+
+    function ownerMatches(data) {
+      return isAuthenticated() && data.keys().hasAny(['ownerId']) && data.ownerId == request.auth.uid;
+    }
+
+    function isUnclaimed(data) {
+      return !data.keys().hasAny(['ownerId']) || data.ownerId == null;
+    }
+
+    function canReadPublic() {
+      return true;
+    }
+
+    function canCreate(data) {
+      return isAuthenticated() && isAdmin() && ownerMatches(data);
+    }
+
+    function canUpdate(newData, existingData) {
+      return isAuthenticated() && isAdmin() && ownerMatches(newData) && (isUnclaimed(existingData) || ownerMatches(existingData) || isAdmin());
+    }
+
+    function canDelete(data) {
+      return isAuthenticated() && isAdmin() && ownerMatches(data);
+    }
+
+    match /plans/{planId} {
+      allow read: if canReadPublic();
+      allow create: if canCreate(request.resource.data);
+      allow update: if canUpdate(request.resource.data, resource.data);
+      allow delete: if canDelete(resource.data);
+
+      function planOwnerMatches() {
+        return ownerMatches(get(/databases/$(database)/documents/plans/$(planId)).data);
+      }
+
+      match /salons/{salonId} {
+        allow read: if canReadPublic();
+        allow create: if canCreate(request.resource.data) && planOwnerMatches();
+        allow update: if canUpdate(request.resource.data, resource.data) && planOwnerMatches();
+        allow delete: if canDelete(resource.data);
+      }
+
+      match /unplaced/{chunkId} {
+        allow read: if canReadPublic();
+        allow create: if canCreate(request.resource.data) && planOwnerMatches();
+        allow update: if canUpdate(request.resource.data, resource.data) && planOwnerMatches();
+        allow delete: if canDelete(resource.data);
+      }
+    }
+
+    match /students/{studentId} {
+      allow read: if canReadPublic();
+      allow create: if canCreate(request.resource.data);
+      allow update: if canUpdate(request.resource.data, resource.data);
+      allow delete: if canDelete(resource.data);
+    }
+
+    match /salons/{salonId} {
+      allow read: if canReadPublic();
+      allow create: if canCreate(request.resource.data);
+      allow update: if canUpdate(request.resource.data, resource.data);
+      allow delete: if canDelete(resource.data);
+    }
+
+    match /settings/{settingKey} {
+      allow read: if canReadPublic();
+      allow create: if canCreate(request.resource.data);
+      allow update: if canUpdate(request.resource.data, resource.data);
+      allow delete: if canDelete(resource.data);
+    }
+
+    match /roles/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create, update, delete: if isAuthenticated() && isAdmin();
+    }
+  }
+}

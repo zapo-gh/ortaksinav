@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Veritabanı Kontrol</title>
+    <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
+</head>
+<body>
+    <h1>Veritabanı Kontrol</h1>
+    <button onclick="checkDatabase()">Veritabanını Kontrol Et</button>
+    <div id="result"></div>
+
+    <script>
+        class TestDB extends Dexie {
+            constructor() {
+                super('KelebekSinavDB');
+                this.version(1).stores({
+                    plans: '++id, name, date, totalStudents, salonCount, data, createdAt, updatedAt',
+                    students: '++id, ad, soyad, sinif, cinsiyet, createdAt, updatedAt',
+                    settings: '++id, key, value, createdAt, updatedAt',
+                    salons: '++id, salonAdi, kapasite, siraTipi, satir, sutun, gruplar, durum, createdAt, updatedAt'
+                });
+            }
+        }
+
+        const db = new TestDB();
+
+        async function checkDatabase() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>🔍 Veritabanı kontrol ediliyor...</p>';
+            
+            try {
+                // Veritabanını aç
+                await db.open();
+                resultDiv.innerHTML += '<p>✅ Veritabanı açıldı</p>';
+                
+                // Öğrencileri kontrol et
+                const students = await db.students.toArray();
+                resultDiv.innerHTML += `<p>👥 Toplam öğrenci sayısı: ${students.length}</p>`;
+                
+                if (students.length > 0) {
+                    resultDiv.innerHTML += '<p>👥 Öğrenciler:</p><ul>';
+                    students.slice(0, 10).forEach((student, index) => {
+                        resultDiv.innerHTML += `<li>${index + 1}. ${student.ad} ${student.soyad} (${student.sinif})</li>`;
+                    });
+                    if (students.length > 10) {
+                        resultDiv.innerHTML += `<li>... ve ${students.length - 10} öğrenci daha</li>`;
+                    }
+                    resultDiv.innerHTML += '</ul>';
+                } else {
+                    resultDiv.innerHTML += '<p>⚠️ Veritabanında hiç öğrenci yok</p>';
+                }
+                
+                // Salonları kontrol et
+                const salons = await db.salons.toArray();
+                resultDiv.innerHTML += `<p>🏫 Toplam salon sayısı: ${salons.length}</p>`;
+                
+                if (salons.length > 0) {
+                    resultDiv.innerHTML += '<p>🏫 Salonlar:</p><ul>';
+                    salons.forEach((salon, index) => {
+                        resultDiv.innerHTML += `<li>${index + 1}. ${salon.salonAdi} (${salon.kapasite} kişi)</li>`;
+                    });
+                    resultDiv.innerHTML += '</ul>';
+                } else {
+                    resultDiv.innerHTML += '<p>⚠️ Veritabanında hiç salon yok</p>';
+                }
+                
+                // Ayarları kontrol et
+                const settings = await db.settings.toArray();
+                resultDiv.innerHTML += `<p>⚙️ Toplam ayar sayısı: ${settings.length}</p>`;
+                
+                if (settings.length > 0) {
+                    resultDiv.innerHTML += '<p>⚙️ Ayarlar:</p><ul>';
+                    settings.forEach((setting, index) => {
+                        resultDiv.innerHTML += `<li>${index + 1}. ${setting.key}: ${setting.value}</li>`;
+                    });
+                    resultDiv.innerHTML += '</ul>';
+                } else {
+                    resultDiv.innerHTML += '<p>⚠️ Veritabanında hiç ayar yok</p>';
+                }
+                
+                // Planları kontrol et
+                const plans = await db.plans.toArray();
+                resultDiv.innerHTML += `<p>📋 Toplam plan sayısı: ${plans.length}</p>`;
+                
+                if (plans.length > 0) {
+                    resultDiv.innerHTML += '<p>📋 Planlar:</p><ul>';
+                    plans.slice(0, 5).forEach((plan, index) => {
+                        resultDiv.innerHTML += `<li>${index + 1}. ${plan.name} (${plan.date})</li>`;
+                    });
+                    if (plans.length > 5) {
+                        resultDiv.innerHTML += `<li>... ve ${plans.length - 5} plan daha</li>`;
+                    }
+                    resultDiv.innerHTML += '</ul>';
+                } else {
+                    resultDiv.innerHTML += '<p>⚠️ Veritabanında hiç plan yok</p>';
+                }
+                
+                // Veritabanını kapat
+                await db.close();
+                resultDiv.innerHTML += '<p>✅ Kontrol tamamlandı</p>';
+                
+            } catch (error) {
+                resultDiv.innerHTML += `<p>❌ Veritabanı kontrol hatası: ${error.message}</p>`;
+                console.error('❌ Veritabanı kontrol hatası:', error);
+            }
+        }
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
