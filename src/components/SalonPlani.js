@@ -183,6 +183,30 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
   const [hoveredOgrenci, setHoveredOgrenci] = useState(null);
   const [transferModalAcik, setTransferModalAcik] = useState(false);
   const [transferOgrenci, setTransferOgrenci] = useState(null);
+  const [confirmationOpen, setConfirmationOpen] = useState(false); // Onay dialog state
+
+  // Öğrenciyi listeden çıkarma işlemi
+  const handleRemoveStudentClick = useCallback(() => {
+    setConfirmationOpen(true);
+  }, []);
+
+  const handleConfirmRemove = useCallback(() => {
+    if (seciliMasa && seciliMasa.id) {
+      if (onOgrenciSec && typeof onOgrenciSec === 'function') {
+        // 'move' action with to: null means remove from salon
+        onOgrenciSec('move', { from: seciliMasa.id, to: null });
+        showConfirm(`${seciliOgrenci?.ad} ${seciliOgrenci?.soyad} listeden çıkarıldı.`);
+      }
+    }
+    setConfirmationOpen(false);
+    setModalAcik(false);
+    setSeciliOgrenci(null);
+    setSeciliMasa(null);
+  }, [seciliMasa, seciliOgrenci, onOgrenciSec, showConfirm]);
+
+  const handleCancelRemove = useCallback(() => {
+    setConfirmationOpen(false);
+  }, []);
 
   // Cinsiyet bazlı renk fonksiyonu - useCallback ile optimize edildi
   const getGenderColor = useCallback((ogrenci) => {
@@ -1797,9 +1821,48 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
             )}
           </DialogContent>
 
-          <DialogActions>
-            <Button onClick={handleModalKapat} color="primary">
+          <DialogActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
+            {seciliOgrenci && !readOnly ? (
+              <Button
+                onClick={handleRemoveStudentClick}
+                color="error"
+                variant="outlined"
+                startIcon={<DeleteIcon />}
+                size="small"
+              >
+                Listeden Çıkar
+              </Button>
+            ) : <Box />}
+            <Button onClick={handleModalKapat} color="primary" variant="contained">
               Kapat
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Onay Diyaloğu */}
+        <Dialog
+          open={confirmationOpen}
+          onClose={handleCancelRemove}
+          maxWidth="xs"
+          fullWidth
+        >
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'warning.main' }}>
+            <WarningIcon />
+            <Typography variant="h6">Emin misiniz?</Typography>
+          </DialogTitle>
+          <DialogContent>
+            <Typography>
+              <strong>{seciliOgrenci?.ad} {seciliOgrenci?.soyad}</strong> isimli öğrenciyi bu salondan çıkarmak istediğinize emin misiniz?
+              <br /><br />
+              Bu işlem öğrenciyi "Yerleşmeyen Öğrenciler" listesine geri gönderecektir.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCancelRemove} color="inherit">
+              İptal
+            </Button>
+            <Button onClick={handleConfirmRemove} color="error" variant="contained" autoFocus>
+              Çıkar
             </Button>
           </DialogActions>
         </Dialog>
