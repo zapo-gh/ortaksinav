@@ -260,7 +260,10 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
         salonAdi: salon.salonAdi || salon.ad || '',
         siraTipi: salon.siraTipi,
         grupSayisi: salon.grupSayisi,
-        gruplar: salon.gruplar || [],
+        gruplar: (salon.gruplar || []).map((grup, idx) => ({
+          ...grup,
+          id: idx + 1 // Grup numaralarını 1, 2, 3... olarak normalize et
+        })),
         aktif: salon.aktif
       }));
 
@@ -379,7 +382,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
       siraTipi: kopyalanacakForm.siraTipi,
       grupSayisi: kopyalanacakForm.grupSayisi,
       gruplar: kopyalanacakForm.gruplar?.map((grup, index) => ({
-        id: `${yeniId}_grup_${index}`, // Stabil grup ID
+        id: index + 1, // Basit grup numarası: 1, 2, 3...
         siraSayisi: grup.siraSayisi
       })) || [],
       aktif: true
