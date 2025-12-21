@@ -512,7 +512,6 @@ const examReducer = (state, action) => {
         ...state,
         ogrenciler: state.ogrenciler.filter(o => o.id !== action.payload)
       };
-      try { localStorage.setItem('exam_ogrenciler', JSON.stringify(newState.ogrenciler)); } catch (e) { logger.debug('localStorage immediate write failed (exam_ogrenciler):', e); }
       saveToStorage('exam_ogrenciler', newState.ogrenciler);
       return newState;
 
@@ -521,7 +520,6 @@ const examReducer = (state, action) => {
         ...state,
         ogrenciler: []
       };
-      try { localStorage.setItem('exam_ogrenciler', JSON.stringify(newState.ogrenciler)); } catch (e) { logger.debug('localStorage immediate write failed (exam_ogrenciler):', e); }
       saveToStorage('exam_ogrenciler', newState.ogrenciler);
       return newState;
 
@@ -536,7 +534,6 @@ const examReducer = (state, action) => {
           pinnedMasaId: pinnedMasaId ?? null
         } : o)
       };
-      try { localStorage.setItem('exam_ogrenciler', JSON.stringify(newState.ogrenciler)); } catch (e) { logger.debug('localStorage immediate write failed (exam_ogrenciler):', e); }
       saveToStorage('exam_ogrenciler', newState.ogrenciler);
       return newState;
     }
@@ -551,7 +548,6 @@ const examReducer = (state, action) => {
           pinnedMasaId: null
         } : o)
       };
-      try { localStorage.setItem('exam_ogrenciler', JSON.stringify(newState.ogrenciler)); } catch (e) { logger.debug('localStorage immediate write failed (exam_ogrenciler):', e); }
       saveToStorage('exam_ogrenciler', newState.ogrenciler);
       return newState;
     }
@@ -574,11 +570,6 @@ const examReducer = (state, action) => {
         ...state,
         salonlar: action.payload
       };
-      if (Array.isArray(action.payload) && action.payload.length > 0) {
-        try { localStorage.setItem('exam_salonlar', JSON.stringify(newState.salonlar)); } catch (e) { logger.debug('localStorage immediate write failed (exam_salonlar):', e); }
-      } else {
-        try { localStorage.removeItem('exam_salonlar'); } catch (e) { logger.debug('localStorage remove failed (exam_salonlar):', e); }
-      }
       saveToStorage('exam_salonlar', newState.salonlar);
       return newState;
 
@@ -587,7 +578,6 @@ const examReducer = (state, action) => {
         ...state,
         salonlar: [...state.salonlar, action.payload]
       };
-      try { localStorage.setItem('exam_salonlar', JSON.stringify(newState.salonlar)); } catch (e) { logger.debug('localStorage immediate write failed (exam_salonlar):', e); }
       saveToStorage('exam_salonlar', newState.salonlar);
       return newState;
 
@@ -596,7 +586,6 @@ const examReducer = (state, action) => {
         ...state,
         salonlar: state.salonlar.filter(salon => salon.id !== action.payload)
       };
-      try { localStorage.setItem('exam_salonlar', JSON.stringify(newState.salonlar)); } catch (e) { logger.debug('localStorage immediate write failed (exam_salonlar):', e); }
       saveToStorage('exam_salonlar', newState.salonlar);
       return newState;
 
@@ -605,12 +594,6 @@ const examReducer = (state, action) => {
         ...state,
         ayarlar: { ...state.ayarlar, ...action.payload }
       };
-
-      if (action.payload && Object.keys(action.payload).length > 0) {
-        try { localStorage.setItem('exam_ayarlar', JSON.stringify(newState.ayarlar)); } catch (e) { logger.debug('localStorage immediate write failed (exam_ayarlar):', e); }
-      } else {
-        try { localStorage.removeItem('exam_ayarlar'); } catch (e) { logger.debug('localStorage remove failed (exam_ayarlar):', e); }
-      }
       saveToStorage('exam_ayarlar', newState.ayarlar);
       return newState;
 

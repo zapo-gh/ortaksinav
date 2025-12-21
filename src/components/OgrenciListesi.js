@@ -31,6 +31,7 @@ import {
   AlertTitle,
   InputLabel,
   Select,
+  TablePagination,
   MenuItem
 } from '@mui/material';
 import {
@@ -46,6 +47,66 @@ import * as XLSX from 'xlsx';
 import { useExam } from '../context/ExamContext';
 import { useNotifications } from './NotificationSystem';
 
+// Memoized Student Row Component
+const StudentRow = memo(({ ogrenci, index, onSil, readOnly }) => {
+  return (
+    <TableRow hover>
+      <TableCell>
+        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+          {index + 1}
+        </Typography>
+      </TableCell>
+      <TableCell>
+        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+          {ogrenci.numara}
+        </Typography>
+      </TableCell>
+      <TableCell>
+        <Typography variant="body2">
+          {ogrenci.ad} {ogrenci.soyad}
+        </Typography>
+      </TableCell>
+      <TableCell>
+        <Chip
+          label={ogrenci.sinif}
+          size="small"
+          color="primary"
+          variant="outlined"
+        />
+      </TableCell>
+      <TableCell>
+        <Chip
+          label={ogrenci.cinsiyet || 'Belirtilmemiş'}
+          size="small"
+          sx={{
+            backgroundColor: ogrenci.cinsiyet === 'K' ? '#f8bbd9' : ogrenci.cinsiyet === 'E' ? '#bbdefb' : '#f5f5f5',
+            color: ogrenci.cinsiyet === 'K' ? '#ad1457' : ogrenci.cinsiyet === 'E' ? '#1565c0' : '#757575',
+            borderColor: ogrenci.cinsiyet === 'K' ? '#e91e63' : ogrenci.cinsiyet === 'E' ? '#2196f3' : '#e0e0e0',
+            fontWeight: 'bold',
+            '&:hover': {
+              backgroundColor: ogrenci.cinsiyet === 'K' ? '#f48fb1' : ogrenci.cinsiyet === 'E' ? '#90caf9' : '#eeeeee'
+            }
+          }}
+          variant="outlined"
+        />
+      </TableCell>
+      <TableCell>
+        <IconButton
+          size="small"
+          color="error"
+          onClick={() => onSil(ogrenci.id)}
+          title="Öğrenciyi Sil"
+          disabled={readOnly}
+        >
+          {/* Note: DeleteIcon should be available in parent or imported here. 
+              In the original code it was available. */}
+          <DeleteIcon />
+        </IconButton>
+      </TableCell>
+    </TableRow>
+  );
+});
+
 const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
   const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle, isWriteAllowed } = useExam();
   const readOnly = process.env.NODE_ENV === 'test' ? false : !isWriteAllowed;
@@ -55,6 +116,19 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
   const [aramaAcik, setAramaAcik] = useState(false);
   const aramaRef = useRef(null);
   const aramaInputRef = useRef(null);
+
+  // Pagination state
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+
+  const handleChangePage = useCallback((event, newPage) => {
+    setPage(newPage);
+  }, []);
+
+  const handleChangeRowsPerPage = useCallback((event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  }, []);
 
   // Normalize cache - component seviyesinde (performans için)
   const normalizeCacheRef = useRef(new Map());
@@ -1223,67 +1297,30 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filtrelenmisOgrenciler.map((ogrenci, index) => {
-                    return (
-                      <TableRow
+                  {filtrelenmisOgrenciler
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((ogrenci, index) => (
+                      <StudentRow
                         key={ogrenci.id}
-                        hover
-                      >
-                        <TableCell>
-                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                            {index + 1}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                            {ogrenci.numara}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            {ogrenci.ad} {ogrenci.soyad}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={ogrenci.sinif}
-                            size="small"
-                            color="primary"
-                            variant="outlined"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={ogrenci.cinsiyet || 'Belirtilmemiş'}
-                            size="small"
-                            sx={{
-                              backgroundColor: ogrenci.cinsiyet === 'K' ? '#f8bbd9' : ogrenci.cinsiyet === 'E' ? '#bbdefb' : '#f5f5f5',
-                              color: ogrenci.cinsiyet === 'K' ? '#ad1457' : ogrenci.cinsiyet === 'E' ? '#1565c0' : '#757575',
-                              borderColor: ogrenci.cinsiyet === 'K' ? '#e91e63' : ogrenci.cinsiyet === 'E' ? '#2196f3' : '#e0e0e0',
-                              fontWeight: 'bold',
-                              '&:hover': {
-                                backgroundColor: ogrenci.cinsiyet === 'K' ? '#f48fb1' : ogrenci.cinsiyet === 'E' ? '#90caf9' : '#eeeeee'
-                              }
-                            }}
-                            variant="outlined"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => handleOgrenciSil(ogrenci.id)}
-                            title="Öğrenciyi Sil"
-                            disabled={readOnly}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                        ogrenci={ogrenci}
+                        index={page * rowsPerPage + index}
+                        onSil={handleOgrenciSil}
+                        readOnly={readOnly}
+                      />
+                    ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                rowsPerPageOptions={[10, 25, 50, 100]}
+                component="div"
+                count={filtrelenmisOgrenciler.length}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={handleChangePage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+                labelRowsPerPage="Sayfa başına satır:"
+                labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}`}
+              />
             </TableContainer>
           )}
 

@@ -172,6 +172,180 @@ const SalonStatsChips = React.memo(({ mode, toplam, yerlesen, yerlesmeyen }) => 
   return null;
 });
 
+const getPozisyon = (satir, sutun, satirSayisi, sutunSayisi) => {
+  if ((satir === 0 || satir === satirSayisi - 1) &&
+    (sutun === 0 || sutun === sutunSayisi - 1)) {
+    return 'kose';
+  } else if (satir === 0 || satir === satirSayisi - 1 ||
+    sutun === 0 || sutun === sutunSayisi - 1) {
+    return 'kenar';
+  }
+  return 'merkez';
+};
+
+// Draggable Student Component - Optimized and moved outside
+const DraggableStudent = memo(({
+  masa,
+  getGenderColor,
+  onMasaClick,
+  onStudentHover,
+  onStudentLeave,
+  isSecili,
+  isHovered,
+  onStudentMove,
+  conflict,
+  onTransferClick,
+  currentSalon,
+  allSalons,
+  readOnly = false,
+  sinifDuzeni,
+  getConstraintConflictInfo,
+  calculateDeskNumberForMasa,
+  plan2D
+}) => {
+  const [{ isDragging }, drag] = useDrag({
+    type: ITEM_TYPES.STUDENT,
+    item: () => ({
+      masaId: masa.id,
+      ogrenci: masa.ogrenci
+    }),
+    canDrag: !!masa.ogrenci && !readOnly,
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+    options: {
+      dragPreviewOptions: {
+        anchorX: 0.5,
+        anchorY: 0.5,
+      },
+    },
+  });
+
+  return (
+    <Box
+      ref={drag}
+      sx={{
+        cursor: masa.ogrenci ? 'grab' : 'default',
+        width: '100%',
+        opacity: isDragging ? 0.5 : 1,
+        transform: isDragging ? 'rotate(5deg)' : 'rotate(0deg)',
+        transition: 'opacity 0.1s ease, background-color 0.1s ease'
+      }}
+    >
+      <Paper
+        elevation={masa.ogrenci ? 3 : 1}
+        onClick={() => onMasaClick(masa, masa.ogrenci)}
+        onMouseEnter={() => masa.ogrenci && onStudentHover(masa.ogrenci)}
+        onMouseLeave={onStudentLeave}
+        sx={{
+          p: { xs: 0.5, sm: 1 },
+          minHeight: { xs: 60, sm: 80 },
+          maxHeight: { xs: 60, sm: 80 },
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: masa.ogrenci ? (getGenderColor(masa.ogrenci) === 'secondary' ? 'secondary.50' : 'primary.50') : 'grey.100',
+          border: masa.ogrenci ? '2px solid' : '1px solid',
+          borderColor: masa.ogrenci ? (getGenderColor(masa.ogrenci) === 'secondary' ? 'secondary.main' : 'primary.main') : 'grey.300',
+          position: 'relative',
+          cursor: 'pointer',
+          transition: 'transform 0.1s ease, box-shadow 0.1s ease',
+          transform: isSecili ? 'scale(1.05)' : 'scale(1)',
+          boxShadow: isSecili ? 6 : masa.ogrenci ? 3 : 1,
+          zIndex: isSecili ? 10 : 1,
+          '&:hover': {
+            transform: isSecili ? 'scale(1.05)' : 'scale(1.02)',
+            boxShadow: isSecili ? 8 : 4,
+            bgcolor: masa.ogrenci ? (getGenderColor(masa.ogrenci) === 'secondary' ? 'secondary.100' : 'primary.100') : 'grey.200',
+            zIndex: 10
+          },
+          ...(isSecili && {
+            bgcolor: 'warning.100',
+            borderColor: 'warning.main',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: -2,
+              left: -2,
+              right: -2,
+              bottom: -2,
+              border: '3px solid',
+              borderColor: 'warning.main',
+              borderRadius: 'inherit',
+              animation: 'pulse 2s infinite'
+            }
+          })
+        }}
+      >
+        <Typography
+          variant="caption"
+          sx={{
+            position: 'absolute',
+            top: { xs: 0.5, sm: 1 },
+            left: { xs: 1, sm: 2 },
+            fontWeight: 'bold',
+            color: 'text.secondary',
+            fontSize: { xs: '0.5rem', sm: '0.6rem' },
+            cursor: 'default'
+          }}
+        >
+          {conflict && getConstraintConflictInfo && plan2D && (() => {
+            const info = getConstraintConflictInfo(masa, plan2D);
+
+            return (
+              <Box sx={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 0.5, flexDirection: 'column' }}>
+                {conflict.gender && (
+                  <Tooltip title={`Cinsiyet kısıtı: ${info.message}`} placement="top">
+                    <Box sx={{ color: 'warning.main', width: 18, height: 18, backgroundColor: 'warning.light', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold', borderRadius: 1 }}>✕</Box>
+                  </Tooltip>
+                )}
+                {conflict.classSideBySide && (
+                  <Tooltip title={`Yan yana sınıf kısıtı: ${info.message}`} placement="top">
+                    <Box sx={{ color: 'warning.main', width: 18, height: 18, backgroundColor: 'warning.light', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold', borderRadius: 1 }}>=</Box>
+                  </Tooltip>
+                )}
+                {conflict.classBackToBack && (
+                  <Tooltip title={`Arka arkaya sınıf kısıtı: ${info.message}`} placement="top">
+                    <Box sx={{ color: 'success.main', width: 18, height: 18, borderRadius: '50%', backgroundColor: 'success.light', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold' }}>!</Box>
+                  </Tooltip>
+                )}
+              </Box>
+            );
+          })()}
+          {masa.masaNumarasi || (calculateDeskNumberForMasa && calculateDeskNumberForMasa(masa))}
+        </Typography>
+
+        {masa.ogrenci ? (
+          <Box sx={{ textAlign: 'center', width: '100%' }}>
+            <Avatar sx={{ width: { xs: 16, sm: 20 }, height: { xs: 16, sm: 20 }, mx: 'auto', mb: 0.5, bgcolor: `${getGenderColor(masa.ogrenci)}.main` }}>
+              <PersonIcon sx={{ fontSize: { xs: 10, sm: 12 } }} />
+            </Avatar>
+            <Typography variant="caption" sx={{ display: 'block', fontWeight: 'bold', fontSize: { xs: '0.55rem', sm: '0.65rem' }, lineHeight: 1 }}>
+              {masa.ogrenci.ad} {masa.ogrenci.soyad}
+            </Typography>
+            <Typography variant="caption" sx={{ display: 'block', fontSize: { xs: '0.5rem', sm: '0.6rem' }, color: 'text.secondary' }}>
+              {masa.ogrenci.numara}
+            </Typography>
+            <Typography variant="caption" sx={{ display: 'block', fontSize: { xs: '0.45rem', sm: '0.55rem' }, color: 'text.primary', fontWeight: 'bold' }}>
+              {masa.ogrenci.sinif || masa.ogrenci.sube}
+            </Typography>
+            <Box sx={{ position: 'absolute', top: 4, right: 4, opacity: isHovered ? 1 : 0.7, zIndex: 20, '&:hover': { opacity: 1 } }} onClick={e => e.stopPropagation()}>
+              <TransferButton student={masa.ogrenci} currentSalon={currentSalon} allSalons={allSalons} onTransferClick={onTransferClick} disabled={isDragging} />
+            </Box>
+          </Box>
+        ) : (
+          <Box sx={{ textAlign: 'center', color: 'text.disabled' }}>
+            <ChairIcon sx={{ fontSize: { xs: 12, sm: 16 }, mb: 0.5 }} />
+            <Typography variant="caption" sx={{ fontSize: { xs: '0.5rem', sm: '0.6rem' } }}>Boş</Typography>
+          </Box>
+        )}
+      </Paper>
+    </Box>
+  );
+});
+
 const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler = [], onOgrenciSec, tumSalonlar, onSalonDegistir, ayarlar = {}, salonlar = [], seciliSalonId, onSeciliSalonDegistir, onStudentTransfer, yerlestirmeSonucu, tumOgrenciSayisi, aktifPlanAdi = '', readOnly = false }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -400,318 +574,11 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
     }
   };
 
-  const getPozisyon = (satir, sutun, satirSayisi, sutunSayisi) => {
-    if ((satir === 0 || satir === satirSayisi - 1) &&
-      (sutun === 0 || sutun === sutunSayisi - 1)) {
-      return 'kose';
-    } else if (satir === 0 || satir === satirSayisi - 1 ||
-      sutun === 0 || sutun === sutunSayisi - 1) {
-      return 'kenar';
-    }
-    return 'merkez';
+  const getPozisyonLocal = (satir, sutun, satirSayisi, sutunSayisi) => {
+    return getPozisyon(satir, sutun, satirSayisi, sutunSayisi);
   };
 
 
-
-  // Draggable Student Component - Optimized
-  const DraggableStudent = memo(({ masa, getGenderColor, onMasaClick, onStudentHover, onStudentLeave, isSecili, isHovered, onStudentMove, conflict, onTransferClick, currentSalon, allSalons, readOnly = false }) => {
-    const [{ isDragging }, drag] = useDrag({
-      type: ITEM_TYPES.STUDENT,
-      item: () => ({
-        masaId: masa.id,
-        ogrenci: masa.ogrenci
-      }),
-      canDrag: !!masa.ogrenci && !readOnly,
-      collect: (monitor) => ({
-        isDragging: monitor.isDragging(),
-      }),
-      options: {
-        // Drag sensitivity'yi artır
-        dragPreviewOptions: {
-          anchorX: 0.5,
-          anchorY: 0.5,
-        },
-      },
-    });
-
-    return (
-      <Box
-        ref={drag}
-        sx={{
-          cursor: masa.ogrenci ? 'grab' : 'default',
-          width: '100%',
-          opacity: isDragging ? 0.5 : 1,
-          transform: isDragging ? 'rotate(5deg)' : 'rotate(0deg)',
-          transition: 'opacity 0.1s ease, background-color 0.1s ease'
-        }}
-      >
-        <Paper
-          elevation={masa.ogrenci ? 3 : 1}
-          onClick={() => onMasaClick(masa, masa.ogrenci)}
-          onMouseEnter={() => masa.ogrenci && onStudentHover(masa.ogrenci)}
-          onMouseLeave={onStudentLeave}
-          sx={{
-            p: { xs: 0.5, sm: 1 },
-            minHeight: { xs: 60, sm: 80 },
-            maxHeight: { xs: 60, sm: 80 },
-            width: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            bgcolor: masa.ogrenci ? (getGenderColor(masa.ogrenci) === 'secondary' ? 'secondary.50' : 'primary.50') : 'grey.100',
-            border: masa.ogrenci ? '2px solid' : '1px solid',
-            borderColor: masa.ogrenci ? (getGenderColor(masa.ogrenci) === 'secondary' ? 'secondary.main' : 'primary.main') : 'grey.300',
-            position: 'relative',
-            cursor: 'pointer',
-            transition: 'transform 0.1s ease, box-shadow 0.1s ease',
-            transform: isSecili ? 'scale(1.05)' : 'scale(1)',
-            boxShadow: isSecili ? 6 : masa.ogrenci ? 3 : 1,
-            zIndex: isSecili ? 10 : 1,
-            '&:hover': {
-              transform: isSecili ? 'scale(1.05)' : 'scale(1.02)',
-              boxShadow: isSecili ? 8 : 4,
-              bgcolor: masa.ogrenci ? (getGenderColor(masa.ogrenci) === 'secondary' ? 'secondary.100' : 'primary.100') : 'grey.200',
-              zIndex: 10
-            },
-            ...(isSecili && {
-              bgcolor: 'warning.100',
-              borderColor: 'warning.main',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: -2,
-                left: -2,
-                right: -2,
-                bottom: -2,
-                border: '3px solid',
-                borderColor: 'warning.main',
-                borderRadius: 'inherit',
-                animation: 'pulse 2s infinite'
-              }
-            })
-          }}
-        >
-          {/* Masa Numarası */}
-          <Typography
-            variant="caption"
-            sx={{
-              position: 'absolute',
-              top: { xs: 0.5, sm: 1 },
-              left: { xs: 1, sm: 2 },
-              fontWeight: 'bold',
-              color: 'text.secondary',
-              fontSize: { xs: '0.5rem', sm: '0.6rem' },
-              cursor: 'default'
-            }}
-
-          >
-            {(conflict?.gender || conflict?.classSideBySide || conflict?.classBackToBack) && (() => {
-              // Conflict detay mesajını hesapla
-              // Güvenlik kontrolü: sinifDuzeni ve masalar kontrolü
-              if (!sinifDuzeni || !sinifDuzeni.masalar || !Array.isArray(sinifDuzeni.masalar)) {
-                return null;
-              }
-
-              const satirSayisi = sinifDuzeni.satirSayisi || 0;
-              const sutunSayisi = sinifDuzeni.sutunSayisi || 0;
-
-              // Geçerli boyutlarda plan2D oluştur
-              const plan2D = Array(satirSayisi).fill(null).map(() => Array(sutunSayisi).fill(null));
-
-              sinifDuzeni.masalar.forEach(m => {
-                if (m && m.ogrenci && typeof m.satir === 'number' && typeof m.sutun === 'number') {
-                  // Bounds check - satir ve sutun değerlerinin geçerli aralıkta olduğundan emin ol
-                  if (m.satir >= 0 && m.satir < satirSayisi && m.sutun >= 0 && m.sutun < sutunSayisi) {
-                    if (plan2D[m.satir]) {
-                      plan2D[m.satir][m.sutun] = { ogrenci: m.ogrenci, grup: m.grup };
-                    }
-                  }
-                }
-              });
-              const info = getConstraintConflictInfo(masa, plan2D);
-
-              return (
-                <Box sx={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 0.5, flexDirection: 'column' }}>
-                  {/* Cinsiyet kısıt ihlali - Sarı kare içinde X */}
-                  {conflict.gender && (
-                    <Tooltip title={`Cinsiyet kısıtı: ${info.message.split('•')[0]?.trim() || 'Farklı cinsiyet yan yana'}`} placement="top">
-                      <Box
-                        sx={{
-                          color: 'warning.main',
-                          width: 18,
-                          height: 18,
-                          backgroundColor: 'warning.light',
-                          display: 'flex',
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: { xs: 0.5, sm: 1 },
-                          fontSize: '10px',
-                          fontWeight: 'bold',
-                          borderRadius: 1
-                        }}
-                      >
-                        ✕
-                      </Box>
-                    </Tooltip>
-                  )}
-
-                  {/* Yan yana sınıf seviyesi kısıt ihlali - Turuncu üçgen */}
-                  {conflict.classSideBySide && (
-                    <Tooltip title={`Yan yana sınıf kısıtı: ${info.message.split('•')[1]?.trim() || 'Aynı seviye yan yana'}`} placement="top">
-                      <Box
-                        sx={{
-                          color: 'warning.main',
-                          width: 0,
-                          height: 0,
-                          borderLeft: '9px solid transparent',
-                          borderRight: '9px solid transparent',
-                          borderBottom: '18px solid',
-                          borderBottomColor: 'warning.light',
-                          display: 'flex',
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: { xs: 0.5, sm: 1 },
-                          position: 'relative'
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            position: 'absolute',
-                            top: '6px',
-                            left: '-6px',
-                            color: 'warning.main',
-                            fontSize: '8px',
-                            fontWeight: 'bold'
-                          }}
-                        >
-                          =
-                        </Box>
-                      </Box>
-                    </Tooltip>
-                  )}
-
-                  {/* Arka arkaya sınıf seviyesi kısıt ihlali - Yeşil daire */}
-                  {conflict.classBackToBack && (
-                    <Tooltip title={`Arka arkaya sınıf kısıtı: ${info.message.split('•')[2]?.trim() || 'Aynı seviye arka arkaya'}`} placement="top">
-                      <Box
-                        sx={{
-                          color: 'success.main',
-                          width: 18,
-                          height: 18,
-                          borderRadius: '50%',
-                          backgroundColor: 'success.light',
-                          display: 'flex',
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: { xs: 0.5, sm: 1 },
-                          fontSize: '10px',
-                          fontWeight: 'bold'
-                        }}
-                      >
-                        !
-                      </Box>
-                    </Tooltip>
-                  )}
-                </Box>
-              );
-            })()}
-            {/* GÜNCELLENMİŞ MASA NUMARASI GÖSTERİMİ */}
-            {masa.masaNumarasi || calculateDeskNumberForMasa(masa)}
-          </Typography>
-
-          {/* Öğrenci Bilgileri */}
-          {masa.ogrenci ? (
-            <Box sx={{ textAlign: 'center', width: '100%' }}>
-              <Avatar
-                sx={{
-                  width: { xs: 16, sm: 20 },
-                  height: { xs: 16, sm: 20 },
-                  mx: 'auto',
-                  mb: { xs: 0.3, sm: 0.5 },
-                  bgcolor: `${getGenderColor(masa.ogrenci)}.main`
-                }}
-              >
-                <PersonIcon sx={{ fontSize: { xs: 10, sm: 12 } }} />
-              </Avatar>
-
-              <Typography
-                variant="caption"
-                sx={{
-                  display: 'block',
-                  fontWeight: 'bold',
-                  fontSize: { xs: '0.55rem', sm: '0.65rem' },
-                  lineHeight: 1
-                }}
-              >
-                {masa.ogrenci.ad} {masa.ogrenci.soyad}
-              </Typography>
-
-              <Typography
-                variant="caption"
-                sx={{
-                  display: 'block',
-                  fontSize: { xs: '0.5rem', sm: '0.6rem' },
-                  color: 'text.secondary'
-                }}
-              >
-                {masa.ogrenci.numara}
-              </Typography>
-
-              <Typography
-                variant="caption"
-                sx={{
-                  display: 'block',
-                  fontSize: { xs: '0.45rem', sm: '0.55rem' },
-                  color: 'text.primary',
-                  fontWeight: 'bold',
-                  mt: { xs: 0.1, sm: 0.25 }
-                }}
-              >
-                {masa.ogrenci.sinif || masa.ogrenci.sube}
-              </Typography>
-
-              {/* Transfer Butonu */}
-              <Box
-                sx={{
-                  position: 'absolute',
-                  top: { xs: 2, sm: 4 },
-                  right: { xs: 2, sm: 4 },
-                  opacity: isHovered ? 1 : 0.7, // Her zaman biraz görünür olsun
-                  transition: 'opacity 0.1s ease',
-                  zIndex: 20,
-                  '&:hover': {
-                    opacity: 1
-                  }
-                }}
-                onClick={(e) => {
-                  e.stopPropagation(); // Event bubbling'i durdur
-                }}
-              >
-                <TransferButton
-                  student={masa.ogrenci}
-                  currentSalon={currentSalon}
-                  allSalons={allSalons}
-                  onTransferClick={onTransferClick}
-                  disabled={isDragging}
-                />
-              </Box>
-            </Box>
-          ) : (
-            <Box sx={{ textAlign: 'center', color: 'text.disabled' }}>
-              <ChairIcon sx={{ fontSize: { xs: 12, sm: 16 }, mb: { xs: 0.3, sm: 0.5 } }} />
-              <Typography variant="caption" sx={{ fontSize: { xs: '0.5rem', sm: '0.6rem' } }}>
-                Boş
-              </Typography>
-            </Box>
-          )}
-        </Paper>
-      </Box>
-    );
-  });
 
   // Sınıf düzenini oluştur - GRUP BAZLI SALON YAPISINI KULLANAN
   const sinifDuzeni = useMemo(() => {
@@ -856,6 +723,27 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
 
     return { satirSayisi, sutunSayisi, masalar: masalarWithGroupNumbers };
   }, [sinif, ogrenciler]);
+
+  // KRİTİK: plan2D'yi bir kez oluştur ve hasConstraintConflict için kullan
+  const plan2D = useMemo(() => {
+    if (!sinifDuzeni || !sinifDuzeni.masalar || !Array.isArray(sinifDuzeni.masalar)) {
+      return null;
+    }
+
+    const satirSayisi = sinifDuzeni.satirSayisi || 0;
+    const sutunSayisi = sinifDuzeni.sutunSayisi || 0;
+    const p2d = Array(satirSayisi).fill(null).map(() => Array(sutunSayisi).fill(null));
+
+    sinifDuzeni.masalar.forEach(m => {
+      if (m && m.ogrenci && typeof m.satir === 'number' && typeof m.sutun === 'number') {
+        if (m.satir >= 0 && m.satir < satirSayisi && m.sutun >= 0 && m.sutun < sutunSayisi) {
+          p2d[m.satir][m.sutun] = { ogrenci: m.ogrenci, grup: m.grup };
+        }
+      }
+    });
+    return p2d;
+  }, [sinifDuzeni]);
+
 
 
 
@@ -1473,30 +1361,11 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
                               currentSalon={sinif}
                               allSalons={tumSalonlar || []}
                               readOnly={readOnly}
-                              conflict={(() => {
-                                // Güvenlik kontrolü: sinifDuzeni ve masalar kontrolü
-                                if (!sinifDuzeni || !sinifDuzeni.masalar || !Array.isArray(sinifDuzeni.masalar)) {
-                                  return false;
-                                }
-
-                                const satirSayisi = sinifDuzeni.satirSayisi || 0;
-                                const sutunSayisi = sinifDuzeni.sutunSayisi || 0;
-
-                                // Geçerli boyutlarda plan2D oluştur
-                                const plan2D = Array(satirSayisi).fill(null).map(() => Array(sutunSayisi).fill(null));
-
-                                sinifDuzeni.masalar.forEach(m => {
-                                  if (m && m.ogrenci && typeof m.satir === 'number' && typeof m.sutun === 'number') {
-                                    // Bounds check - satir ve sutun değerlerinin geçerli aralıkta olduğundan emin ol
-                                    if (m.satir >= 0 && m.satir < satirSayisi && m.sutun >= 0 && m.sutun < sutunSayisi) {
-                                      if (plan2D[m.satir]) {
-                                        plan2D[m.satir][m.sutun] = { ogrenci: m.ogrenci, grup: m.grup };
-                                      }
-                                    }
-                                  }
-                                });
-                                return hasConstraintConflict(masa, plan2D);
-                              })()}
+                              sinifDuzeni={sinifDuzeni}
+                              getConstraintConflictInfo={getConstraintConflictInfo}
+                              calculateDeskNumberForMasa={calculateDeskNumberForMasa}
+                              plan2D={plan2D}
+                              conflict={hasConstraintConflict(masa, plan2D)}
                             />
                           </DroppableSeat>
                         </Tooltip>
@@ -1584,30 +1453,11 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
                       currentSalon={sinif}
                       allSalons={tumSalonlar || []}
                       readOnly={readOnly}
-                      conflict={(() => {
-                        // Güvenlik kontrolü: sinifDuzeni ve masalar kontrolü
-                        if (!sinifDuzeni || !sinifDuzeni.masalar || !Array.isArray(sinifDuzeni.masalar)) {
-                          return false;
-                        }
-
-                        const satirSayisi = sinifDuzeni.satirSayisi || 0;
-                        const sutunSayisi = sinifDuzeni.sutunSayisi || 0;
-
-                        // Geçerli boyutlarda plan2D oluştur
-                        const plan2D = Array(satirSayisi).fill(null).map(() => Array(sutunSayisi).fill(null));
-
-                        sinifDuzeni.masalar.forEach(m => {
-                          if (m && m.ogrenci && typeof m.satir === 'number' && typeof m.sutun === 'number') {
-                            // Bounds check - satir ve sutun değerlerinin geçerli aralıkta olduğundan emin ol
-                            if (m.satir >= 0 && m.satir < satirSayisi && m.sutun >= 0 && m.sutun < sutunSayisi) {
-                              if (plan2D[m.satir]) {
-                                plan2D[m.satir][m.sutun] = { ogrenci: m.ogrenci, grup: m.grup };
-                              }
-                            }
-                          }
-                        });
-                        return hasConstraintConflict(masa, plan2D);
-                      })()}
+                      sinifDuzeni={sinifDuzeni}
+                      getConstraintConflictInfo={getConstraintConflictInfo}
+                      calculateDeskNumberForMasa={calculateDeskNumberForMasa}
+                      plan2D={plan2D}
+                      conflict={hasConstraintConflict(masa, plan2D)}
                     />
                   </DroppableSeat>
                 </Tooltip>
