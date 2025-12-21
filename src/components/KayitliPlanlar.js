@@ -449,6 +449,12 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
                               <HistoryIcon sx={{ fontSize: '0.875rem', verticalAlign: 'middle', mr: 0.5 }} />
                               {formatDate(plan.date || plan.createdAt)}
                             </Typography>
+                            {plan.sinavTarihi && (
+                              <Typography component="span" variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                                📅 {new Date(plan.sinavTarihi).toLocaleDateString('tr-TR')}
+                                {plan.sinavSaati && ` • 🕐 ${plan.sinavSaati}`}
+                              </Typography>
+                            )}
                           </Box>
                         }
                       />
@@ -538,9 +544,19 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
                                   >
                                     <ListItemText
                                       primary={plan.name}
-                                      secondary={`${plan.totalStudents} öğrenci • ${plan.salonCount} salon • ${new Date(plan.date).toLocaleDateString()}`}
+                                      secondary={
+                                        <Box component="span">
+                                          {`${plan.totalStudents} öğrenci • ${plan.salonCount} salon • ${new Date(plan.date).toLocaleDateString()}`}
+                                          {plan.sinavTarihi && (
+                                            <Box component="span" sx={{ display: 'block', mt: 0.5 }}>
+                                              📅 {new Date(plan.sinavTarihi).toLocaleDateString('tr-TR')}
+                                              {plan.sinavSaati && ` • 🕐 ${plan.sinavSaati}`}
+                                            </Box>
+                                          )}
+                                        </Box>
+                                      }
                                       primaryTypographyProps={{ variant: 'body2', fontWeight: 500 }}
-                                      secondaryTypographyProps={{ variant: 'caption' }}
+                                      secondaryTypographyProps={{ variant: 'caption', component: 'div' }}
                                     />
                                     <ListItemSecondaryAction>
                                       <Box sx={{ display: 'flex', gap: 0.5 }}>
