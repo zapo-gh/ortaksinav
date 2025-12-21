@@ -24,8 +24,21 @@ import {
   Delete as DeleteIcon,
   CloudDownload as CloudDownloadIcon,
   History as HistoryIcon,
-  Edit as EditIcon
+  Edit as EditIcon,
+  Archive as ArchiveIcon,
+  Unarchive as UnarchiveIcon,
+  ExpandMore as ExpandMoreIcon,
+  BackupTable as BackupTableIcon
 } from '@mui/icons-material';
+import {
+  Tabs,
+  Tab,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Divider
+} from '@mui/material';
+import ArchiveDialog from './ArchiveDialog';
 import planManager from '../utils/planManager';
 import { useNotifications } from './NotificationSystem';
 import logger from '../utils/logger';
@@ -42,6 +55,9 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
   const [newPlanName, setNewPlanName] = useState('');
   const [isRenaming, setIsRenaming] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [activeTab, setActiveTab] = useState(0);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [planToArchive, setPlanToArchive] = useState(null);
   const { showSuccess, showError } = useNotifications();
 
   useEffect(() => {
@@ -272,6 +288,54 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
     }
   };
 
+  const handleArchiveClick = (plan) => {
+    setPlanToArchive(plan);
+    setArchiveDialogOpen(true);
+  };
+
+  const handleArchiveConfirm = async (metadata) => {
+    if (!planToArchive) return;
+    try {
+      setIsLoading(true);
+      await planManager.archivePlan(planToArchive.id, metadata);
+      showSuccess('Plan başarıyla arşivlendi.');
+      await loadPlans();
+    } catch (error) {
+      showError('Plan arşivlenirken hata oluştu.');
+    } finally {
+      setIsLoading(false);
+      setPlanToArchive(null);
+    }
+  };
+
+  const handleRestorePlan = async (planId) => {
+    try {
+      setIsLoading(true);
+      await planManager.restorePlan(planId);
+      showSuccess('Plan arşivden çıkarıldı.');
+      await loadPlans();
+    } catch (error) {
+      showError('Plan geri yüklenirken hata oluştu.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const groupArchivedPlans = (plans) => {
+    const grouped = {};
+    plans.forEach(plan => {
+      const meta = plan.archiveMetadata || { yil: 'Bilinmeyen Yıl', donem: 'Bilinmeyen Dönem', sinavNo: 'Bilinmeyen Sınav' };
+      const { yil, donem, sinavNo } = meta;
+
+      if (!grouped[yil]) grouped[yil] = {};
+      if (!grouped[yil][donem]) grouped[yil][donem] = {};
+      if (!grouped[yil][donem][sinavNo]) grouped[yil][donem][sinavNo] = [];
+
+      grouped[yil][donem][sinavNo].push(plan);
+    });
+    return grouped;
+  };
+
   const formatDate = (dateString) => {
     try {
       const date = new Date(dateString);
@@ -325,6 +389,13 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
             </Button>
           </Box>
 
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+            <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)} aria-label="plan tabs">
+              <Tab label={`Aktif Planlar (${kayitliPlanlar.filter(p => !p.isArchived).length})`} />
+              <Tab label={`Arşiv (${kayitliPlanlar.filter(p => p.isArchived).length})`} />
+            </Tabs>
+          </Box>
+
           {isLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress />
@@ -336,138 +407,185 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
                 Plan adı güncelleniyor...
               </Typography>
             </Box>
-          ) : kayitliPlanlar.length === 0 ? (
-            <Alert severity="info" sx={{ mt: 2 }}>
-              Henüz kayıtlı plan yok. Plan oluşturduktan sonra kaydederek burada görüntüleyebilirsiniz.
-            </Alert>
-          ) : (
-            <List>
-              {kayitliPlanlar.map((plan) => {
-                // Plan ID'yi güvenli bir şekilde al
-                const planId = plan.id;
-                const planName = plan.name || 'İsimsiz Plan';
+          ) : activeTab === 0 ? (
+            kayitliPlanlar.filter(p => !p.isArchived).length === 0 ? (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                Henüz kayıtlı aktif plan yok.
+              </Alert>
+            ) : (
+              <List>
+                {kayitliPlanlar.filter(p => !p.isArchived).map((plan) => {
+                  const planId = plan.id;
+                  const planName = plan.name || 'İsimsiz Plan';
+                  if (!planId) return null;
 
-                // Eğer plan ID geçersizse bu planı render etme
-                if (!planId || planId === null || planId === undefined || planId === '') {
-                  console.warn('⚠️ Geçersiz ID\'ye sahip plan render edilmedi:', plan);
-                  return null;
-                }
-
-                return (
-                  <ListItem
-                    key={planId}
-                    sx={{
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 2,
-                      mb: 1,
-                      bgcolor: 'background.paper',
-                      '&:hover': {
-                        bgcolor: 'action.hover'
-                      }
-                    }}
-                  >
-                    <ListItemText
-                      primaryTypographyProps={{ component: 'div' }}
-                      secondaryTypographyProps={{ component: 'div' }}
-                      primary={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                          <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.125rem' } }}>
-                            {planName}
-                          </Typography>
-                          <Chip
-                            label={`${plan.totalStudents || 0} Öğrenci`}
-                            size="small"
-                            color="primary"
-                            sx={{ fontSize: '0.75rem' }}
-                          />
-                          <Chip
-                            label={`${plan.salonCount || 0} Salon`}
-                            size="small"
-                            color="secondary"
-                            sx={{ fontSize: '0.75rem' }}
-                          />
-                        </Box>
-                      }
-                      secondary={
-                        <Box sx={{ mt: 0.5, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                          <Typography
-                            component="span"
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ fontSize: '0.875rem' }}
-                          >
-                            <HistoryIcon sx={{ fontSize: '0.875rem', verticalAlign: 'middle', mr: 0.5 }} />
-                            {formatDate(plan.date || plan.createdAt)}
-                          </Typography>
-                          {plan.sinavTarihi && (
-                            <Typography
-                              component="span"
-                              variant="body2"
-                              color="text.secondary"
-                              sx={{ fontSize: '0.875rem' }}
-                            >
-                              📅 {new Date(plan.sinavTarihi).toLocaleDateString('tr-TR')}
-                              {plan.sinavSaati && ` • 🕐 ${plan.sinavSaati}`}
+                  return (
+                    <ListItem
+                      key={planId}
+                      sx={{
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 2,
+                        mb: 1,
+                        bgcolor: 'background.paper',
+                        '&:hover': { bgcolor: 'action.hover' }
+                      }}
+                    >
+                      <ListItemText
+                        primaryTypographyProps={{ component: 'div' }}
+                        secondaryTypographyProps={{ component: 'div' }}
+                        primary={
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.125rem' } }}>
+                              {planName}
                             </Typography>
+                            <Chip label={`${plan.totalStudents || 0} Öğrenci`} size="small" color="primary" sx={{ fontSize: '0.75rem' }} />
+                            <Chip label={`${plan.salonCount || 0} Salon`} size="small" color="secondary" sx={{ fontSize: '0.75rem' }} />
+                          </Box>
+                        }
+                        secondary={
+                          <Box sx={{ mt: 0.5, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography component="span" variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                              <HistoryIcon sx={{ fontSize: '0.875rem', verticalAlign: 'middle', mr: 0.5 }} />
+                              {formatDate(plan.date || plan.createdAt)}
+                            </Typography>
+                          </Box>
+                        }
+                      />
+                      <ListItemSecondaryAction>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <IconButton
+                            edge="end"
+                            color="primary"
+                            onClick={() => handlePlanYukle({ ...plan, id: planId })}
+                            title="Planı Yükle"
+                          >
+                            <CloudDownloadIcon />
+                          </IconButton>
+                          {isAdmin && (
+                            <>
+                              <IconButton
+                                edge="end"
+                                color="info"
+                                onClick={() => handleArchiveClick(plan)}
+                                title="Planı Arşivle"
+                              >
+                                <ArchiveIcon />
+                              </IconButton>
+                              <IconButton
+                                edge="end"
+                                color="secondary"
+                                onClick={() => handleRenameClick(plan)}
+                                title="Plan Adını Değiştir"
+                              >
+                                <EditIcon />
+                              </IconButton>
+                              <IconButton
+                                edge="end"
+                                color="error"
+                                onClick={() => handleDeleteClick(planId)}
+                                title="Planı Sil"
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </>
                           )}
                         </Box>
-                      }
-                    />
-                    <ListItemSecondaryAction>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <IconButton
-                          edge="end"
-                          color="primary"
-                          onClick={() => {
-                            console.log('🔍 onClick - plan objesi:', plan);
-                            console.log('🔍 onClick - plan.id:', plan.id);
-                            console.log('🔍 onClick - planId:', planId);
-                            // Closure problemini önlemek için planId'yi direkt kullan
-                            handlePlanYukle({ ...plan, id: planId });
-                          }}
-                          title="Planı Yükle"
-                          sx={{
-                            '&:hover': { bgcolor: 'primary.light', color: 'white' }
-                          }}
-                        >
-                          <CloudDownloadIcon />
-                        </IconButton>
-                        {isAdmin && (
-                          <>
-                            <IconButton
-                              edge="end"
-                              color="secondary"
-                              onClick={() => handleRenameClick(plan)}
-                              title="Plan Adını Değiştir"
-                              sx={{
-                                '&:hover': { bgcolor: 'secondary.light', color: 'white' }
-                              }}
-                            >
-                              <EditIcon />
-                            </IconButton>
-                            <IconButton
-                              edge="end"
-                              color="error"
-                              onClick={() => handleDeleteClick(planId)}
-                              title="Planı Sil"
-                              sx={{
-                                '&:hover': { bgcolor: 'error.light', color: 'white' }
-                              }}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          </>
-                        )}
-                      </Box>
-                    </ListItemSecondaryAction>
-                  </ListItem>
-                );
-              })}
-            </List>
+                      </ListItemSecondaryAction>
+                    </ListItem>
+                  );
+                })}
+              </List>
+            )
+          ) : (
+            // ARŞİV TABI
+            kayitliPlanlar.filter(p => p.isArchived).length === 0 ? (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                Arşivlenmiş plan bulunmamaktadır.
+              </Alert>
+            ) : (
+              <Box sx={{ mt: 2 }}>
+                {Object.entries(groupArchivedPlans(kayitliPlanlar.filter(p => p.isArchived))).sort().reverse().map(([yil, donemler]) => (
+                  <Accordion key={yil} defaultExpanded sx={{ mb: 1, border: '1px solid', borderColor: 'divider' }}>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Typography sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+                        <BackupTableIcon sx={{ mr: 1, fontSize: 20, color: 'primary.main' }} /> {yil} Eğitim Yılı
+                      </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ p: 1 }}>
+                      {Object.entries(donemler).sort().map(([donem, sinavlar]) => (
+                        <Box key={donem} sx={{ mb: 2, ml: 2 }}>
+                          <Typography variant="subtitle2" color="primary" sx={{ mb: 1, borderBottom: '1px solid', borderColor: 'divider', pb: 0.5 }}>
+                            {donem}
+                          </Typography>
+                          {Object.entries(sinavlar).sort().map(([sinavNo, plans]) => (
+                            <Box key={sinavNo} sx={{ mb: 1, ml: 2 }}>
+                              <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
+                                {sinavNo}
+                              </Typography>
+                              <List size="small" sx={{ p: 0 }}>
+                                {plans.map(plan => (
+                                  <ListItem
+                                    key={plan.id}
+                                    sx={{
+                                      py: 0.5,
+                                      borderLeft: '2px solid',
+                                      borderColor: 'secondary.light',
+                                      mb: 0.5,
+                                      bgcolor: 'action.hover',
+                                      borderRadius: '0 4px 4px 0'
+                                    }}
+                                  >
+                                    <ListItemText
+                                      primary={plan.name}
+                                      secondary={`${plan.totalStudents} öğrenci • ${plan.salonCount} salon • ${new Date(plan.date).toLocaleDateString()}`}
+                                      primaryTypographyProps={{ variant: 'body2', fontWeight: 500 }}
+                                      secondaryTypographyProps={{ variant: 'caption' }}
+                                    />
+                                    <ListItemSecondaryAction>
+                                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                        <IconButton
+                                          size="small"
+                                          color="primary"
+                                          onClick={() => handlePlanYukle(plan)}
+                                          title="Planı Yükle"
+                                        >
+                                          <CloudDownloadIcon fontSize="small" />
+                                        </IconButton>
+                                        {isAdmin && (
+                                          <IconButton
+                                            size="small"
+                                            color="warning"
+                                            onClick={() => handleRestorePlan(plan.id)}
+                                            title="Arşivden Çıkar"
+                                          >
+                                            <UnarchiveIcon fontSize="small" />
+                                          </IconButton>
+                                        )}
+                                      </Box>
+                                    </ListItemSecondaryAction>
+                                  </ListItem>
+                                ))}
+                              </List>
+                            </Box>
+                          ))}
+                        </Box>
+                      ))}
+                    </AccordionDetails>
+                  </Accordion>
+                ))}
+              </Box>
+            )
           )}
         </CardContent>
       </Card >
+
+      <ArchiveDialog
+        open={archiveDialogOpen}
+        onClose={() => setArchiveDialogOpen(false)}
+        onConfirm={handleArchiveConfirm}
+        planName={planToArchive?.name}
+      />
 
       {/* Silme Onay Dialog */}
       < Dialog
