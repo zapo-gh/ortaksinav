@@ -13,10 +13,6 @@ export const sanitizeText = (value, options = {}) => {
 
   let workingValue = trim ? value.trim() : value;
 
-  if (!trim && workingValue.trim().length === 0) {
-    return '';
-  }
-
   const sanitized = DOMPurify.sanitize(workingValue, PURIFY_OPTIONS);
 
   if (trim) {

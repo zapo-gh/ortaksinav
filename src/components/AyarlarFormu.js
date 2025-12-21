@@ -50,7 +50,7 @@ const normalizeSettings = (ayarlar) => {
       return {
         ...ders,
         id: normalizedId,
-        ad: sanitizeText(ders?.ad || ''),
+        ad: sanitizeText(ders?.ad || '', { trim: false }),
         siniflar: Array.isArray(ders.siniflar) ? sanitizeStringArray(ders.siniflar) : []
       };
     })
@@ -61,9 +61,9 @@ const normalizeSettings = (ayarlar) => {
     ...(ayarlar || {}),
     dersler: normalizedDersler
   };
-  normalized.sinavAdi = sanitizeText(normalized.sinavAdi || '');
-  normalized.sinavTarihi = sanitizeText(normalized.sinavTarihi || '');
-  normalized.sinavSaati = sanitizeText(normalized.sinavSaati || '');
+  normalized.sinavAdi = sanitizeText(normalized.sinavAdi || '', { trim: false });
+  normalized.sinavTarihi = sanitizeText(normalized.sinavTarihi || '', { trim: false });
+  normalized.sinavSaati = sanitizeText(normalized.sinavSaati || '', { trim: false });
   return normalized;
 };
 

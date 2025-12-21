@@ -205,53 +205,46 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
 
   // Filtrelenmiş öğrenci listesi - debounced arama terimi ile hesapla (performans optimizasyonu)
   const filtrelenmisOgrenciler = React.useMemo(() => {
-    // Manuel ekleme dialog'u açıkken hesaplamayı atla (performans optimizasyonu)
-    if (manualEklemeAcik) return ogrenciler;
+    // Filtreleme mantığı
+    let filtered = ogrenciler;
+    if (!manualEklemeAcik && aramaTerimi.trim()) {
+      const isNumber = /^\d+$/.test(aramaTerimi);
+      const isText = !isNumber && aramaTerimi.length >= 3;
 
-    if (!aramaTerimi.trim()) return ogrenciler;
+      if (isNumber || isText) {
+        const normalizedTerim = normalizeText(aramaTerimi);
+        const qLower = aramaTerimi.toLowerCase();
+        const cache = normalizeCacheRef.current;
+        const getNormalizedCached = (text) => {
+          if (!cache.has(text)) {
+            cache.set(text, normalizeText(text));
+          }
+          return cache.get(text);
+        };
 
-    // Sayı kontrolü (numara araması)
-    const isNumber = /^\d+$/.test(aramaTerimi);
-
-    // Harf kontrolü (3. harften sonra arama)
-    const isText = !isNumber && aramaTerimi.length >= 3;
-
-    if (!isNumber && !isText) return ogrenciler;
-
-    const normalizedTerim = normalizeText(aramaTerimi);
-    const qLower = aramaTerimi.toLowerCase();
-
-    // Performans optimizasyonu - cache kullanarak normalize işlemini hızlandır
-    const cache = normalizeCacheRef.current;
-    const getNormalizedCached = (text) => {
-      if (!cache.has(text)) {
-        cache.set(text, normalizeText(text));
+        filtered = ogrenciler.filter(ogrenci => {
+          const ad = ogrenci.ad || '';
+          const soyad = ogrenci.soyad || '';
+          const numara = ogrenci.numara?.toString() || '';
+          if (numara.includes(aramaTerimi)) return true;
+          const normalizedAd = getNormalizedCached(ad);
+          const normalizedSoyad = getNormalizedCached(soyad);
+          if (normalizedAd.includes(normalizedTerim) || normalizedSoyad.includes(normalizedTerim)) return true;
+          return ad.toLowerCase().includes(qLower) || soyad.toLowerCase().includes(qLower);
+        });
       }
-      return cache.get(text);
-    };
+    }
 
-    // Önce hızlı kontroller, sonra normalize
-    return ogrenciler.filter(ogrenci => {
-      const ad = ogrenci.ad || '';
-      const soyad = ogrenci.soyad || '';
-      const numara = ogrenci.numara?.toString() || '';
+    // Her durumda sınıfa göre sırala (Örn: 9-A, 9-B, 10-A...)
+    return [...filtered].sort((a, b) => {
+      const sA = a.sinif || '';
+      const sB = b.sinif || '';
+      // Numeric: true ile 9-A, 10-A sıralaması doğru olur
+      const sinifKiyas = sA.localeCompare(sB, 'tr', { numeric: true });
+      if (sinifKiyas !== 0) return sinifKiyas;
 
-      // Önce numara kontrolü (en hızlı - string include)
-      if (numara.includes(aramaTerimi)) return true;
-
-      // Sonra normalize edilmiş metinlerle arama (Türkçe karakter desteği - cache kullanarak)
-      const normalizedAd = getNormalizedCached(ad);
-      const normalizedSoyad = getNormalizedCached(soyad);
-
-      if (normalizedAd.includes(normalizedTerim) || normalizedSoyad.includes(normalizedTerim)) {
-        return true;
-      }
-
-      // Son çare: orijinal metinlerle lowercase karşılaştırma (daha yavaş ama kapsamlı)
-      const adLower = ad.toLowerCase();
-      const soyadLower = soyad.toLowerCase();
-
-      return adLower.includes(qLower) || soyadLower.includes(qLower);
+      // Aynı sınıftakileri isme göre sırala
+      return (a.ad || '').localeCompare(b.ad || '', 'tr');
     });
   }, [ogrenciler, aramaTerimi, normalizeText, manualEklemeAcik]);
   const [manuelOgrenci, setManuelOgrenci] = useState({
@@ -1311,7 +1304,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
                 </TableBody>
               </Table>
               <TablePagination
-                rowsPerPageOptions={[10, 25, 50, 100]}
+                rowsPerPageOptions={[10, 25, 50, 100, 500]}
                 component="div"
                 count={filtrelenmisOgrenciler.length}
                 rowsPerPage={rowsPerPage}
