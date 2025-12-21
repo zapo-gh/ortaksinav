@@ -243,8 +243,8 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
     if (!ensureWriteAllowed()) {
       return;
     }
-    // Yerleştirme planı kontrolü
-    if (yerlesimPlaniVarMi()) {
+    // Yerleştirme planı kontrolü - Admin değilse kısıtla
+    if (yerlesimPlaniVarMi() && !isWriteAllowed) {
       showError('Mevcut bir yerleştirme planı bulunduğu için ders adı değiştirilemez. Önce mevcut planı temizleyin.');
       return;
     }
@@ -447,9 +447,11 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
             <AlertTitle>Yerleştirme Planı Mevcut</AlertTitle>
             <Typography variant="body2">
               Mevcut bir yerleştirme planı bulunduğu için ders bilgilerinde değişiklik yapılamaz.
-              Ders ekleme, silme, ad değiştirme ve sınıf ekleme/çıkarma işlemleri kısıtlanmıştır.
+              {isWriteAllowed
+                ? ' Ancak yönetici olduğunuz için ders isimlerini düzeltebilirsiniz. Ders ekleme, silme ve sınıf işlemleri için önce planı temizlemelisiniz.'
+                : ' Ders ekleme, silme, ad değiştirme ve sınıf ekleme/çıkarma işlemleri kısıtlanmıştır.'}
               <br />
-              <strong>Önce mevcut planı temizleyin, sonra ders bilgilerini değiştirin.</strong>
+              {!isWriteAllowed && <strong>Önce mevcut planı temizleyin, sonra ders bilgilerini değiştirin.</strong>}
             </Typography>
           </Alert>
         )}
