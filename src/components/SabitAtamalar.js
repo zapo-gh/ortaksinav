@@ -145,25 +145,25 @@ const SabitAtamalar = () => {
       return normalizedAllowedClasses.has(studentClass);
     });
     if (!q) return base;
-    
+
     const normalizedQuery = normalizeText(q);
     const qLower = q.toLowerCase();
-    
+
     return base.filter(o => {
       const ad = o.ad || '';
       const soyad = o.soyad || '';
       const numara = String(o.numara || '');
-      
+
       // Normalize edilmiş metinlerle karşılaştır
       const normalizedAd = normalizeText(ad);
       const normalizedSoyad = normalizeText(soyad);
-      
+
       // Hem normalize edilmiş hem de orijinal metinlerle arama yap
-      return normalizedAd.includes(normalizedQuery) || 
-             normalizedSoyad.includes(normalizedQuery) ||
-             ad.toLowerCase().includes(qLower) ||
-             soyad.toLowerCase().includes(qLower) ||
-             numara.includes(q);
+      return normalizedAd.includes(normalizedQuery) ||
+        normalizedSoyad.includes(normalizedQuery) ||
+        ad.toLowerCase().includes(qLower) ||
+        soyad.toLowerCase().includes(qLower) ||
+        numara.includes(q);
     });
   }, [ogrenciler, query, selectedClasses, selectedClass, normalizeText, normalizeClassCode, normalizedAllowedClasses]);
 
@@ -218,7 +218,12 @@ const SabitAtamalar = () => {
       <Card>
         <CardContent>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
-            <Typography variant="h6">Sabit Atamalar</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <PushPinIcon sx={{ mr: 1, color: 'primary.main', fontSize: 24 }} />
+              <Typography variant="h6" component="h2" sx={{ color: 'text.primary', fontWeight: 'bold' }}>
+                Sabit Atamalar
+              </Typography>
+            </Box>
             {activeSalon && (
               <Badge
                 color="primary"
@@ -229,9 +234,8 @@ const SabitAtamalar = () => {
               >
                 <Chip
                   icon={<PushPinIcon fontSize="small" />}
-                  label={`${activeSalon.label} • ${
-                    ogrenciler.filter((o) => o.pinned && String(o.pinnedSalonId) === String(activeSalon.canonicalId)).length
-                  } sabit`}
+                  label={`${activeSalon.label} • ${ogrenciler.filter((o) => o.pinned && String(o.pinnedSalonId) === String(activeSalon.canonicalId)).length
+                    } sabit`}
                   color="primary"
                   variant="outlined"
                   size="small"

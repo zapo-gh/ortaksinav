@@ -95,7 +95,7 @@ const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, readOnly: readOnly
       ...formData,
       [name]: sanitizedValue
     };
-    
+
     setFormData(yeniFormData);
     setErrors(validateGeneralSettings(yeniFormData));
     // Anında kaydet
@@ -116,8 +116,8 @@ const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, readOnly: readOnly
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {/* Okul Bilgileri */}
           <Box>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-              <SchoolIcon sx={{ mr: 1 }} />
+            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', color: 'text.primary', fontWeight: 'bold' }}>
+              <SchoolIcon sx={{ mr: 1, color: 'primary.main' }} />
               Okul Bilgileri
             </Typography>
             <Divider sx={{ mb: 2 }} />
@@ -166,8 +166,8 @@ const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, readOnly: readOnly
 
           {/* Sınav Bilgileri */}
           <Box>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-              <BookIcon sx={{ mr: 1 }} />
+            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', color: 'text.primary', fontWeight: 'bold' }}>
+              <BookIcon sx={{ mr: 1, color: 'primary.main' }} />
               Sınav Bilgileri
             </Typography>
             <Divider sx={{ mb: 2 }} />

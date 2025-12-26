@@ -30,12 +30,12 @@ import {
   Book as BookIcon
 } from '@mui/icons-material';
 
-const PlanlamaYap = memo(({ 
-  ogrenciler, 
-  ayarlar, 
-  salonlar, 
-  onYerlestirmeYap, 
-  yukleme 
+const PlanlamaYap = memo(({
+  ogrenciler,
+  ayarlar,
+  salonlar,
+  onYerlestirmeYap,
+  yukleme
 }) => {
   const [kontroller, setKontroller] = useState({});
 
@@ -60,7 +60,7 @@ const PlanlamaYap = memo(({
         if (!ders.siniflar || ders.siniflar.length === 0) {
           hatalar.push(`Ders ${index + 1} için en az bir sınıf seçilmelidir`);
         }
-        
+
         // Ders-sınıf eşleştirmesi kontrolü
         if (ders.siniflar && ders.siniflar.length > 0) {
           const mevcutSiniflar = ogrenciler ? [...new Set(ogrenciler.map(o => o.sinif).filter(Boolean))] : [];
@@ -97,10 +97,10 @@ const PlanlamaYap = memo(({
         if (!salon.aktif) {
           uyarilar.push(`Salon ${salon.salonAdi} aktif değil`);
         }
-        
+
         // Kapasite hesaplama - SalonFormu formatından
         let salonKapasite = salon.kapasite;
-        
+
         // Eğer kapasite yoksa veya 0 ise, gruplardan hesapla
         if (!salonKapasite || salonKapasite === 0 || isNaN(salonKapasite)) {
           if (salon.gruplar && salon.gruplar.length > 0) {
@@ -109,10 +109,10 @@ const PlanlamaYap = memo(({
               const koltukSayisi = salon.siraTipi === 'tekli' ? 1 : 2;
               return toplam + (siraSayisi * koltukSayisi);
             }, 0);
-            
+
           }
         }
-        
+
         if (!salonKapasite || salonKapasite === 0 || isNaN(salonKapasite)) {
           hatalar.push(`Salon ${salon.salonAdi} kapasitesi 0 veya tanımsız`);
         }
@@ -139,18 +139,18 @@ const PlanlamaYap = memo(({
           }
         });
       }
-      
+
       // Benzersiz sınıfları al
       const benzersizSeciliSiniflar = [...new Set(seciliSiniflar)];
-      
+
       // Seçili sınıflardaki öğrencileri filtrele
-      const seciliSinifOgrencileri = ogrenciler.filter(ogrenci => 
+      const seciliSinifOgrencileri = ogrenciler.filter(ogrenci =>
         benzersizSeciliSiniflar.includes(ogrenci.sinif)
       );
-      
+
       const toplamKapasite = salonlar?.reduce((toplam, salon) => {
         let salonKapasite = salon.kapasite;
-        
+
         // Eğer kapasite yoksa veya 0 ise, gruplardan hesapla
         if (!salonKapasite || salonKapasite === 0 || isNaN(salonKapasite)) {
           if (salon.gruplar && salon.gruplar.length > 0) {
@@ -161,7 +161,7 @@ const PlanlamaYap = memo(({
             }, 0);
           }
         }
-        
+
         const aktifSalonKapasite = salon.aktif && salonKapasite && !isNaN(salonKapasite) ? salonKapasite : 0;
         return toplam + aktifSalonKapasite;
       }, 0) || 0;
@@ -259,18 +259,18 @@ const PlanlamaYap = memo(({
       <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 2, sm: 3 } }}>
           <AssessmentIcon sx={{ mr: 1, color: 'primary.main', fontSize: { xs: 24, sm: 28 } }} />
-          <Typography variant="h5" component="h2" gutterBottom sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
+          <Typography variant="h6" component="h2" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' }, color: 'text.primary', fontWeight: 'bold' }}>
             Sınav Yerleştirme Planlaması
           </Typography>
         </Box>
 
         {/* Genel Durum */}
         {kontroller?.tumHatalar && (
-          <Alert 
+          <Alert
             severity={kontroller.tumHatalar.length === 0 ? 'success' : 'error'}
             sx={{ mb: { xs: 2, sm: 3 }, fontSize: { xs: '0.875rem', sm: '1rem' } }}
           >
-            {kontroller.tumHatalar.length === 0 
+            {kontroller.tumHatalar.length === 0
               ? 'Tüm kontroller başarılı! Yerleştirme yapılabilir.'
               : `${kontroller.tumHatalar.length} kritik hata bulundu. Lütfen düzeltin.`
             }
@@ -282,9 +282,9 @@ const PlanlamaYap = memo(({
           Kontrol Sonuçları
         </Typography>
         {/* Kontrol Kartları */}
-        <Box sx={{ 
-          display: 'flex', 
-          gap: { xs: 2, sm: 3 }, 
+        <Box sx={{
+          display: 'flex',
+          gap: { xs: 2, sm: 3 },
           mb: 4,
           flexDirection: { xs: 'column', sm: 'row' },
           flexWrap: { xs: 'nowrap', sm: 'nowrap' },
@@ -296,7 +296,7 @@ const PlanlamaYap = memo(({
               <PeopleIcon sx={{ mr: 1, color: 'primary.main' }} />
               <Typography variant="h6">Öğrenciler</Typography>
             </Box>
-            
+
             {/* Öğrenci bulunamadı uyumluluğu */}
             {kontroller?.ogrenciler?.hatalar.some(h => (typeof h === 'string' ? h : h?.mesaj)?.includes('Öğrenci listesi boş')) && (
               <Alert severity="error" size="small" sx={{ mb: 1 }}>
@@ -307,19 +307,19 @@ const PlanlamaYap = memo(({
               const mesaj = typeof hata === 'string' ? hata : hata.mesaj;
               const tip = typeof hata === 'object' ? hata.tip : 'hata';
               const severity = tip === 'hata' ? 'error' : 'warning';
-              
+
               return (
                 <Alert key={index} severity={severity} size="small" sx={{ mb: 1 }}>
                   {mesaj}
                 </Alert>
               );
             })}
-            
+
             {kontroller?.ogrenciler?.uyarilar.map((uyari, index) => {
               const mesaj = typeof uyari === 'string' ? uyari : uyari.mesaj;
               const tip = typeof uyari === 'object' ? uyari.tip : 'warning';
               let severity = 'warning'; // Varsayılan turuncu
-              
+
               if (tip === 'bilgi') {
                 severity = 'success'; // Yeşil
               } else if (tip === 'uyari') {
@@ -327,7 +327,7 @@ const PlanlamaYap = memo(({
               } else if (tip === 'hata') {
                 severity = 'error'; // Kırmızı
               }
-              
+
               return (
                 <Alert key={index} severity={severity} size="small" sx={{ mb: 1 }}>
                   {mesaj}
@@ -342,7 +342,7 @@ const PlanlamaYap = memo(({
               <MeetingRoomIcon sx={{ mr: 1, color: 'primary.main' }} />
               <Typography variant="h6">Salonlar</Typography>
             </Box>
-            
+
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               {kontroller?.salonlar && getDurumIconu(kontroller.salonlar.hatalar, kontroller.salonlar.uyarilar)}
               <Box sx={{ ml: 1 }}>
@@ -352,7 +352,7 @@ const PlanlamaYap = memo(({
                 <Typography variant="body2" sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
                   Toplam kapasite: {salonlar?.reduce((toplam, salon) => {
                     let salonKapasite = salon.kapasite;
-                    
+
                     // Eğer kapasite yoksa veya 0 ise, gruplardan hesapla
                     if (!salonKapasite || salonKapasite === 0 || isNaN(salonKapasite)) {
                       if (salon.gruplar && salon.gruplar.length > 0) {
@@ -363,7 +363,7 @@ const PlanlamaYap = memo(({
                         }, 0);
                       }
                     }
-                    
+
                     return salon.aktif && salonKapasite && !isNaN(salonKapasite) ? toplam + salonKapasite : toplam;
                   }, 0) || 0}
                 </Typography>
@@ -375,7 +375,7 @@ const PlanlamaYap = memo(({
                 {hata}
               </Alert>
             ))}
-            
+
             {kontroller?.salonlar?.uyarilar.map((uyari, index) => (
               <Alert key={index} severity="warning" size="small" sx={{ mb: 1 }}>
                 {uyari}
@@ -389,7 +389,7 @@ const PlanlamaYap = memo(({
               <SettingsIcon sx={{ mr: 1, color: 'primary.main' }} />
               <Typography variant="h6">Dersler</Typography>
             </Box>
-            
+
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               {kontroller?.ayarlar && getDurumIconu(kontroller.ayarlar.hatalar, kontroller.ayarlar.uyarilar)}
               <Box sx={{ ml: 1 }}>
@@ -409,7 +409,7 @@ const PlanlamaYap = memo(({
                 {hata}
               </Alert>
             ))}
-            
+
             {kontroller?.ayarlar?.uyarilar.map((uyari, index) => (
               <Alert key={index} severity="warning" size="small" sx={{ mb: 1 }}>
                 {uyari}
@@ -428,23 +428,23 @@ const PlanlamaYap = memo(({
                 Ders Bilgileri
               </Typography>
             </Box>
-            <Box sx={{ 
-              display: 'flex', 
+            <Box sx={{
+              display: 'flex',
               flexDirection: { xs: 'column', sm: 'row' },
-              flexWrap: 'wrap', 
-              gap: { xs: 2, sm: 3 }, 
-              justifyContent: { xs: 'stretch', sm: 'space-around' } 
+              flexWrap: 'wrap',
+              gap: { xs: 2, sm: 3 },
+              justifyContent: { xs: 'stretch', sm: 'space-around' }
             }}>
               {ayarlar.dersler.map((ders, index) => (
-                <Box key={ders.id || index} sx={{ 
-                  flex: { xs: '0 0 auto', sm: '1 1 30%' }, 
-                  minWidth: { xs: '100%', sm: 250 }, 
+                <Box key={ders.id || index} sx={{
+                  flex: { xs: '0 0 auto', sm: '1 1 30%' },
+                  minWidth: { xs: '100%', sm: 250 },
                   width: { xs: '100%', sm: 'auto' },
-                  p: { xs: 1.5, sm: 2 }, 
-                  border: '1px solid', 
-                  borderColor: 'grey.300', 
-                  borderRadius: 2, 
-                  bgcolor: 'background.paper' 
+                  p: { xs: 1.5, sm: 2 },
+                  border: '1px solid',
+                  borderColor: 'grey.300',
+                  borderRadius: 2,
+                  bgcolor: 'background.paper'
                 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                     <ScheduleIcon color="primary" sx={{ mr: 1 }} />
@@ -480,7 +480,7 @@ const PlanlamaYap = memo(({
             startIcon={yukleme ? <CircularProgress size={20} color="inherit" /> : <PlayIcon />}
             onClick={process.env.NODE_ENV === 'test' ? onYerlestirmeYap : handleYerlestirmeBaslat}
             disabled={process.env.NODE_ENV === 'test' ? !!yukleme : (!kontroller?.yerleştirmeYapilabilir || yukleme)}
-            sx={{ 
+            sx={{
               px: 8,
               py: 3,
               fontSize: '1.1rem',
@@ -519,7 +519,7 @@ const PlanlamaYap = memo(({
               Yerleştirme yapılıyor...
             </Typography>
           )}
-          
+
           {yukleme && (
             <Box sx={{ mt: 3 }}>
               <LinearProgress sx={{ borderRadius: 2 }} />
@@ -533,7 +533,7 @@ const PlanlamaYap = memo(({
         {/* Yardım Bilgisi */}
         <Alert severity="info" sx={{ mt: 3 }}>
           <Typography variant="body2">
-            <strong>Yerleştirme İşlemi:</strong> Kelebek algoritması kullanılarak öğrenciler en uygun şekilde salonlara yerleştirilecektir. 
+            <strong>Yerleştirme İşlemi:</strong> Kelebek algoritması kullanılarak öğrenciler en uygun şekilde salonlara yerleştirilecektir.
             İşlem tamamlandıktan sonra "Salon Planı" sekmesinden sonuçları görüntüleyebilirsiniz.
           </Typography>
         </Alert>
@@ -542,19 +542,18 @@ const PlanlamaYap = memo(({
         <Box sx={{ mt: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
           <Chip label={`Toplam Öğrenci: ${ogrenciler?.length || 0}`} color="primary" variant="outlined" />
           <Chip label={`Toplam Salon: ${salonlar?.length || 0}`} color="secondary" variant="outlined" />
-          <Chip label={`Toplam Kapasite: ${
-            (salonlar || []).reduce((toplam, salon) => {
-              let kap = salon.kapasite;
-              if (!kap || isNaN(kap)) {
-                if (salon.gruplar && salon.gruplar.length > 0) {
-                  kap = salon.gruplar.reduce((t, g) => t + (g.siraSayisi || 0) * (salon.siraTipi === 'tekli' ? 1 : 2), 0);
-                } else {
-                  kap = 0;
-                }
+          <Chip label={`Toplam Kapasite: ${(salonlar || []).reduce((toplam, salon) => {
+            let kap = salon.kapasite;
+            if (!kap || isNaN(kap)) {
+              if (salon.gruplar && salon.gruplar.length > 0) {
+                kap = salon.gruplar.reduce((t, g) => t + (g.siraSayisi || 0) * (salon.siraTipi === 'tekli' ? 1 : 2), 0);
+              } else {
+                kap = 0;
               }
-              return toplam + (kap || 0);
-            }, 0)
-          }`} color="success" variant="outlined" />
+            }
+            return toplam + (kap || 0);
+          }, 0)
+            }`} color="success" variant="outlined" />
         </Box>
       </CardContent>
     </Card>

@@ -38,11 +38,11 @@ import { useExam } from '../context/ExamContext';
 // Basit, sürükle-bıraksız salon kartı bileşeni
 const SalonItem = ({ form, index, onFormChange, onFormDelete, onFormCopy, yerlesimPlaniVarMi, topluSilmeModu, seciliSalonlar, onSalonSecimi }) => {
   return (
-    <Paper 
-      elevation={2} 
-      sx={{ 
-        p: 3, 
-        mb: 3, 
+    <Paper
+      elevation={2}
+      sx={{
+        p: 3,
+        mb: 3,
         maxWidth: '100%',
         transition: 'all 0.2s ease'
       }}
@@ -61,13 +61,13 @@ const SalonItem = ({ form, index, onFormChange, onFormDelete, onFormCopy, yerles
             </Box>
           </Grid>
         )}
-        
+
         {/* Drag Handle - artık sadece görsel ikon */}
         <Grid item xs={1}>
-          <Box 
-            sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
               justifyContent: 'center',
               opacity: topluSilmeModu ? 0.5 : 1
             }}
@@ -75,7 +75,7 @@ const SalonItem = ({ form, index, onFormChange, onFormDelete, onFormCopy, yerles
             <DragIndicatorIcon color="action" />
           </Box>
         </Grid>
-        
+
         {/* Salon Adı */}
         <Grid item xs={12} sm={3} md={2}>
           <TextField
@@ -156,11 +156,11 @@ const SalonItem = ({ form, index, onFormChange, onFormDelete, onFormCopy, yerles
 
         {/* Kapasite */}
         <Grid item xs={6} sm={3} md={2}>
-          <Box 
-            sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               height: '40px',
               border: '1px solid #e0e0e0',
               borderRadius: '4px',
@@ -185,8 +185,8 @@ const SalonItem = ({ form, index, onFormChange, onFormDelete, onFormCopy, yerles
               onClick={() => onFormCopy(form.id)}
               size="small"
               disabled={yerlesimPlaniVarMi && yerlesimPlaniVarMi()}
-              sx={{ 
-                '&:hover': { 
+              sx={{
+                '&:hover': {
                   backgroundColor: 'primary.light',
                   color: 'white'
                 }
@@ -200,8 +200,8 @@ const SalonItem = ({ form, index, onFormChange, onFormDelete, onFormCopy, yerles
               onClick={() => onFormDelete(form.id)}
               size="small"
               disabled={yerlesimPlaniVarMi && yerlesimPlaniVarMi()}
-              sx={{ 
-                '&:hover': { 
+              sx={{
+                '&:hover': {
                   backgroundColor: 'error.light',
                   color: 'white'
                 }
@@ -225,13 +225,13 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
   const showReadOnlyMessage = React.useCallback(() => {
     showWarning('Bu işlemi gerçekleştirmek için yönetici olarak giriş yapmanız gerekir.');
   }, [showWarning]);
-  
+
   // Basit state yönetimi - sadece salonlar listesi
   const [aktifSalonFormlari, setAktifSalonFormlari] = useState([]);
   const [onayDialogAcik, setOnayDialogAcik] = useState(false);
   const [silinecekSalonId, setSilinecekSalonId] = useState(null);
   const [silinecekSalonAdi, setSilinecekSalonAdi] = useState('');
-  
+
   // Toplu silme için state'ler
   const [topluSilmeModu, setTopluSilmeModu] = useState(false);
   const [seciliSalonlar, setSeciliSalonlar] = useState([]);
@@ -252,7 +252,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
       salonlarLength: salonlar.length,
       aktifFormlarLength: aktifSalonFormlari.length
     });
-    
+
     // SADECE İLK YÜKLEMEDE veya salonlar boşsa güncelle
     if (salonlar.length > 0 && aktifSalonFormlari.length === 0) {
       const yeniFormlar = salonlar.map(salon => ({
@@ -260,10 +260,13 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
         salonAdi: salon.salonAdi || salon.ad || '',
         siraTipi: salon.siraTipi,
         grupSayisi: salon.grupSayisi,
-        gruplar: salon.gruplar || [],
+        gruplar: (salon.gruplar || []).map((grup, idx) => ({
+          ...grup,
+          id: idx + 1 // Grup numaralarını 1, 2, 3... olarak normalize et
+        })),
         aktif: salon.aktif
       }));
-      
+
       console.log('✅ SalonFormu: Form verileri güncellendi:', yeniFormlar.length, 'salon');
       setAktifSalonFormlari(yeniFormlar);
     }
@@ -289,7 +292,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
     const mevcutSalonlar = salonlar || [];
     const aktifFormlar = aktifSalonFormlari || [];
     const tumSalonlar = [...mevcutSalonlar, ...aktifFormlar];
-    
+
     let yeniId = 1;
     if (tumSalonlar.length > 0) {
       const mevcutIdler = tumSalonlar.map(s => {
@@ -298,7 +301,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
       });
       yeniId = Math.max(...mevcutIdler) + 1;
     }
-    
+
     const yeniForm = {
       id: yeniId,
       salonAdi: '',
@@ -339,7 +342,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
 
     const silinecekSalon = aktifSalonFormlari.find(form => form.id === formId);
     const salonAdi = silinecekSalon ? silinecekSalon.salonAdi : 'Bu salon';
-    
+
     setSilinecekSalonId(formId);
     setSilinecekSalonAdi(salonAdi);
     setOnayDialogAcik(true);
@@ -363,7 +366,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
     const mevcutSalonlar = salonlar || [];
     const aktifFormlar = aktifSalonFormlari || [];
     const tumSalonlar = [...mevcutSalonlar, ...aktifFormlar];
-    
+
     let yeniId = 1;
     if (tumSalonlar.length > 0) {
       const mevcutIdler = tumSalonlar.map(s => {
@@ -372,14 +375,14 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
       });
       yeniId = Math.max(...mevcutIdler) + 1;
     }
-    
+
     const kopyaForm = {
       id: yeniId, // Gerçekten benzersiz ID
       salonAdi: `${kopyalanacakForm.salonAdi} (Kopya)`,
       siraTipi: kopyalanacakForm.siraTipi,
       grupSayisi: kopyalanacakForm.grupSayisi,
       gruplar: kopyalanacakForm.gruplar?.map((grup, index) => ({
-        id: `${yeniId}_grup_${index}`, // Stabil grup ID
+        id: index + 1, // Basit grup numarası: 1, 2, 3...
         siraSayisi: grup.siraSayisi
       })) || [],
       aktif: true
@@ -413,7 +416,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
     if (silinecekSalonId) {
       // Aktif formlardan sil
       setAktifSalonFormlari(prev => prev.filter(form => form.id !== silinecekSalonId));
-      
+
       // Global state'den de sil (eğer salon kaydedilmişse)
       if (salonlar && salonlar.length > 0) {
         const guncelSalonlar = salonlar.filter(s => s.id !== silinecekSalonId);
@@ -422,7 +425,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
         }
       }
     }
-    
+
     // Dialog'u kapat
     setOnayDialogAcik(false);
     setSilinecekSalonId(null);
@@ -475,7 +478,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
     // Seçili salonları sil
     const yeniSalonlar = aktifSalonFormlari.filter(salon => !seciliSalonlar.includes(salon.id));
     setAktifSalonFormlari(yeniSalonlar);
-    
+
     // Global state'i güncelle
     if (onSalonlarDegistir && typeof onSalonlarDegistir === 'function') {
       onSalonlarDegistir(yeniSalonlar);
@@ -486,7 +489,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
     setSeciliSalonlar([]);
     setTopluSilmeModu(false);
     setTopluSilmeDialogAcik(false);
-    
+
     showSuccess(`${silinenSayi} salon başarıyla silindi!`);
   };
 
@@ -501,7 +504,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
     // Aktif durumu değişikliklerini hemen kaydet
     if (guncelForm.hasOwnProperty('aktif')) {
       console.log('🔄 Salon aktif durumu değişiyor:', guncelForm.salonAdi, guncelForm.aktif);
-      
+
       // Tüm salonları güncelle
       const yeniSalonlar = aktifSalonFormlari.map(form => {
         if (form.id === formId) {
@@ -509,24 +512,24 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
         }
         return form;
       });
-      
+
       // ExamContext'e kaydet
       if (onSalonlarDegistir) {
         onSalonlarDegistir(yeniSalonlar);
       }
       return;
     }
-    
+
     // Diğer değişiklikler için anında kaydetmeyi devre dışı bırak
     console.log('⏳ Anında kaydetme geçici olarak devre dışı bırakıldı');
     return;
-    
+
     // Kopyalama sırasında anında kaydetmeyi geciktir - SADECE (Kopya) ile bitenler için
     if (guncelForm.salonAdi && guncelForm.salonAdi.includes('(Kopya)') && guncelForm.salonAdi.endsWith('(Kopya)')) {
       console.log('⏳ Kopyalanan salon kaydetme geciktiriliyor...');
       return; // Kopyalanan salonları hemen kaydetme
     }
-    
+
     // Eğer salon adı dolu ise anında kaydet
     if (guncelForm.salonAdi.trim()) {
       const kapasite = guncelForm.gruplar?.reduce((toplam, grup) => {
@@ -537,14 +540,14 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
       let salonId = guncelForm.id;
       const mevcutSalonlar = salonlar || [];
       const aktifFormlar = aktifSalonFormlari || [];
-      
+
       // Hem salonlar hem de aktif formlarda ID çakışması kontrolü
       if (mevcutSalonlar.some(s => s.id === salonId) || aktifFormlar.some(f => f.id === salonId && f.id !== formId)) {
         salonId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         console.log('⚠️ ID çakışması tespit edildi, yeni ID oluşturuluyor:', salonId);
-        
+
         // Form ID'sini de güncelle
-        setAktifSalonFormlari(prev => prev.map(form => 
+        setAktifSalonFormlari(prev => prev.map(form =>
           form.id === formId ? { ...form, id: salonId } : form
         ));
       }
@@ -573,7 +576,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
 
       // Global salonlar listesine ekle veya güncelle - SIRALAMA KORUNARAK
       let guncelSalonlar;
-      
+
       // Eğer salon mevcut ise, sıralamayı koruyarak güncelle
       const salonMevcut = salonlar.some(s => s.id === salon.id);
       if (salonMevcut) {
@@ -595,7 +598,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
           eskiSiralama: salonlar.map(s => ({ id: s.id, ad: s.salonAdi })),
           yeniSiralama: guncelSalonlar.map(s => ({ id: s.id, ad: s.salonAdi }))
         });
-        
+
         onSalonlarDegistir(guncelSalonlar);
         console.log('✅ Salon global state\'e kaydedildi (sıralama korundu)');
       }
@@ -614,14 +617,14 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
     setAktifSalonFormlari(prev => prev.map(form => {
       if (form.id === formId) {
         let guncelForm;
-        
+
         // Grup sıra sayısı değişikliği için özel işlem
         if (field === 'grupSiraSayisi') {
-          const yeniGruplar = form.gruplar?.map(grup => 
+          const yeniGruplar = form.gruplar?.map(grup =>
             grup.id === value.grupId ? { ...grup, siraSayisi: parseInt(value.siraSayisi) || 1 } : grup
           ) || [];
           guncelForm = { ...form, gruplar: yeniGruplar };
-        } 
+        }
         // Grup sayısı değişikliği için özel işlem
         else if (field === 'grupSayisi') {
           const yeniGruplar = [];
@@ -633,11 +636,11 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
             });
           }
           guncelForm = { ...form, grupSayisi: value, gruplar: yeniGruplar };
-        } 
+        }
         else {
           guncelForm = { ...form, [field]: value };
         }
-        
+
         // Anında kaydet
         handleAnindaKaydet(formId, guncelForm);
         return guncelForm;
@@ -657,7 +660,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
 
     setAktifSalonFormlari(prev => prev.map(form => {
       if (form.id === formId) {
-        const yeniGruplar = form.gruplar?.map(grup => 
+        const yeniGruplar = form.gruplar?.map(grup =>
           grup.id === grupId ? { ...grup, siraSayisi: parseInt(siraSayisi) || 1 } : grup
         ) || [];
         const guncelForm = { ...form, gruplar: yeniGruplar };
@@ -720,29 +723,29 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
     <>
       <Card sx={{ maxWidth: 1200, mx: 'auto', mt: 2 }}>
         <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-          <MeetingRoomIcon sx={{ mr: 1, color: 'primary.main' }} />
-          <Typography variant="h5" component="h2" gutterBottom>
-            Sınav Salonları Yönetimi
-          </Typography>
-        </Box>
-
-        {/* Yerleştirme Planı Uyarısı */}
-        {yerlesimPlaniVarMi() && (
-          <Alert 
-            severity="warning" 
-            sx={{ mb: 3 }}
-            icon={<WarningIcon />}
-          >
-            <AlertTitle>Yerleştirme Planı Mevcut</AlertTitle>
-            <Typography variant="body2">
-              Mevcut bir yerleştirme planı bulunduğu için salon yapısında değişiklik yapılamaz. 
-              Salon ekleme, silme, grup sayısı değiştirme ve sıra sayısı değiştirme işlemleri kısıtlanmıştır.
-              <br />
-              <strong>Önce mevcut planı temizleyin, sonra salon yapısını değiştirin.</strong>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+            <MeetingRoomIcon sx={{ mr: 1, color: 'primary.main' }} />
+            <Typography variant="h6" component="h2" sx={{ color: 'text.primary', fontWeight: 'bold' }}>
+              Sınav Salonları Yönetimi
             </Typography>
-          </Alert>
-        )}
+          </Box>
+
+          {/* Yerleştirme Planı Uyarısı */}
+          {yerlesimPlaniVarMi() && (
+            <Alert
+              severity="warning"
+              sx={{ mb: 3 }}
+              icon={<WarningIcon />}
+            >
+              <AlertTitle>Yerleştirme Planı Mevcut</AlertTitle>
+              <Typography variant="body2">
+                Mevcut bir yerleştirme planı bulunduğu için salon yapısında değişiklik yapılamaz.
+                Salon ekleme, silme, grup sayısı değiştirme ve sıra sayısı değiştirme işlemleri kısıtlanmıştır.
+                <br />
+                <strong>Önce mevcut planı temizleyin, sonra salon yapısını değiştirin.</strong>
+              </Typography>
+            </Alert>
+          )}
 
 
           {/* Salon Ekleme ve Toplu Silme Butonları */}
@@ -756,7 +759,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
             >
               Yeni Salon Ekle
             </Button>
-            
+
             {aktifSalonFormlari.length > 0 && (
               <>
                 <Button
@@ -769,7 +772,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
                 >
                   {topluSilmeModu ? 'İptal' : 'Toplu Sil'}
                 </Button>
-                
+
                 {topluSilmeModu && (
                   <>
                     <Button
@@ -778,14 +781,14 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
                       size="small"
                       onClick={handleTumunuSec}
                       disabled={seciliSalonlar.length === aktifSalonFormlari.length}
-                      sx={{ 
+                      sx={{
                         minWidth: 'auto',
                         px: 2
                       }}
                     >
                       Tümünü Seç
                     </Button>
-                    
+
                     <Button
                       variant="contained"
                       color="error"
@@ -842,8 +845,8 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
           }
         }}
       >
-        <DialogTitle sx={{ 
-          textAlign: 'center', 
+        <DialogTitle sx={{
+          textAlign: 'center',
           fontSize: '1.25rem',
           fontWeight: 600,
           color: 'error.main',
@@ -859,9 +862,9 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
             Bu işlem geri alınamaz ve salon tüm verileriyle birlikte kalıcı olarak silinecektir.
           </Typography>
         </DialogContent>
-        <DialogActions sx={{ 
-          justifyContent: 'center', 
-          gap: 2, 
+        <DialogActions sx={{
+          justifyContent: 'center',
+          gap: 2,
           pb: 3,
           px: 3
         }}>
@@ -909,8 +912,8 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
           }
         }}
       >
-        <DialogTitle sx={{ 
-          textAlign: 'center', 
+        <DialogTitle sx={{
+          textAlign: 'center',
           fontSize: '1.25rem',
           fontWeight: 600,
           color: 'error.main',
@@ -926,16 +929,16 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
             Bu işlem geri alınamaz ve seçili salonlar tüm verileriyle birlikte kalıcı olarak silinecektir.
           </Typography>
         </DialogContent>
-        <DialogActions sx={{ 
-          justifyContent: 'center', 
-          gap: 2, 
+        <DialogActions sx={{
+          justifyContent: 'center',
+          gap: 2,
           pb: 3,
           px: 3
         }}>
           <Button
             variant="outlined"
             onClick={handleTopluSilmeIptal}
-            sx={{ 
+            sx={{
               minWidth: 100,
               borderRadius: 2
             }}
@@ -946,7 +949,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
             variant="contained"
             color="error"
             onClick={handleTopluSilmeTamamla}
-            sx={{ 
+            sx={{
               minWidth: 100,
               borderRadius: 2
             }}
