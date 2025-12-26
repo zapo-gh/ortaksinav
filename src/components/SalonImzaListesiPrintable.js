@@ -16,7 +16,7 @@ import {
  * Her salon için masa numarasına göre sıralanmış öğrenci listesi
  * Sınıf, ders ve imza bölümleri içerir
  */
-const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {} }, ref) => {
+const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {}, tumOgrenciler = [] }, ref) => {
   // Masa numarası hesaplama fonksiyonu
   const calculateDeskNumberForMasa = (masa) => {
     if (!masa || !yerlestirmeSonucu?.tumSalonlar) return masa?.id + 1 || 1;
@@ -106,6 +106,22 @@ const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {} 
         masaNo: parseInt(masaNo) || 999 // Sayısal olmayan değerler için büyük sayı
       };
     }).sort((a, b) => a.masaNo - b.masaNo);
+  };
+
+  // Dal ismi kısaltma fonksiyonu
+  const getShortBranchName = (branchName) => {
+    if (!branchName) return '-';
+    switch (branchName) {
+      case 'Ebe Yardımcılığı':
+        return 'Ebe Yard.';
+      case 'Hemşire Yardımcılığı':
+        return 'Hemş. Yard.';
+      case 'Sağlık Bakım Teknisyenliği':
+        return 'Sağ. Bak. Tek.';
+      default:
+        // Eğer bilinen bir kısaltma yoksa, ilk 15 karakteri göster
+        return branchName.length > 15 ? branchName.substring(0, 15) + '.' : branchName;
+    }
   };
 
   return (
@@ -233,10 +249,11 @@ const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {} 
                 <TableHead>
                   <TableRow sx={{ backgroundColor: 'grey.300' }}>
                     <TableCell sx={{ backgroundColor: 'grey.300', color: 'black', fontWeight: 'bold', width: '8%', textAlign: 'center' }}><strong>Masa No</strong></TableCell>
-                    <TableCell sx={{ backgroundColor: 'grey.300', color: 'black', fontWeight: 'bold', width: '30%', textAlign: 'center' }}><strong>Ad Soyad</strong></TableCell>
-                    <TableCell sx={{ backgroundColor: 'grey.300', color: 'black', fontWeight: 'bold', width: '10%', textAlign: 'center' }}><strong>Sınıf</strong></TableCell>
+                    <TableCell sx={{ backgroundColor: 'grey.300', color: 'black', fontWeight: 'bold', width: '23%', textAlign: 'center' }}><strong>Ad Soyad</strong></TableCell>
+                    <TableCell sx={{ backgroundColor: 'grey.300', color: 'black', fontWeight: 'bold', width: '9%', textAlign: 'center' }}><strong>Sınıf</strong></TableCell>
+                    <TableCell sx={{ backgroundColor: 'grey.300', color: 'black', fontWeight: 'bold', width: '12%', textAlign: 'center' }}><strong>Dal</strong></TableCell>
                     <TableCell sx={{ backgroundColor: 'grey.300', color: 'black', fontWeight: 'bold', width: '30%', textAlign: 'center' }}><strong>Ders</strong></TableCell>
-                    <TableCell sx={{ backgroundColor: 'grey.300', color: 'black', fontWeight: 'bold', width: '22%', textAlign: 'center' }}><strong>Öğrenci Durumu</strong></TableCell>
+                    <TableCell sx={{ backgroundColor: 'grey.300', color: 'black', fontWeight: 'bold', width: '18%', textAlign: 'center' }}><strong>Öğrenci Durumu</strong></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -284,6 +301,19 @@ const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {} 
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
                           {ogrenci.sinif || ogrenci.sube || 'Belirtilmemiş'}
+                        </TableCell>
+                        <TableCell sx={{ textAlign: 'center' }}>
+                          {(() => {
+                            // Dal bilgisi yoksa güncel listeden bulmaya çalış
+                            let dalBilgisi = ogrenci.dal;
+                            if (!dalBilgisi && tumOgrenciler && tumOgrenciler.length > 0) {
+                              const guncelOgrenci = tumOgrenciler.find(o => o.id === ogrenci.id || o.numara === ogrenci.numara);
+                              if (guncelOgrenci) {
+                                dalBilgisi = guncelOgrenci.dal;
+                              }
+                            }
+                            return getShortBranchName(dalBilgisi);
+                          })()}
                         </TableCell>
 
                         <TableCell sx={{
@@ -352,6 +382,34 @@ const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {} 
                           {seviye}. sınıf: {sayi} öğrenci
                         </Typography>
                       ));
+                    })()}
+
+                    {/* Dal Dağılımı */}
+                    {(() => {
+                      const dalSayilari = {};
+                      sortedStudents.forEach(ogrenci => {
+                        let dalBilgisi = ogrenci.dal;
+                        if (!dalBilgisi && tumOgrenciler && tumOgrenciler.length > 0) {
+                          const guncelOgrenci = tumOgrenciler.find(o => o.id === ogrenci.id || o.numara === ogrenci.numara);
+                          if (guncelOgrenci) {
+                            dalBilgisi = guncelOgrenci.dal;
+                          }
+                        }
+                        const kisaDal = getShortBranchName(dalBilgisi);
+                        if (kisaDal && kisaDal !== '-') {
+                          dalSayilari[kisaDal] = (dalSayilari[kisaDal] || 0) + 1;
+                        }
+                      });
+
+                      const dalDagilimi = Object.entries(dalSayilari);
+                      if (dalDagilimi.length > 0) {
+                        return (
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', mt: 1 }}>
+                            Dal Dağılımı: {dalDagilimi.map(([dal, sayi]) => `${dal}: ${sayi}`).join(', ')}
+                          </Typography>
+                        );
+                      }
+                      return null;
                     })()}
                   </Box>
 

@@ -2350,6 +2350,7 @@ const AnaSayfaContent = React.memo(() => {
               ref={salonImzaListesiPrintRef}
               yerlestirmeSonucu={yerlestirmeSonucu}
               ayarlar={ayarlar}
+              tumOgrenciler={ogrenciler}
             />
           </Suspense>
         </Box>
