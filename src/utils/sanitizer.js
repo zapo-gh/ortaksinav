@@ -13,10 +13,6 @@ export const sanitizeText = (value, options = {}) => {
 
   let workingValue = trim ? value.trim() : value;
 
-  if (!trim && workingValue.trim().length === 0) {
-    return '';
-  }
-
   const sanitized = DOMPurify.sanitize(workingValue, PURIFY_OPTIONS);
 
   if (trim) {
@@ -51,6 +47,7 @@ export const sanitizeStudentRecord = (student = {}) => {
   );
   sanitized.sinif = sanitizeText(student.sinif || '');
   sanitized.cinsiyet = sanitizeText(student.cinsiyet || '');
+  sanitized.pinned = !!student.pinned;
   sanitized.pinnedSalonId = sanitizeText(student.pinnedSalonId || '');
   sanitized.pinnedMasaId = sanitizeText(student.pinnedMasaId || '');
   return sanitized;
