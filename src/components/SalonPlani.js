@@ -25,6 +25,7 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
+  TextField,
   Zoom,
   useMediaQuery,
   useTheme
@@ -42,6 +43,74 @@ import {
 } from '@mui/icons-material';
 import TransferButton from './TransferButton';
 import InterSalonTransfer from './InterSalonTransfer';
+import { useExam } from '../context/ExamContext';
+
+// Yerleşmeyen Öğrenci Seçici Modal Bileşeni
+const YerlesmeyenOgrenciSeciciDialog = memo(({ open, onClose, unplacedStudents, onSelect, masaNo }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredStudents = useMemo(() => {
+    if (!searchTerm) return unplacedStudents;
+    return unplacedStudents.filter(s =>
+      `${s.ad} ${s.soyad}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.numara?.toString().includes(searchTerm) ||
+      s.sinif?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [unplacedStudents, searchTerm]);
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <PersonIcon color="primary" />
+          <Typography variant="h6">Öğrenci Yerleştir (Masa {masaNo})</Typography>
+        </Box>
+      </DialogTitle>
+      <DialogContent>
+        <Box sx={{ mb: 2, mt: 1 }}>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="İsim, numara veya sınıf ara..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </Box>
+        <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
+          {filteredStudents.length > 0 ? (
+            filteredStudents.map((ogrenci) => (
+              <ListItem
+                button
+                key={ogrenci.id}
+                onClick={() => onSelect(ogrenci)}
+                sx={{
+                  border: '1px solid #eee',
+                  mb: 1,
+                  borderRadius: 1,
+                  '&:hover': { bgcolor: 'primary.50' }
+                }}
+              >
+                <ListItemText
+                  primary={`${ogrenci.ad} ${ogrenci.soyad}`}
+                  secondary={`${ogrenci.sinif} - No: ${ogrenci.numara}`}
+                />
+                <Button variant="outlined" size="small">Seç</Button>
+              </ListItem>
+            ))
+          ) : (
+            <Typography variant="body2" color="text.secondary" align="center">
+              Öğrenci bulunamadı.
+            </Typography>
+          )}
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>İptal</Button>
+      </DialogActions>
+    </Dialog>
+  );
+});
+
 
 // Drag & Drop item types
 const ITEM_TYPES = {
@@ -349,7 +418,7 @@ const DraggableStudent = memo(({
 const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler = [], onOgrenciSec, tumSalonlar, onSalonDegistir, ayarlar = {}, salonlar = [], seciliSalonId, onSeciliSalonDegistir, onStudentTransfer, yerlestirmeSonucu, tumOgrenciSayisi, aktifPlanAdi = '', readOnly = false }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const { showConfirm } = useNotifications();
+  const { showConfirm, showSuccess } = useNotifications();
 
   const [modalAcik, setModalAcik] = useState(false);
   const [seciliOgrenci, setSeciliOgrenci] = useState(null);
@@ -358,6 +427,16 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
   const [transferModalAcik, setTransferModalAcik] = useState(false);
   const [transferOgrenci, setTransferOgrenci] = useState(null);
   const [confirmationOpen, setConfirmationOpen] = useState(false); // Onay dialog state
+  const [unplacedModalOpen, setUnplacedModalOpen] = useState(false);
+  const { ogrenciler: globalOgrenciler, placementIndex } = useExam();
+
+  // Yerleşmeyen öğrencileri hesapla
+  const unplacedStudents = useMemo(() => {
+    // Tüm öğrencilerden yerleşmiş olanları ayıkla
+    // placementIndex içinde olanlar yerleşmiştir
+    return globalOgrenciler.filter(s => !placementIndex[s.id]);
+  }, [globalOgrenciler, placementIndex]);
+
 
   // Öğrenciyi listeden çıkarma işlemi
   const handleRemoveStudentClick = useCallback(() => {
@@ -369,7 +448,7 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
       if (onOgrenciSec && typeof onOgrenciSec === 'function') {
         // 'move' action with to: null means remove from salon
         onOgrenciSec('move', { from: seciliMasa.id, to: null });
-        showConfirm(`${seciliOgrenci?.ad} ${seciliOgrenci?.soyad} listeden çıkarıldı.`);
+        showSuccess(`${seciliOgrenci?.ad} ${seciliOgrenci?.soyad} listeden çıkarıldı.`);
       }
     }
     setConfirmationOpen(false);
@@ -503,9 +582,26 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
       setSeciliMasa(masa);
       setSeciliOgrenci(ogrenci);
       setModalAcik(true);
+    } else if (!readOnly) {
+      // Boş masa için yerleştirmeyen öğrenciler modalını aç
+      setSeciliMasa(masa);
+      setUnplacedModalOpen(true);
     }
-    // Boş masa için modal açma
+  }, [readOnly]);
+
+  const handleUnplacedStudentSelect = useCallback((ogrenci) => {
+    if (seciliMasa && ogrenci) {
+      handleStudentMove(null, seciliMasa.id, ogrenci);
+      setUnplacedModalOpen(false);
+      setSeciliMasa(null);
+    }
+  }, [seciliMasa, handleStudentMove]);
+
+  const handleUnplacedModalClose = useCallback(() => {
+    setUnplacedModalOpen(false);
+    setSeciliMasa(null);
   }, []);
+
 
 
 
@@ -973,9 +1069,10 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
                   return uniqueStudentIds.size;
                 };
                 const toplamYerlesen = yerlestirmeSonucu.tumSalonlar.reduce((toplam, s) => toplam + countFilled(s), 0);
-                const toplamYerlesilemeyen = Array.isArray(yerlestirmeSonucu.yerlesilemeyenOgrenciler)
-                  ? yerlestirmeSonucu.yerlesilemeyenOgrenciler.length
-                  : 0;
+                const filteredYerlesilemeyen = (yerlestirmeSonucu.yerlesilemeyenOgrenciler || [])
+                  .filter(uOgr => globalOgrenciler.some(gOgr => gOgr.id === uOgr.id));
+
+                const toplamYerlesilemeyen = filteredYerlesilemeyen.length;
 
                 // KRİTİK DÜZELTME: Toplam öğrenci sayısını istatistiklerden al
                 // Transfer işlemi sonrasında toplam öğrenci sayısı değişmemeli
@@ -1726,8 +1823,18 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
           allSalons={tumSalonlar || []}
           onTransfer={handleTransferExecute}
         />
+
+        {/* Yerleşmeyen Öğrenci Seçici Modal */}
+        <YerlesmeyenOgrenciSeciciDialog
+          open={unplacedModalOpen}
+          onClose={handleUnplacedModalClose}
+          unplacedStudents={unplacedStudents}
+          onSelect={handleUnplacedStudentSelect}
+          masaNo={seciliMasa?.masaNumarasi || (seciliMasa && calculateDeskNumberForMasa(seciliMasa))}
+        />
       </Paper>
     </Box>
+
   );
 });
 

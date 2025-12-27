@@ -507,13 +507,85 @@ const examReducer = (state, action) => {
         seciliOgrenciler: []
       };
 
-    case ACTIONS.OGRENCI_SIL:
+    case ACTIONS.OGRENCI_SIL: {
+      const ogrenciId = action.payload;
+      let updatedYerlestirmeSonucu = state.yerlestirmeSonucu;
+      let updatedPlacementIndex = { ...state.placementIndex };
+
+      // SADECE AKTİF (ARŞİVLENMEMİŞ) PLANLARI GÜNCELLE
+      // Eğer plan arşivlenmişse (geçmiş kayıt), öğrenci silinse bile plandaki kaydı korunur.
+      if (updatedYerlestirmeSonucu && updatedYerlestirmeSonucu.isArchived !== true) {
+        // Salonlardaki masalardan temizle
+
+        const updatedTumSalonlar = (updatedYerlestirmeSonucu.tumSalonlar || []).map(salon => {
+          let salonMasalarDegisti = false;
+          const updatedMasalar = (salon.masalar || []).map(masa => {
+            if (masa.ogrenci && masa.ogrenci.id === ogrenciId) {
+              salonMasalarDegisti = true;
+              return { ...masa, ogrenci: null };
+            }
+            return masa;
+          });
+
+          if (salonMasalarDegisti) {
+            return {
+              ...salon,
+              masalar: updatedMasalar,
+              ogrenciler: updatedMasalar
+                .filter(m => m.ogrenci)
+                .map(m => ({ ...m.ogrenci, masaNumarasi: m.masaNumarasi }))
+            };
+          }
+          return salon;
+        });
+
+        // Yerleşemeyenler listesinden temizle
+        const updatedYerlesilemeyenOgrenciler = (updatedYerlestirmeSonucu.yerlesilemeyenOgrenciler || [])
+          .filter(o => o.id !== ogrenciId);
+
+        // Ana salonu da güncelle
+        const updatedSalon = updatedTumSalonlar.find(s =>
+          (s.id === updatedYerlestirmeSonucu.salon?.id || s.salonId === updatedYerlestirmeSonucu.salon?.salonId)
+        ) || updatedYerlestirmeSonucu.salon;
+
+        // İstatistikleri güncelle
+        const wasPlaced = !!state.placementIndex[ogrenciId];
+        const wasUnplaced = (updatedYerlestirmeSonucu.yerlesilemeyenOgrenciler || []).length < (state.yerlestirmeSonucu?.yerlesilemeyenOgrenciler || []).length;
+
+        const mevcutIstatistikler = updatedYerlestirmeSonucu.istatistikler || {};
+        const updatedIstatistikler = {
+          ...mevcutIstatistikler,
+          toplamOgrenci: Math.max(0, (mevcutIstatistikler.toplamOgrenci || 0) - 1),
+          yerlesenOgrenci: wasPlaced ? Math.max(0, (mevcutIstatistikler.yerlesenOgrenci || 0) - 1) : (mevcutIstatistikler.yerlesenOgrenci || 0),
+          yerlesemeyenOgrenci: wasUnplaced ? Math.max(0, (mevcutIstatistikler.yerlesemeyenOgrenci || 0) - 1) : (mevcutIstatistikler.yerlesemeyenOgrenci || 0)
+        };
+
+        updatedYerlestirmeSonucu = {
+          ...updatedYerlestirmeSonucu,
+          salon: updatedSalon,
+          tumSalonlar: updatedTumSalonlar,
+          yerlesilemeyenOgrenciler: updatedYerlesilemeyenOgrenciler,
+          istatistikler: updatedIstatistikler
+        };
+
+        // İndeksten temizle
+        delete updatedPlacementIndex[ogrenciId];
+      }
+
       newState = {
         ...state,
-        ogrenciler: state.ogrenciler.filter(o => o.id !== action.payload)
+        ogrenciler: state.ogrenciler.filter(o => o.id !== ogrenciId),
+        yerlestirmeSonucu: updatedYerlestirmeSonucu,
+        placementIndex: updatedPlacementIndex
       };
+
       saveToStorage('exam_ogrenciler', newState.ogrenciler);
+      if (updatedYerlestirmeSonucu) {
+        saveToStorage('exam_yerlestirme', newState.yerlestirmeSonucu, true);
+        try { localStorage.setItem('exam_placement_index', JSON.stringify(newState.placementIndex)); } catch (e) { logger.debug('localStorage mirror failed (exam_placement_index):', e); }
+      }
       return newState;
+    }
 
     case ACTIONS.OGRENCILER_TEMIZLE:
       newState = {

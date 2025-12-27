@@ -867,6 +867,8 @@ const AnaSayfaContent = React.memo(() => {
       }
 
       const yerlestirmeFormatinda = {
+        id: resolvedPlanId,
+        isArchived: planMeta?.isArchived || false,
         salon: planData.salon,
         tumSalonlar: tumSalonlarSirali,
         kalanOgrenciler: planData.kalanOgrenciler,
@@ -1132,11 +1134,20 @@ const AnaSayfaContent = React.memo(() => {
           salon.id === currentSalon.id ? updatedSalon : salon
         );
 
+        // İstatistikleri güncelle
+        const mevcutIstatistikler = yerlestirmeSonucu.istatistikler || {};
+        const updatedIstatistikler = {
+          ...mevcutIstatistikler,
+          yerlesenOgrenci: (mevcutIstatistikler.yerlesenOgrenci || 0) + 1,
+          yerlesemeyenOgrenci: (mevcutIstatistikler.yerlesemeyenOgrenci || 0) - 1
+        };
+
         const updatedYerlestirmeSonucu = {
           ...yerlestirmeSonucu,
           salon: updatedSalon,
           tumSalonlar: updatedTumSalonlar,
-          yerlesilemeyenOgrenciler: updatedYerlesilemeyen
+          yerlesilemeyenOgrenciler: updatedYerlesilemeyen,
+          istatistikler: updatedIstatistikler
         };
 
         yerlestirmeGuncelle(updatedYerlestirmeSonucu);
@@ -1150,28 +1161,43 @@ const AnaSayfaContent = React.memo(() => {
     if (fromMasa && fromMasa.ogrenci && toMasaId === null) {
       const cikarilanOgrenci = fromMasa.ogrenci;
 
-      // Masayı boşalt
-      fromMasa.ogrenci = null;
-
-      // Öğrenciyi yerleşmeyen listesine ekle
-      const updatedYerlesilemeyen = [...(yerlestirmeSonucu.yerlesilemeyenOgrenciler || []), cikarilanOgrenci];
+      // Salon masa listesini güncelle (Yeni array oluştur - mutasyondan kaçın)
+      const updatedSalonMasalar = currentSalon.masalar.map(m =>
+        m.id === fromMasa.id ? { ...m, ogrenci: null } : m
+      );
 
       // Salon öğrenci listesinden çıkar
-      const updatedSalonOgrenciler = currentSalon.ogrenciler.filter(o => o.id !== cikarilanOgrenci.id);
+      const updatedSalonOgrenciler = (currentSalon.ogrenciler || []).filter(o => o.id !== cikarilanOgrenci.id);
 
       // Güncellenmiş salon
-      const updatedSalon = { ...currentSalon, ogrenciler: updatedSalonOgrenciler };
+      const updatedSalon = {
+        ...currentSalon,
+        masalar: updatedSalonMasalar,
+        ogrenciler: updatedSalonOgrenciler
+      };
 
       // tumSalonlar listesini de güncelle
       const updatedTumSalonlar = yerlestirmeSonucu.tumSalonlar.map(salon =>
         salon.id === currentSalon.id ? updatedSalon : salon
       );
 
+      // Öğrenciyi yerleşmeyen listesine ekle
+      const updatedYerlesilemeyen = [...(yerlestirmeSonucu.yerlesilemeyenOgrenciler || []), cikarilanOgrenci];
+
+      // İstatistikleri güncelle
+      const mevcutIstatistikler = yerlestirmeSonucu.istatistikler || {};
+      const updatedIstatistikler = {
+        ...mevcutIstatistikler,
+        yerlesenOgrenci: (mevcutIstatistikler.yerlesenOgrenci || 0) - 1,
+        yerlesemeyenOgrenci: (mevcutIstatistikler.yerlesemeyenOgrenci || 0) + 1
+      };
+
       const updatedYerlestirmeSonucu = {
         ...yerlestirmeSonucu,
         salon: updatedSalon,
         tumSalonlar: updatedTumSalonlar,
-        yerlesilemeyenOgrenciler: updatedYerlesilemeyen
+        yerlesilemeyenOgrenciler: updatedYerlesilemeyen,
+        istatistikler: updatedIstatistikler
       };
 
       yerlestirmeGuncelle(updatedYerlestirmeSonucu);
@@ -1678,47 +1704,7 @@ const AnaSayfaContent = React.memo(() => {
                     readOnly={readOnly}
                   />
 
-                  {/* Yerleşmeyen Öğrenciler Bölümü */}
-                  {yerlestirmeSonucu?.yerlesilemeyenOgrenciler && yerlestirmeSonucu.yerlesilemeyenOgrenciler.length > 0 && (
-                    <Card sx={{ mt: 1, border: '2px solid', borderColor: 'warning.main' }}>
-                      <CardContent>
-                        <Typography variant="h6" sx={{
-                          color: 'warning.main',
-                          mb: 2,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1,
-                          fontSize: { xs: '1rem', sm: '1.25rem' }
-                        }}>
-                          <WarningIcon />
-                          Yerleşmeyen Öğrenciler ({yerlestirmeSonucu.yerlesilemeyenOgrenciler.length})
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{
-                          mb: 2,
-                          fontSize: { xs: '0.875rem', sm: '0.875rem' }
-                        }}>
-                          Aşağıdaki öğrenciler kısıtlar nedeniyle otomatik yerleştirilemedi.
-                          Manuel olarak yerleştirebilirsiniz.
-                        </Typography>
-                        <Box sx={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          gap: { xs: 0.5, sm: 1 },
-                          justifyContent: { xs: 'center', sm: 'flex-start' }
-                        }}>
-                          {yerlestirmeSonucu.yerlesilemeyenOgrenciler.map((ogrenci, index) => (
-                            <Chip
-                              key={index}
-                              label={`${ogrenci.ad} (${ogrenci.sinif})`}
-                              variant="outlined"
-                              color="warning"
-                              size="small"
-                            />
-                          ))}
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  )}
+                  {/* Yerleşmeyen Öğrenciler kartı kaldırıldı - Artık Salon Planı'ndaki boş masalara tıklanarak modal üzerinden erişiliyor */}
                 </>
               )}
 
