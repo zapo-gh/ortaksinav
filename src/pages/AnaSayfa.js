@@ -61,9 +61,9 @@ import { useNotifications, NotificationProvider } from '../components/Notificati
 import { gelismisYerlestirme } from '../algorithms/gelismisYerlestirmeAlgoritmasi';
 import { calculateDeskNumbersForMasalar } from '../algorithms/gelismisYerlestirmeAlgoritmasi';
 import planManager from '../utils/planManager';
-import { 
-  DatabaseTestLazy, 
-  TestDashboardLazy, 
+import {
+  DatabaseTestLazy,
+  TestDashboardLazy,
   SalonPlaniLazy,
   PlanlamaYapLazy,
   SabitAtamalarLazy,
@@ -81,24 +81,24 @@ const ITEM_TYPES = {
 };
 
 // Plan Kaydetme Dialog Bileşeni - Tamamen optimize edilmiş
-const PlanKaydetmeDialog = React.memo(({ 
-  open, 
-  onClose, 
+const PlanKaydetmeDialog = React.memo(({
+  open,
+  onClose,
   onSave
 }) => {
   const [planAdi, setPlanAdi] = useState('');
-  
+
   // Plan adı değişikliği için optimize edilmiş handler
   const handlePlanAdiChange = useCallback((e) => {
     setPlanAdi(e.target.value);
   }, []);
-  
+
   // Dialog kapandığında state'i temizle
   const handleClose = useCallback(() => {
     setPlanAdi('');
     onClose();
   }, [onClose]);
-  
+
   // Kaydetme işlemi
   const handleSave = useCallback(async () => {
     if (!planAdi.trim()) {
@@ -116,7 +116,7 @@ const PlanKaydetmeDialog = React.memo(({
       onClose(); // Modal'ı kapat
     }
   }, [onSave, onClose, planAdi]);
-  
+
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle>Planı Kaydet</DialogTitle>
@@ -243,7 +243,7 @@ const AnaSayfaContent = React.memo(() => {
     hata,
     isInitialized,
     isWriteAllowed,
-    
+
     // Actions
     ogrencilerYukle,
     ayarlarGuncelle,
@@ -267,7 +267,7 @@ const AnaSayfaContent = React.memo(() => {
     try {
       const hasVisited = localStorage.getItem('hasVisited');
       const isFirstVisit = !hasVisited || hasVisited !== 'true';
-      
+
       if (isFirstVisit) {
         setShowFirstTimeLoader(true);
         localStorage.setItem('hasVisited', 'true');
@@ -300,14 +300,14 @@ const AnaSayfaContent = React.memo(() => {
   useEffect(() => {
     if (yerlestirmeSonucu && yerlestirmeSonucu.tumSalonlar && yerlestirmeSonucu.tumSalonlar.length > 0) {
       if (ilkSalonSecildiRef.current) return; // Zaten seçilmişse tekrar seçme
-      
+
       // Eğer seciliSalonId null ise veya seçili salon tumSalonlar içinde yoksa, ilk salonu seç
       const aktifTumSalonlar = yerlestirmeSonucu.tumSalonlar.filter(salon => salon.aktif !== false);
       if (aktifTumSalonlar.length > 0) {
-        const seciliSalonMevcutMu = seciliSalonId && aktifTumSalonlar.some(salon => 
+        const seciliSalonMevcutMu = seciliSalonId && aktifTumSalonlar.some(salon =>
           salon.salonId === seciliSalonId || salon.id === seciliSalonId
         );
-        
+
         if (!seciliSalonMevcutMu) {
           const ilkSalon = aktifTumSalonlar[0];
           const ilkSalonId = ilkSalon.salonId || ilkSalon.id;
@@ -363,10 +363,10 @@ const AnaSayfaContent = React.memo(() => {
   const salonPlaniPrintRef = useRef();
   const sinifListesiPrintRef = useRef();
   const salonImzaListesiPrintRef = useRef();
-  
+
   // Yazdırma menüsü için state
   const [printMenuAnchor, setPrintMenuAnchor] = useState(null);
-  
+
   // Kaydetme için state'ler
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [activePlanMeta, setActivePlanMeta] = useState(null);
@@ -480,10 +480,10 @@ const AnaSayfaContent = React.memo(() => {
     try {
       // Plan verisini hazırla - Ayarları derin kopyala (referans sorununu önlemek için)
       const ayarlarKopya = JSON.parse(JSON.stringify(ayarlar || {}));
-      
+
       // Salonlar listesini ayarlardan kaldır (sistemde zaten kayıtlı olduğu için kaydetmeye gerek yok)
       const { kayitliSalonlar, ...ayarlarKopyaTemiz } = ayarlarKopya;
-      
+
       // KRITIK: Plan kaydedilirken güncel verilerle yerlestirmeSonucu'yu güncelle
       // 1. Salon isimlerini güncelle (global salonlar listesinden)
       const guncelTumSalonlar = (yerlestirmeSonucu.tumSalonlar || []).map(salon => {
@@ -501,18 +501,18 @@ const AnaSayfaContent = React.memo(() => {
         }
         return salon;
       });
-      
+
       // 2. Ana salonu güncelle
-      const guncelSalon = guncelTumSalonlar.find(s => 
-        s.id === yerlestirmeSonucu.salon?.id || 
+      const guncelSalon = guncelTumSalonlar.find(s =>
+        s.id === yerlestirmeSonucu.salon?.id ||
         s.salonId === yerlestirmeSonucu.salon?.salonId
       ) || yerlestirmeSonucu.salon;
-      
+
       // 3. Silinen öğrencileri yerleşmeyen öğrenciler listesinden kaldır
       const mevcutOgrenciIdleri = new Set(ogrenciler.map(o => o.id));
       const guncelYerlesilemeyenOgrenciler = (yerlestirmeSonucu.yerlesilemeyenOgrenciler || [])
         .filter(ogrenci => mevcutOgrenciIdleri.has(ogrenci.id));
-      
+
       // 4. Salon masalarındaki silinen öğrencileri temizle
       const guncelSalonMasalar = (guncelSalon?.masalar || []).map(masa => {
         if (masa.ogrenci && !mevcutOgrenciIdleri.has(masa.ogrenci.id)) {
@@ -521,7 +521,7 @@ const AnaSayfaContent = React.memo(() => {
         }
         return masa;
       });
-      
+
       const guncelSalonFinal = guncelSalon ? {
         ...guncelSalon,
         masalar: guncelSalonMasalar,
@@ -529,7 +529,7 @@ const AnaSayfaContent = React.memo(() => {
           .filter(m => m.ogrenci)
           .map(m => ({ ...m.ogrenci, masaNumarasi: m.masaNumarasi }))
       } : guncelSalon;
-      
+
       // 5. TumSalonlar içindeki masaları da güncelle
       const guncelTumSalonlarFinal = guncelTumSalonlar.map(salon => {
         if (salon.id === guncelSalonFinal?.id || salon.salonId === guncelSalonFinal?.salonId) {
@@ -550,7 +550,7 @@ const AnaSayfaContent = React.memo(() => {
             .map(m => ({ ...m.ogrenci, masaNumarasi: m.masaNumarasi }))
         };
       });
-      
+
       const planData = {
         salon: guncelSalonFinal,
         tumSalonlar: guncelTumSalonlarFinal,
@@ -558,9 +558,12 @@ const AnaSayfaContent = React.memo(() => {
         yerlesilemeyenOgrenciler: guncelYerlesilemeyenOgrenciler,
         istatistikler: yerlestirmeSonucu.istatistikler,
         // Ayarlar bilgilerini de kaydet (sadece dersler, salonlar listesi kaydedilmez)
-        ayarlar: ayarlarKopyaTemiz
+        ayarlar: ayarlarKopyaTemiz,
+
+        // Sabit atamalar (pinned students) - Tüm öğrenci listesinden çek
+        sabitOgrenciler: ogrenciler.filter(o => o.pinned)
       };
-      
+
       // DEBUG: Sınav bilgilerini kontrol et
       console.log('🔍 Plan kaydediliyor - Ayarlar:', {
         sinavTarihi: planData.ayarlar.sinavTarihi,
@@ -579,10 +582,10 @@ const AnaSayfaContent = React.memo(() => {
 
       // PlanManager ile kaydet - Firestore'a kayıt yap
       console.log('💾 Plan kaydetme başlatılıyor - Firestore\'a kaydedilecek:', trimmedPlanName);
-      
+
       // Kaydetme başladı bildirimi göster
       showInfo(`Plan "${trimmedPlanName}" kaydediliyor...`);
-      
+
       // DEBUG: DatabaseAdapter durumunu kontrol et
       const dbAdapter = await import('../database/index');
       const dbStatus = {
@@ -593,13 +596,13 @@ const AnaSayfaContent = React.memo(() => {
       };
       console.log('🔍 DatabaseAdapter durumu:', dbStatus);
       logger.info('🔍 DatabaseAdapter durumu:', dbStatus);
-      
+
       // Firestore devre dışıysa kullanıcıya bilgi ver
       if (dbAdapter.default.firestore?.isDisabled) {
         console.warn('⚠️ Firestore devre dışı - Plan IndexedDB\'ye kaydedilecek');
         logger.warn('⚠️ Firestore devre dışı - Plan IndexedDB\'ye kaydedilecek');
       }
-      
+
       // Hangi planın güncelleneceğini belirle
       const resolvedPlanId = targetPlanId ?? activePlanMeta?.id ?? planManager.getCurrentPlanId();
       let planId = null;
@@ -615,17 +618,17 @@ const AnaSayfaContent = React.memo(() => {
       } else {
         planId = await planManager.savePlan(trimmedPlanName, planData);
       }
-      
+
       if (!planId) {
         // planId null dönerse, muhtemelen test plan filtresi veya Firestore devre dışı
         console.warn('⚠️ Plan ID null döndü - muhtemelen test plan filtresi veya Firestore devre dışı');
         throw new Error('Plan kaydedilemedi. Plan ID alınamadı. Firestore aktif mi kontrol edin.');
       }
-      
+
       // Plan ID tipine göre hangi veritabanına kaydedildiğini belirle
       const isFirestore = typeof planId === 'string' && isNaN(Number(planId));
       const isIndexedDB = typeof planId === 'number' || (typeof planId === 'string' && !isNaN(Number(planId)));
-      
+
       if (isFirestore) {
         console.log('✅ Plan başarıyla Firestore\'a kaydedildi/güncellendi. Plan ID:', planId);
         logger.info('✅ Plan başarıyla Firestore\'a kaydedildi/güncellendi. Plan ID:', planId);
@@ -633,7 +636,7 @@ const AnaSayfaContent = React.memo(() => {
         console.warn('⚠️ Plan IndexedDB\'ye kaydedildi (Firestore devre dışı). Plan ID:', planId);
         logger.warn('⚠️ Plan IndexedDB\'ye kaydedildi (Firestore devre dışı). Plan ID:', planId);
       }
-      
+
       // Success mesajını göster (modal zaten kapatıldı)
       const finalPlanName = trimmedPlanName;
       const finalPlanId = planId;
@@ -645,10 +648,10 @@ const AnaSayfaContent = React.memo(() => {
         id: finalPlanId,
         name: finalPlanName
       });
-      
+
     } catch (error) {
       logger.error('❌ Plan kaydetme hatası:', error);
-      
+
       // Hata mesajını göster (modal zaten kapatıldı)
       showError(`Plan kaydedilirken hata oluştu: ${error.message}`);
     }
@@ -695,7 +698,7 @@ const AnaSayfaContent = React.memo(() => {
       return;
     }
     ayarlarGuncelle(yeniAyarlar);
-    
+
     // LocalStorage'a kaydet
     try {
       localStorage.setItem('exam_ayarlar', JSON.stringify(yeniAyarlar));
@@ -710,7 +713,7 @@ const AnaSayfaContent = React.memo(() => {
       return;
     }
     salonlarGuncelle(yeniSalonlar);
-    
+
     // LocalStorage'a kaydet
     try {
       // ExamContext'in beklediği anahtar ile kaydet
@@ -718,16 +721,16 @@ const AnaSayfaContent = React.memo(() => {
     } catch (error) {
       console.error('❌ Salonlar LocalStorage\'a kaydedilemedi:', error);
     }
-    
+
     // Eğer yerleştirme sonucu varsa, salon sıralamasını güncelle
     if (yerlestirmeSonucu && yerlestirmeSonucu.tumSalonlar) {
       // Yeni salon sıralamasına göre tumSalonlar'ı güncelle
       const guncellenmisTumSalonlar = yeniSalonlar.map(yeniSalon => {
         // Mevcut tumSalonlar'da bu salon var mı kontrol et
-        const mevcutSalon = yerlestirmeSonucu.tumSalonlar.find(salon => 
+        const mevcutSalon = yerlestirmeSonucu.tumSalonlar.find(salon =>
           salon.salonId === yeniSalon.id || salon.salonAdi === yeniSalon.salonAdi
         );
-        
+
         if (mevcutSalon) {
           // Mevcut salon verilerini koru, sadece sıralamayı güncelle
           return {
@@ -746,7 +749,7 @@ const AnaSayfaContent = React.memo(() => {
           };
         }
       });
-      
+
       // Yerleştirme sonucunu güncelle
       yerlestirmeGuncelle({
         ...yerlestirmeSonucu,
@@ -770,7 +773,7 @@ const AnaSayfaContent = React.memo(() => {
       console.log('🔍 AnaSayfa.handlePlanYukle çağrıldı, plan:', plan);
       console.log('🔍 AnaSayfa.handlePlanYukle - plan tip:', typeof plan);
       console.log('🔍 AnaSayfa.handlePlanYukle - plan.id:', plan?.id);
-      
+
       // Plan meta ve data referanslarını ayır
       let planMeta = null;
       let planData = null;
@@ -853,7 +856,7 @@ const AnaSayfaContent = React.memo(() => {
 
       // Plan verisini yerlestirmeSonucu formatına dönüştür
       let tumSalonlarSirali = planData.tumSalonlar;
-      
+
       // Salonları sayısal ID'ye göre sırala (string sıralama yerine)
       if (Array.isArray(tumSalonlarSirali) && tumSalonlarSirali.length > 0) {
         tumSalonlarSirali = [...tumSalonlarSirali].sort((a, b) => {
@@ -862,7 +865,7 @@ const AnaSayfaContent = React.memo(() => {
           return aId - bId;
         });
       }
-      
+
       const yerlestirmeFormatinda = {
         salon: planData.salon,
         tumSalonlar: tumSalonlarSirali,
@@ -946,7 +949,7 @@ const AnaSayfaContent = React.memo(() => {
           }
           return salon;
         });
-        
+
         // Ana salon masalarını da güncelle
         if (yerlestirmeFormatinda.salon && yerlestirmeFormatinda.salon.masalar) {
           yerlestirmeFormatinda.salon.masalar = yerlestirmeFormatinda.tumSalonlar[0]?.masalar || yerlestirmeFormatinda.salon.masalar;
@@ -960,90 +963,75 @@ const AnaSayfaContent = React.memo(() => {
       });
 
       yerlestirmeGuncelle(yerlestirmeFormatinda);
-      
+
       // Plan verisindeki pinned bilgilerini öğrenci listesine geri yükle
-      // Plan verisindeki tüm öğrencileri topla (salon masalarındaki öğrenciler ve yerleşemeyen öğrenciler)
-      const planOgrencileri = new Map();
-      
-      // Salon masalarındaki öğrencileri topla
-      if (yerlestirmeFormatinda.tumSalonlar && Array.isArray(yerlestirmeFormatinda.tumSalonlar)) {
-        yerlestirmeFormatinda.tumSalonlar.forEach(salon => {
-          if (salon.masalar && Array.isArray(salon.masalar)) {
-            salon.masalar.forEach(masa => {
-              if (masa.ogrenci && masa.ogrenci.id) {
-                planOgrencileri.set(masa.ogrenci.id.toString(), {
-                  ...masa.ogrenci,
-                  // Pinned bilgilerini koru (eğer varsa)
-                  pinned: masa.ogrenci.pinned || false,
-                  pinnedSalonId: masa.ogrenci.pinnedSalonId || null,
-                  pinnedMasaId: masa.ogrenci.pinnedMasaId || null
-                });
-              }
-            });
+      // Önce: Explicit sabitOgrenciler listesi var mı kontrol et (Yeni sistem)
+      const hasExplicitSabit = planData.sabitOgrenciler && Array.isArray(planData.sabitOgrenciler);
+
+      if (hasExplicitSabit) {
+        console.log(`📌 Plan verisinde ${planData.sabitOgrenciler.length} adet explicit sabit öğrenci bulundu.`);
+
+        // Mevcut tüm sabitleri temizle ve plan'dakileri yükle
+        ogrenciler.forEach(ogrenci => {
+          const planSabit = planData.sabitOgrenciler.find(ps => ps.id?.toString() === ogrenci.id?.toString());
+          if (planSabit) {
+            // Plan'da sabit ise, pinle
+            ogrenciPin(ogrenci.id, planSabit.pinnedSalonId, planSabit.pinnedMasaId);
+          } else if (ogrenci.pinned) {
+            // Plan'da sabit değil ama şu an sabitse, unpinle
+            ogrenciUnpin(ogrenci.id);
           }
         });
-      }
-      
-      // Yerleşemeyen öğrencileri de topla
-      if (yerlestirmeFormatinda.yerlesilemeyenOgrenciler && Array.isArray(yerlestirmeFormatinda.yerlesilemeyenOgrenciler)) {
-        yerlestirmeFormatinda.yerlesilemeyenOgrenciler.forEach(ogrenci => {
-          if (ogrenci && ogrenci.id) {
-            planOgrencileri.set(ogrenci.id.toString(), {
-              ...ogrenci,
-              // Pinned bilgilerini koru (eğer varsa)
-              pinned: ogrenci.pinned || false,
-              pinnedSalonId: ogrenci.pinnedSalonId || null,
-              pinnedMasaId: ogrenci.pinnedMasaId || null
-            });
-          }
-        });
-      }
-      
-      // Öğrenci listesindeki pinned bilgilerini plan verisinden güncelle
-      if (planOgrencileri.size > 0) {
-        const guncelOgrenciler = ogrenciler.map(ogrenci => {
-          const planOgrenci = planOgrencileri.get(ogrenci.id?.toString());
-          if (planOgrenci && (planOgrenci.pinned || planOgrenci.pinnedSalonId || planOgrenci.pinnedMasaId)) {
-            // Plan verisinde pinned bilgisi varsa, öğrenci listesine geri yükle
-            return {
-              ...ogrenci,
-              pinned: planOgrenci.pinned || false,
-              pinnedSalonId: planOgrenci.pinnedSalonId || null,
-              pinnedMasaId: planOgrenci.pinnedMasaId || null
-            };
-          }
-          return ogrenci;
-        });
-        
-        // Pinned bilgilerini güncelle (eğer değişiklik varsa)
-        const pinnedBilgisiDegisti = guncelOgrenciler.some((ogrenci, index) => {
-          const mevcutOgrenci = ogrenciler[index];
-          return ogrenci.pinned !== mevcutOgrenci?.pinned ||
-                 ogrenci.pinnedSalonId !== mevcutOgrenci?.pinnedSalonId ||
-                 ogrenci.pinnedMasaId !== mevcutOgrenci?.pinnedMasaId;
-        });
-        
-        if (pinnedBilgisiDegisti) {
-          // Pinned bilgilerini state'e geri yükle (ogrencilerEkle ile güncelle)
-          const pinnedOgrenciler = guncelOgrenciler.filter(o => o.pinned);
-          if (pinnedOgrenciler.length > 0) {
-            console.log(`📌 Plan'dan ${pinnedOgrenciler.length} sabitlenen öğrenci bilgisi geri yüklendi`);
-          }
-          
-          // Öğrenci listesini güncelle (pinned bilgileri ile)
-          ogrenciler.forEach((ogrenci, index) => {
+      } else {
+        // Eski sistem: Pinned bilgilerini yerleşim sonuçlarından (masalardan vs.) infer et
+        console.log('⚠️ Plan verisinde explicit sabit listesi yok, infer ediliyor...');
+        const planOgrencileri = new Map();
+
+        // Salon masalarındaki öğrencileri topla
+        if (yerlestirmeFormatinda.tumSalonlar && Array.isArray(yerlestirmeFormatinda.tumSalonlar)) {
+          yerlestirmeFormatinda.tumSalonlar.forEach(salon => {
+            if (salon.masalar && Array.isArray(salon.masalar)) {
+              salon.masalar.forEach(masa => {
+                if (masa.ogrenci && masa.ogrenci.id) {
+                  planOgrencileri.set(masa.ogrenci.id.toString(), {
+                    ...masa.ogrenci,
+                    pinned: masa.ogrenci.pinned || false,
+                    pinnedSalonId: masa.ogrenci.pinnedSalonId || null,
+                    pinnedMasaId: masa.ogrenci.pinnedMasaId || null
+                  });
+                }
+              });
+            }
+          });
+        }
+
+        // Yerleşemeyen öğrencileri de topla
+        if (yerlestirmeFormatinda.yerlesilemeyenOgrenciler && Array.isArray(yerlestirmeFormatinda.yerlesilemeyenOgrenciler)) {
+          yerlestirmeFormatinda.yerlesilemeyenOgrenciler.forEach(ogrenci => {
+            if (ogrenci && ogrenci.id) {
+              planOgrencileri.set(ogrenci.id.toString(), {
+                ...ogrenci,
+                pinned: ogrenci.pinned || false,
+                pinnedSalonId: ogrenci.pinnedSalonId || null,
+                pinnedMasaId: ogrenci.pinnedMasaId || null
+              });
+            }
+          });
+        }
+
+        // Öğrenci listesindeki pinned bilgilerini plan verisinden güncelle
+        if (planOgrencileri.size > 0) {
+          ogrenciler.forEach(ogrenci => {
             const planOgrenci = planOgrencileri.get(ogrenci.id?.toString());
             if (planOgrenci && (planOgrenci.pinned || planOgrenci.pinnedSalonId || planOgrenci.pinnedMasaId)) {
-              // Pinned bilgisini güncelle
               ogrenciPin(ogrenci.id, planOgrenci.pinnedSalonId, planOgrenci.pinnedMasaId);
-            } else if (ogrenci.pinned && !planOgrenci) {
-              // Plan verisinde pinned bilgisi yoksa, pinned'i kaldır
+            } else if (ogrenci.pinned) {
               ogrenciUnpin(ogrenci.id);
             }
           });
         }
       }
-      
+
       tabDegistir('salon-plani');
 
       showSuccess('Plan başarıyla yüklendi!');
@@ -1058,29 +1046,29 @@ const AnaSayfaContent = React.memo(() => {
   // Masa numarası hesaplama fonksiyonu
   const calculateDeskNumberForMasa = useCallback((masa) => {
     if (!masa || !yerlestirmeSonucu?.salon?.masalar) return masa?.id + 1 || 1;
-    
+
     // Tüm masaları al ve grup bazlı sıralama yap
     const allMasalar = yerlestirmeSonucu.salon.masalar;
     const gruplar = {};
-    
+
     allMasalar.forEach(m => {
       const grup = m.grup || 1;
       if (!gruplar[grup]) gruplar[grup] = [];
       gruplar[grup].push(m);
     });
-    
+
     let masaNumarasi = 1;
     const sortedGruplar = Object.keys(gruplar).sort((a, b) => parseInt(a) - parseInt(b));
-    
+
     for (const grupId of sortedGruplar) {
       const grupMasalar = gruplar[grupId];
-      
+
       // Grup içinde satır-sütun sıralaması
       const sortedGrupMasalar = grupMasalar.sort((a, b) => {
         if (a.satir !== b.satir) return a.satir - b.satir;
         return a.sutun - b.sutun;
       });
-      
+
       for (const m of sortedGrupMasalar) {
         if (m.id === masa.id) {
           return masaNumarasi;
@@ -1088,7 +1076,7 @@ const AnaSayfaContent = React.memo(() => {
         masaNumarasi++;
       }
     }
-    
+
     return masa.id + 1; // Fallback
   }, [yerlestirmeSonucu]);
 
@@ -1099,7 +1087,7 @@ const AnaSayfaContent = React.memo(() => {
       showError('Yerleşim planını değiştirmek için yönetici olarak giriş yapmalısınız.');
       return;
     }
-    
+
     if (action === 'update_desk_number') {
       // Öğrenci listesinde masa numarasını güncelle
       const updatedOgrenciler = ogrenciler.map(ogrenci =>
@@ -1119,28 +1107,28 @@ const AnaSayfaContent = React.memo(() => {
     if (!yerlestirmeSonucu || !yerlestirmeSonucu.salon) {
       return;
     }
-    
+
     const currentSalon = yerlestirmeSonucu.salon;
     const fromMasa = currentSalon.masalar?.find(m => m.id === fromMasaId);
     const toMasa = currentSalon.masalar?.find(m => m.id === toMasaId);
-    
-    
+
+
     // Yerleşmeyen öğrenciden salona taşıma
     if (fromMasaId === null && toMasa) {
       // Drag edilen öğrenci bilgisini kullan
       const ogrenciToMove = draggedStudent || yerlestirmeSonucu.yerlesilemeyenOgrenciler?.[0];
       if (ogrenciToMove && !toMasa.ogrenci) {
         const updatedYerlesilemeyen = yerlestirmeSonucu.yerlesilemeyenOgrenciler.filter(o => o.id !== ogrenciToMove.id);
-        const updatedSalonMasalar = currentSalon.masalar.map(m => 
+        const updatedSalonMasalar = currentSalon.masalar.map(m =>
           m.id === toMasa.id ? { ...m, ogrenci: { ...ogrenciToMove, masaNumarasi: toMasa.masaNumarasi || calculateDeskNumberForMasa(toMasa) } } : m
         );
         const updatedSalonOgrenciler = [...currentSalon.ogrenciler, { ...ogrenciToMove, masaNumarasi: toMasa.masaNumarasi || calculateDeskNumberForMasa(toMasa) }];
-        
+
         // Güncellenmiş salon
         const updatedSalon = { ...currentSalon, masalar: updatedSalonMasalar, ogrenciler: updatedSalonOgrenciler };
-        
+
         // tumSalonlar listesini de güncelle
-        const updatedTumSalonlar = yerlestirmeSonucu.tumSalonlar.map(salon => 
+        const updatedTumSalonlar = yerlestirmeSonucu.tumSalonlar.map(salon =>
           salon.id === currentSalon.id ? updatedSalon : salon
         );
 
@@ -1150,32 +1138,32 @@ const AnaSayfaContent = React.memo(() => {
           tumSalonlar: updatedTumSalonlar,
           yerlesilemeyenOgrenciler: updatedYerlesilemeyen
         };
-        
+
         yerlestirmeGuncelle(updatedYerlestirmeSonucu);
-        
+
         // LocalStorage kaydetme artık ExamContext'te yapılıyor
       }
       return;
     }
-    
+
     // Öğrenciyi salondan çıkarma (toMasaId === null)
     if (fromMasa && fromMasa.ogrenci && toMasaId === null) {
       const cikarilanOgrenci = fromMasa.ogrenci;
-      
+
       // Masayı boşalt
       fromMasa.ogrenci = null;
-      
+
       // Öğrenciyi yerleşmeyen listesine ekle
       const updatedYerlesilemeyen = [...(yerlestirmeSonucu.yerlesilemeyenOgrenciler || []), cikarilanOgrenci];
-      
+
       // Salon öğrenci listesinden çıkar
       const updatedSalonOgrenciler = currentSalon.ogrenciler.filter(o => o.id !== cikarilanOgrenci.id);
-      
+
       // Güncellenmiş salon
       const updatedSalon = { ...currentSalon, ogrenciler: updatedSalonOgrenciler };
-      
+
       // tumSalonlar listesini de güncelle
-      const updatedTumSalonlar = yerlestirmeSonucu.tumSalonlar.map(salon => 
+      const updatedTumSalonlar = yerlestirmeSonucu.tumSalonlar.map(salon =>
         salon.id === currentSalon.id ? updatedSalon : salon
       );
 
@@ -1185,25 +1173,25 @@ const AnaSayfaContent = React.memo(() => {
         tumSalonlar: updatedTumSalonlar,
         yerlesilemeyenOgrenciler: updatedYerlesilemeyen
       };
-      
+
       yerlestirmeGuncelle(updatedYerlestirmeSonucu);
-      
+
       // LocalStorage kaydetme artık ExamContext'te yapılıyor
       return;
     }
-    
+
     if (!fromMasa || !toMasa || !fromMasa.ogrenci) {
       return;
     }
-    
+
     // Yer değiştirme mantığı
     const fromOgrenci = fromMasa.ogrenci;
     const toOgrenci = toMasa.ogrenci; // Boş koltuk için null olabilir
-    
+
     // Öğrencileri değiştir
     fromMasa.ogrenci = toOgrenci; // Boş koltuk için null
     toMasa.ogrenci = fromOgrenci;
-    
+
     // Salon öğrenci listesini de güncelle
     const updatedSalonOgrenciler = currentSalon.ogrenciler.map(ogrenci => {
       if (ogrenci.id === fromOgrenci.id) {
@@ -1213,21 +1201,21 @@ const AnaSayfaContent = React.memo(() => {
       }
       return ogrenci;
     });
-    
+
     // Güncellenmiş salon
     const updatedSalon = { ...currentSalon, ogrenciler: updatedSalonOgrenciler };
-    
+
     // tumSalonlar listesini de güncelle
-    const updatedTumSalonlar = yerlestirmeSonucu.tumSalonlar.map(salon => 
+    const updatedTumSalonlar = yerlestirmeSonucu.tumSalonlar.map(salon =>
       salon.id === currentSalon.id ? updatedSalon : salon
     );
-    
+
     // State'i anında güncelle - gecikme olmasın
     yerlestirmeGuncelle({
       salon: updatedSalon,
       tumSalonlar: updatedTumSalonlar
     });
-    
+
     // LocalStorage kaydetme artık ExamContext'te yapılıyor
   }, [yerlestirmeSonucu, yerlestirmeGuncelle, readOnly, showError]);
 
@@ -1239,44 +1227,44 @@ const AnaSayfaContent = React.memo(() => {
     }
     try {
       const result = await transferManager.executeTransfer(transferData);
-      
+
       // Yerleştirme sonucunu güncelle - Deep copy ile
       // KRİTİK: Hem id hem de salonId property'lerini kontrol et
       const updatedTumSalonlar = (yerlestirmeSonucu.tumSalonlar || []).map(salon => {
         // Kaynak salonu güncelle - id veya salonId eşleşmesi
-        if (salon.id === result.fromSalon.id || 
-            salon.salonId === result.fromSalon.salonId ||
-            salon.id === result.fromSalon.salonId ||
-            salon.salonId === result.fromSalon.id) {
+        if (salon.id === result.fromSalon.id ||
+          salon.salonId === result.fromSalon.salonId ||
+          salon.id === result.fromSalon.salonId ||
+          salon.salonId === result.fromSalon.id) {
           return result.fromSalon;
         }
         // Hedef salonu güncelle - id veya salonId eşleşmesi
-        if (salon.id === result.toSalon.id || 
-            salon.salonId === result.toSalon.salonId ||
-            salon.id === result.toSalon.salonId ||
-            salon.salonId === result.toSalon.id) {
+        if (salon.id === result.toSalon.id ||
+          salon.salonId === result.toSalon.salonId ||
+          salon.id === result.toSalon.salonId ||
+          salon.salonId === result.toSalon.id) {
           return result.toSalon;
         }
         // Diğer salonları olduğu gibi bırak
         return salon;
       });
-      
+
       // Mevcut salonu güncelle (eğer transfer edilen salon mevcut salon ise)
       let updatedCurrentSalon = yerlestirmeSonucu.salon;
       const currentSalonId = yerlestirmeSonucu.salon?.id || yerlestirmeSonucu.salon?.salonId;
       const fromSalonId = result.fromSalon.id || result.fromSalon.salonId;
       const toSalonId = result.toSalon.id || result.toSalon.salonId;
-      
-      if (currentSalonId === fromSalonId || 
-          yerlestirmeSonucu.salon?.id === result.fromSalon.id ||
-          yerlestirmeSonucu.salon?.salonId === result.fromSalon.salonId) {
+
+      if (currentSalonId === fromSalonId ||
+        yerlestirmeSonucu.salon?.id === result.fromSalon.id ||
+        yerlestirmeSonucu.salon?.salonId === result.fromSalon.salonId) {
         updatedCurrentSalon = result.fromSalon;
       } else if (currentSalonId === toSalonId ||
-                 yerlestirmeSonucu.salon?.id === result.toSalon.id ||
-                 yerlestirmeSonucu.salon?.salonId === result.toSalon.salonId) {
+        yerlestirmeSonucu.salon?.id === result.toSalon.id ||
+        yerlestirmeSonucu.salon?.salonId === result.toSalon.salonId) {
         updatedCurrentSalon = result.toSalon;
       }
-      
+
       // KRİTİK: İstatistikleri yeniden hesapla - tumSalonlar üzerinden
       // Transfer işlemi sonrasında toplam ve yerleşen öğrenci sayısı değişmemeli
       // (öğrenci bir salondan diğerine taşınıyor, yeni öğrenci eklenmiyor)
@@ -1293,10 +1281,10 @@ const AnaSayfaContent = React.memo(() => {
         });
         return uniqueIds.size;
       };
-      
+
       const yerlesenOgrenciSayisi = calculateYerlesenOgrenciSayisi(updatedTumSalonlar);
       const mevcutIstatistikler = yerlestirmeSonucu.istatistikler || {};
-      
+
       // İstatistikleri güncelle - toplam öğrenci sayısı değişmemeli
       const updatedIstatistikler = {
         ...mevcutIstatistikler,
@@ -1306,16 +1294,16 @@ const AnaSayfaContent = React.memo(() => {
         // Yerleşemeyen öğrenci sayısı = Toplam - Yerleşen
         yerlesemeyenOgrenci: (mevcutIstatistikler.toplamOgrenci || ogrenciler.length) - yerlesenOgrenciSayisi
       };
-      
+
       yerlestirmeGuncelle({
         ...yerlestirmeSonucu,
         salon: updatedCurrentSalon,
         tumSalonlar: updatedTumSalonlar,
         istatistikler: updatedIstatistikler
       });
-      
+
       showSuccess(`✅ ${result.student.ad} ${result.student.soyad} başarıyla transfer edildi!`);
-      
+
     } catch (error) {
       showError(`❌ Transfer hatası: ${error.message}`);
       throw error;
@@ -1347,21 +1335,21 @@ const AnaSayfaContent = React.memo(() => {
 
     try {
       yuklemeBaslat();
-      
+
       // Algoritmanın çalışmasını bir sonraki "tick"e erteleyerek
       // UI'nin güncellenmesine izin ver
       setTimeout(() => {
         try {
           let sonuc;
           const baslangicZamani = performance.now();
-          
+
           // Sadece aktif salonları kullan
           const aktifSalonlar = salonlar.filter(salon => salon.aktif !== false);
-          
+
           if (aktifSalonlar.length === 0) {
             throw new Error('Aktif salon bulunamadı! Lütfen en az bir salonu aktif hale getirin.');
           }
-          
+
           // Seçili sınıflardaki öğrencileri filtrele
           const seciliSiniflar = [];
           if (ayarlar?.dersler && ayarlar.dersler.length > 0) {
@@ -1371,40 +1359,40 @@ const AnaSayfaContent = React.memo(() => {
               }
             });
           }
-          
+
           // Benzersiz sınıfları al
           const benzersizSeciliSiniflar = [...new Set(seciliSiniflar)];
-          
+
           // Seçili sınıflardaki öğrencileri filtrele
-          const seciliSinifOgrencileri = ogrenciler.filter(ogrenci => 
+          const seciliSinifOgrencileri = ogrenciler.filter(ogrenci =>
             benzersizSeciliSiniflar.includes(ogrenci.sinif)
           );
-          
-          
+
+
           if (seciliSinifOgrencileri.length === 0) {
             throw new Error('Seçili sınıflarda öğrenci bulunamadı! Lütfen ders ayarlarında sınıf seçimi yapın.');
           }
-          
+
           // Gelişmiş yerleştirme algoritması kullanılıyor - sadece seçili sınıf öğrencileri
           sonuc = gelismisYerlestirme(seciliSinifOgrencileri, aktifSalonlar, ayarlar);
-          
+
           // KRİTİK DÜZELTME: İstatistikleri gerçek öğrenci sayısına göre güncelle
           if (sonuc && sonuc.istatistikler) {
             sonuc.istatistikler.toplamOgrenci = ogrenciler.length; // Tüm öğrenci sayısı
             sonuc.istatistikler.yerlesemeyenOgrenci = ogrenciler.length - sonuc.istatistikler.yerlesenOgrenci;
           }
-          
-          
+
+
           const bitisZamani = performance.now();
           const islemSuresi = bitisZamani - baslangicZamani;
-          
+
           if (!sonuc || !sonuc.salonlar || sonuc.salonlar.length === 0) {
             throw new Error('Algoritma geçerli sonuç döndürmedi');
           }
-          
+
           // Sonucu formatla (eski sistemle uyumlu hale getir)
           const formatlanmisSonuc = formatYerlestirmeSonucu(sonuc);
-          
+
           yerlestirmeYap(formatlanmisSonuc);
           tabDegistir('salon-plani');
         } catch (error) {
@@ -1445,7 +1433,7 @@ const AnaSayfaContent = React.memo(() => {
       // KRİTİK GÜVENLİK: Duplicate'ları temizle
       const uniqueOgrenciler = [];
       const seenIds = new Set();
-      
+
       if (salon.ogrenciler && Array.isArray(salon.ogrenciler)) {
         salon.ogrenciler.forEach(ogrenci => {
           if (ogrenci && ogrenci.id && !seenIds.has(ogrenci.id)) {
@@ -1454,14 +1442,14 @@ const AnaSayfaContent = React.memo(() => {
           }
         });
       }
-      
+
       if (uniqueOgrenciler.length !== salon.ogrenciler?.length) {
         console.warn(`⚠️ ${salon.salonAdi}: ${salon.ogrenciler?.length || 0} -> ${uniqueOgrenciler.length} öğrenci (${(salon.ogrenciler?.length || 0) - uniqueOgrenciler.length} duplicate temizlendi)`);
       }
-      
+
       // KRİTİK: Gerçek salon kapasitesini hesapla (masa sayısı)
       const gercekKapasite = salon.koltukMatrisi?.masalar?.length || salon.koltukMatrisi?.satirSayisi * salon.koltukMatrisi?.sutunSayisi || 0;
-      
+
       const formatlanmisSalon = {
         id: salon.salonId, // SalonPlani için id property'si ekle
         salonId: salon.salonId,
@@ -1480,15 +1468,15 @@ const AnaSayfaContent = React.memo(() => {
       };
 
       // Gerçek grup yapısını kullan - koltukMatrisi.masalar'dan
-      
+
       formatlanmisSalon.masalar = salon.koltukMatrisi.masalar.map((koltuk) => {
         // Plan matrisinden öğrenciyi bul (doğru eşleştirme)
-        const ogrenci = salon.plan?.find(p => 
-          p.satir === koltuk.satir && 
-          p.sutun === koltuk.sutun && 
+        const ogrenci = salon.plan?.find(p =>
+          p.satir === koltuk.satir &&
+          p.sutun === koltuk.sutun &&
           p.grup === koltuk.grup
         )?.ogrenci || null;
-        
+
         return {
           id: koltuk.id,
           masaNumarasi: koltuk.masaNumarasi || calculateDeskNumberForMasa(koltuk),
@@ -1499,7 +1487,7 @@ const AnaSayfaContent = React.memo(() => {
           koltukTipi: koltuk.koltukTipi
         };
       });
-      
+
       return formatlanmisSalon;
     });
 
@@ -1516,7 +1504,7 @@ const AnaSayfaContent = React.memo(() => {
   };
 
   const genelAyarlarContent = useMemo(() => (
-    <GenelAyarlarFormu 
+    <GenelAyarlarFormu
       ayarlar={ayarlar}
       onAyarlarDegistir={handleAyarlarDegistir}
       readOnly={readOnly}
@@ -1531,7 +1519,7 @@ const AnaSayfaContent = React.memo(() => {
   ), [ogrenciler, yerlestirmeSonucu]);
 
   const salonlarContent = useMemo(() => (
-    <SalonFormu 
+    <SalonFormu
       salonlar={salonlar}
       onSalonlarDegistir={handleSalonlarDegistir}
       yerlestirmeSonucu={yerlestirmeSonucu}
@@ -1540,7 +1528,7 @@ const AnaSayfaContent = React.memo(() => {
   ), [salonlar, handleSalonlarDegistir, yerlestirmeSonucu, readOnly]);
 
   const ayarlarTabContent = useMemo(() => (
-    <AyarlarFormu 
+    <AyarlarFormu
       ayarlar={ayarlar}
       onAyarlarDegistir={handleAyarlarDegistir}
       ogrenciler={ogrenciler}
@@ -1572,38 +1560,38 @@ const AnaSayfaContent = React.memo(() => {
     switch (aktifTab) {
       case 'genel-ayarlar':
         return genelAyarlarContent;
-      
+
       case 'ogrenciler':
         return ogrencilerContent;
-      
+
       case 'salonlar':
         return salonlarContent;
-      
+
       case 'ayarlar':
         return ayarlarTabContent;
-      
+
       case 'sabit-atamalar':
         return sabitAtamalarContent;
-      
+
       case 'planlama':
         return planlamaContent;
-      
+
       case 'salon-plani':
         // Sadece aktif salonları göster
         const aktifSalonlar = salonlar?.filter(salon => salon.aktif !== false) || [];
-        
+
         // NOT: seciliSalonId seçimi useEffect'te yapılıyor - render sırasında state güncellemesi yapmayalım
         if (aktifSalonlar.length > 0 && !yerlestirmeSonucu) {
-          
+
           const seciliSalon = aktifSalonlar.find(salon => salon.id === seciliSalonId) || aktifSalonlar[0];
-          
+
           // Kapasite bilgisini doğru şekilde al - 0 ise varsayılan değer kullan
           const salonKapasite = seciliSalon.kapasite || 30;
-          
+
           // Satır ve sütun sayılarını hesapla - eksikse kapasiteden hesapla
           const defaultSatir = seciliSalon.satir || (salonKapasite > 0 ? Math.ceil(Math.sqrt(salonKapasite)) : 6);
           const defaultSutun = seciliSalon.sutun || (salonKapasite > 0 ? Math.ceil(salonKapasite / defaultSatir) : 5);
-          
+
           // Grup bazlı düzen için varsayılan gruplar
           const defaultGruplar = seciliSalon.gruplar || [
             { id: 1, siraSayisi: Math.ceil(defaultSatir / 2) },
@@ -1611,233 +1599,233 @@ const AnaSayfaContent = React.memo(() => {
             { id: 3, siraSayisi: Math.ceil(defaultSatir / 2) },
             { id: 4, siraSayisi: Math.ceil(defaultSatir / 2) }
           ];
-          
+
           return (
             <ErrorBoundary componentName="SalonPlani">
               <Box sx={{ position: 'relative' }}>
                 {/* Salon planı - SalonPlani bileşeni kendi salon seçimini yapar */}
-                <SalonPlaniLazy 
-                sinif={{
-                  id: seciliSalon.id,
-                  salonAdi: seciliSalon.salonAdi || seciliSalon.ad,
-                  kapasite: salonKapasite,
-                  siraTipi: seciliSalon.siraTipi || 'ikili',
-                  grupSayisi: seciliSalon.grupSayisi,
-                  gruplar: defaultGruplar,
-                  masalar: [], // Boş masa listesi
-                  ogrenciler: [], // Boş öğrenci listesi
-                  // Fallback için eski veri yapısı
-                  siraDizilimi: {
-                    satir: defaultSatir,
-                    sutun: defaultSutun
-                  }
-                }}
-                ogrenciler={[]}
-                ayarlar={ayarlar}
-                salonlar={aktifSalonlar}
-                seciliSalonId={seciliSalonId}
-                onSeciliSalonDegistir={setSeciliSalonId}
-                aktifPlanAdi={currentPlanDisplayName}
-              />
+                <SalonPlaniLazy
+                  sinif={{
+                    id: seciliSalon.id,
+                    salonAdi: seciliSalon.salonAdi || seciliSalon.ad,
+                    kapasite: salonKapasite,
+                    siraTipi: seciliSalon.siraTipi || 'ikili',
+                    grupSayisi: seciliSalon.grupSayisi,
+                    gruplar: defaultGruplar,
+                    masalar: [], // Boş masa listesi
+                    ogrenciler: [], // Boş öğrenci listesi
+                    // Fallback için eski veri yapısı
+                    siraDizilimi: {
+                      satir: defaultSatir,
+                      sutun: defaultSutun
+                    }
+                  }}
+                  ogrenciler={[]}
+                  ayarlar={ayarlar}
+                  salonlar={aktifSalonlar}
+                  seciliSalonId={seciliSalonId}
+                  onSeciliSalonDegistir={setSeciliSalonId}
+                  aktifPlanAdi={currentPlanDisplayName}
+                />
               </Box>
             </ErrorBoundary>
           );
         }
-        
+
         return (
           <ErrorBoundary componentName="SalonPlani">
             <Box sx={{ position: 'relative' }}>
               {yerlestirmeSonucu && (
                 <>
-                  <SalonPlaniLazy 
-                  sinif={yerlestirmeSonucu?.salon || {
-                    id: 'A-101',
-                    kapasite: Math.max(ogrenciler.length, 30),
-                    siraDizilimi: {
-                      satir: Math.ceil(Math.sqrt(Math.max(ogrenciler.length, 30))),
-                      sutun: Math.ceil(Math.max(ogrenciler.length, 30) / Math.ceil(Math.sqrt(Math.max(ogrenciler.length, 30))))
-                    },
-                    ad: 'Sınav Salonu'
-                  }}
-                  ogrenciler={yerlestirmeSonucu?.salon?.ogrenciler || []}
-                  ayarlar={ayarlar}
-                  onOgrenciSec={(action, data) => {
-                    if (action === 'clear') {
-                      handleYerlestirmeTemizle();
-                    } else if (action === 'move') {
-                      // Drag & Drop: Öğrenci taşıma
-                      handleStudentMove('move', data);
-                    }
-                  }}
-                  tumSalonlar={yerlestirmeSonucu?.tumSalonlar?.filter(salon => salon.aktif !== false) || []}
-                  onSalonDegistir={(salon) => {
-                    // Formatlanmış salonu bul
-                    const formatlanmisSalon = yerlestirmeSonucu.tumSalonlar.find(
-                      fSalon => fSalon.salonId === salon.salonId
-                    );
-                    
-                    if (formatlanmisSalon) {
-                      // State'i güncelle
-                      yerlestirmeGuncelle({ salon: formatlanmisSalon });
-                    }
-                  }}
-                  salonlar={salonlar?.filter(salon => salon.aktif !== false) || []}
-                  seciliSalonId={seciliSalonId}
-                  onSeciliSalonDegistir={setSeciliSalonId}
-                  onStudentTransfer={handleStudentTransfer}
-                  yerlestirmeSonucu={yerlestirmeSonucu}
-                  aktifPlanAdi={currentPlanDisplayName}
-                  readOnly={readOnly}
-                />
-                
-                {/* Yerleşmeyen Öğrenciler Bölümü */}
-                {yerlestirmeSonucu?.yerlesilemeyenOgrenciler && yerlestirmeSonucu.yerlesilemeyenOgrenciler.length > 0 && (
-                  <Card sx={{ mt: 1, border: '2px solid', borderColor: 'warning.main' }}>
-                    <CardContent>
-                      <Typography variant="h6" sx={{ 
-                        color: 'warning.main', 
-                        mb: 2, 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: 1,
-                        fontSize: { xs: '1rem', sm: '1.25rem' }
-                      }}>
-                        <WarningIcon />
-                        Yerleşmeyen Öğrenciler ({yerlestirmeSonucu.yerlesilemeyenOgrenciler.length})
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ 
-                        mb: 2,
-                        fontSize: { xs: '0.875rem', sm: '0.875rem' }
-                      }}>
-                        Aşağıdaki öğrenciler kısıtlar nedeniyle otomatik yerleştirilemedi. 
-                        Manuel olarak yerleştirebilirsiniz.
-                      </Typography>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        flexWrap: 'wrap', 
-                        gap: { xs: 0.5, sm: 1 },
-                        justifyContent: { xs: 'center', sm: 'flex-start' }
-                      }}>
-                        {yerlestirmeSonucu.yerlesilemeyenOgrenciler.map((ogrenci, index) => (
-                          <Chip
-                            key={index}
-                            label={`${ogrenci.ad} (${ogrenci.sinif})`}
-                            variant="outlined"
-                            color="warning"
-                            size="small"
-                          />
-                        ))}
-                      </Box>
-                    </CardContent>
-                  </Card>
-                )}
-              </>
-            )}
-            
-            
-            {/* Salon planı boşken - SalonPlani bileşeni ile salon sekmeleri render edilecek */}
-            {!yerlestirmeSonucu && (
-              <ErrorBoundary componentName="SalonPlani">
-                <>
-                  {(() => {
-                    const seciliSalon = salonlar.find(salon => salon.id === (seciliSalonId || salonlar[0]?.id));
-                    if (!seciliSalon) return null;
-                    
-                    // Kapasite bilgisini doğru şekilde al - 0 ise varsayılan değer kullan
-                    const salonKapasite = seciliSalon.kapasite || 30;
-                    
-                    // Satır ve sütun sayılarını hesapla - eksikse kapasiteden hesapla
-                    const defaultSatir = seciliSalon.satir || (salonKapasite > 0 ? Math.ceil(Math.sqrt(salonKapasite)) : 6);
-                    const defaultSutun = seciliSalon.sutun || (salonKapasite > 0 ? Math.ceil(salonKapasite / defaultSatir) : 5);
-                    
-                    // Grup bazlı düzen için varsayılan gruplar
-                    const defaultGruplar = seciliSalon.gruplar || [
-                          { id: 1, siraSayisi: Math.ceil(defaultSatir / 2) },
-                          { id: 2, siraSayisi: Math.ceil(defaultSatir / 2) },
-                          { id: 3, siraSayisi: Math.ceil(defaultSatir / 2) },
-                          { id: 4, siraSayisi: Math.ceil(defaultSatir / 2) }
-                        ];
-                    
-                    return (
-                      <SalonPlaniLazy 
-                      sinif={{
-                        id: seciliSalon.id,
-                        kapasite: salonKapasite,
-                        ad: seciliSalon.salonAdi || seciliSalon.ad,
-                        // SalonFormu formatından gelen veriyi kullan
-                        siraTipi: seciliSalon.siraTipi || 'ikili',
-                        gruplar: defaultGruplar,
-                        // Fallback için eski veri yapısı
-                        siraDizilimi: {
-                          satir: defaultSatir,
-                          sutun: defaultSutun
-                        }
-                      }}
-                      ogrenciler={[]}
-                      ayarlar={ayarlar}
-                      onOgrenciSec={(action, data) => {
-                        if (action === 'clear') {
-                          handleYerlestirmeTemizle();
-                        } else if (action === 'move') {
-                          // Drag & Drop: Öğrenci taşıma
-                          handleStudentMove(action, data);
-                        }
-                      }}
-                      tumSalonlar={[]}
-                      onSalonDegistir={() => {}}
-                      // Salon sekmeleri için yeni prop'lar
-                      salonlar={salonlar}
-                      seciliSalonId={seciliSalonId}
-                      onSeciliSalonDegistir={setSeciliSalonId}
-                      onStudentTransfer={handleStudentTransfer}
-                      aktifPlanAdi={currentPlanDisplayName}
-                      readOnly={readOnly}
-                    />
-                  );
-                })()}
-                
-                {/* Yerleştirme yap butonu */}
-                <Box sx={{ textAlign: 'center', mt: 1 }}>
-                  <Button
-                    variant="contained"
-                    size="large"
-                    startIcon={yukleme ? <CircularProgress size={20} color="inherit" /> : <PlayIcon />}
-                    onClick={handleYerlestirmeYap}
-                    disabled={ogrenciler.length === 0 || yukleme}
-                    sx={{ 
-                      px: 4,
-                      py: 1.5,
-                      fontSize: '1.1rem',
-                      borderRadius: 2,
-                      boxShadow: 3,
-                      '&:hover': {
-                        boxShadow: 6,
-                        transform: 'translateY(-2px)'
+                  <SalonPlaniLazy
+                    sinif={yerlestirmeSonucu?.salon || {
+                      id: 'A-101',
+                      kapasite: Math.max(ogrenciler.length, 30),
+                      siraDizilimi: {
+                        satir: Math.ceil(Math.sqrt(Math.max(ogrenciler.length, 30))),
+                        sutun: Math.ceil(Math.max(ogrenciler.length, 30) / Math.ceil(Math.sqrt(Math.max(ogrenciler.length, 30))))
+                      },
+                      ad: 'Sınav Salonu'
+                    }}
+                    ogrenciler={yerlestirmeSonucu?.salon?.ogrenciler || []}
+                    ayarlar={ayarlar}
+                    onOgrenciSec={(action, data) => {
+                      if (action === 'clear') {
+                        handleYerlestirmeTemizle();
+                      } else if (action === 'move') {
+                        // Drag & Drop: Öğrenci taşıma
+                        handleStudentMove('move', data);
                       }
                     }}
-                  >
-                    {yukleme ? 'Yerleştirme Yapılıyor...' : 'Yerleştirme Yap'}
-                  </Button>
-                </Box>
-                
+                    tumSalonlar={yerlestirmeSonucu?.tumSalonlar?.filter(salon => salon.aktif !== false) || []}
+                    onSalonDegistir={(salon) => {
+                      // Formatlanmış salonu bul
+                      const formatlanmisSalon = yerlestirmeSonucu.tumSalonlar.find(
+                        fSalon => fSalon.salonId === salon.salonId
+                      );
+
+                      if (formatlanmisSalon) {
+                        // State'i güncelle
+                        yerlestirmeGuncelle({ salon: formatlanmisSalon });
+                      }
+                    }}
+                    salonlar={salonlar?.filter(salon => salon.aktif !== false) || []}
+                    seciliSalonId={seciliSalonId}
+                    onSeciliSalonDegistir={setSeciliSalonId}
+                    onStudentTransfer={handleStudentTransfer}
+                    yerlestirmeSonucu={yerlestirmeSonucu}
+                    aktifPlanAdi={currentPlanDisplayName}
+                    readOnly={readOnly}
+                  />
+
+                  {/* Yerleşmeyen Öğrenciler Bölümü */}
+                  {yerlestirmeSonucu?.yerlesilemeyenOgrenciler && yerlestirmeSonucu.yerlesilemeyenOgrenciler.length > 0 && (
+                    <Card sx={{ mt: 1, border: '2px solid', borderColor: 'warning.main' }}>
+                      <CardContent>
+                        <Typography variant="h6" sx={{
+                          color: 'warning.main',
+                          mb: 2,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                          fontSize: { xs: '1rem', sm: '1.25rem' }
+                        }}>
+                          <WarningIcon />
+                          Yerleşmeyen Öğrenciler ({yerlestirmeSonucu.yerlesilemeyenOgrenciler.length})
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{
+                          mb: 2,
+                          fontSize: { xs: '0.875rem', sm: '0.875rem' }
+                        }}>
+                          Aşağıdaki öğrenciler kısıtlar nedeniyle otomatik yerleştirilemedi.
+                          Manuel olarak yerleştirebilirsiniz.
+                        </Typography>
+                        <Box sx={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: { xs: 0.5, sm: 1 },
+                          justifyContent: { xs: 'center', sm: 'flex-start' }
+                        }}>
+                          {yerlestirmeSonucu.yerlesilemeyenOgrenciler.map((ogrenci, index) => (
+                            <Chip
+                              key={index}
+                              label={`${ogrenci.ad} (${ogrenci.sinif})`}
+                              variant="outlined"
+                              color="warning"
+                              size="small"
+                            />
+                          ))}
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  )}
                 </>
-              </ErrorBoundary>
               )}
-              
-              
+
+
+              {/* Salon planı boşken - SalonPlani bileşeni ile salon sekmeleri render edilecek */}
+              {!yerlestirmeSonucu && (
+                <ErrorBoundary componentName="SalonPlani">
+                  <>
+                    {(() => {
+                      const seciliSalon = salonlar.find(salon => salon.id === (seciliSalonId || salonlar[0]?.id));
+                      if (!seciliSalon) return null;
+
+                      // Kapasite bilgisini doğru şekilde al - 0 ise varsayılan değer kullan
+                      const salonKapasite = seciliSalon.kapasite || 30;
+
+                      // Satır ve sütun sayılarını hesapla - eksikse kapasiteden hesapla
+                      const defaultSatir = seciliSalon.satir || (salonKapasite > 0 ? Math.ceil(Math.sqrt(salonKapasite)) : 6);
+                      const defaultSutun = seciliSalon.sutun || (salonKapasite > 0 ? Math.ceil(salonKapasite / defaultSatir) : 5);
+
+                      // Grup bazlı düzen için varsayılan gruplar
+                      const defaultGruplar = seciliSalon.gruplar || [
+                        { id: 1, siraSayisi: Math.ceil(defaultSatir / 2) },
+                        { id: 2, siraSayisi: Math.ceil(defaultSatir / 2) },
+                        { id: 3, siraSayisi: Math.ceil(defaultSatir / 2) },
+                        { id: 4, siraSayisi: Math.ceil(defaultSatir / 2) }
+                      ];
+
+                      return (
+                        <SalonPlaniLazy
+                          sinif={{
+                            id: seciliSalon.id,
+                            kapasite: salonKapasite,
+                            ad: seciliSalon.salonAdi || seciliSalon.ad,
+                            // SalonFormu formatından gelen veriyi kullan
+                            siraTipi: seciliSalon.siraTipi || 'ikili',
+                            gruplar: defaultGruplar,
+                            // Fallback için eski veri yapısı
+                            siraDizilimi: {
+                              satir: defaultSatir,
+                              sutun: defaultSutun
+                            }
+                          }}
+                          ogrenciler={[]}
+                          ayarlar={ayarlar}
+                          onOgrenciSec={(action, data) => {
+                            if (action === 'clear') {
+                              handleYerlestirmeTemizle();
+                            } else if (action === 'move') {
+                              // Drag & Drop: Öğrenci taşıma
+                              handleStudentMove(action, data);
+                            }
+                          }}
+                          tumSalonlar={[]}
+                          onSalonDegistir={() => { }}
+                          // Salon sekmeleri için yeni prop'lar
+                          salonlar={salonlar}
+                          seciliSalonId={seciliSalonId}
+                          onSeciliSalonDegistir={setSeciliSalonId}
+                          onStudentTransfer={handleStudentTransfer}
+                          aktifPlanAdi={currentPlanDisplayName}
+                          readOnly={readOnly}
+                        />
+                      );
+                    })()}
+
+                    {/* Yerleştirme yap butonu */}
+                    <Box sx={{ textAlign: 'center', mt: 1 }}>
+                      <Button
+                        variant="contained"
+                        size="large"
+                        startIcon={yukleme ? <CircularProgress size={20} color="inherit" /> : <PlayIcon />}
+                        onClick={handleYerlestirmeYap}
+                        disabled={ogrenciler.length === 0 || yukleme}
+                        sx={{
+                          px: 4,
+                          py: 1.5,
+                          fontSize: '1.1rem',
+                          borderRadius: 2,
+                          boxShadow: 3,
+                          '&:hover': {
+                            boxShadow: 6,
+                            transform: 'translateY(-2px)'
+                          }
+                        }}
+                      >
+                        {yukleme ? 'Yerleştirme Yapılıyor...' : 'Yerleştirme Yap'}
+                      </Button>
+                    </Box>
+
+                  </>
+                </ErrorBoundary>
+              )}
+
+
             </Box>
           </ErrorBoundary>
         );
-      
+
       case 'kayitli-planlar':
         return (
           <ErrorBoundary componentName="KayitliPlanlar">
-            <KayitliPlanlarLazy 
+            <KayitliPlanlarLazy
               onPlanYukle={handlePlanYukle}
             />
           </ErrorBoundary>
         );
-      
+
       case 'database-test':
         // Gizli erişim: sadece yetkilendirme anahtarı aktifse göster
         try {
@@ -1855,10 +1843,10 @@ const AnaSayfaContent = React.memo(() => {
           logger.debug('Database test sekmesi kontrolünde hata:', e);
         }
         return null;
-      
+
       case 'test-dashboard':
         return <TestDashboardLazy />;
-      
+
       default:
         return null;
     }
@@ -1938,7 +1926,7 @@ const AnaSayfaContent = React.memo(() => {
               <BsClipboardCheck style={{ fontSize: 20, color: 'white' }} />
             </Box>
           </Box>
-          
+
           <Typography
             variant="h5"
             sx={{
@@ -1952,7 +1940,7 @@ const AnaSayfaContent = React.memo(() => {
           >
             Akhisar Farabi Mesleki ve Teknik Anadolu Lisesi
           </Typography>
-          
+
           <Typography
             variant="h4"
             sx={{
@@ -1965,7 +1953,7 @@ const AnaSayfaContent = React.memo(() => {
           >
             Ortak Sınav Yerleştirme Sistemi
           </Typography>
-          
+
           <Typography
             variant="h6"
             sx={{
@@ -1977,7 +1965,7 @@ const AnaSayfaContent = React.memo(() => {
           >
             Hoş geldiniz
           </Typography>
-          
+
           <Box
             sx={{
               width: 200,
@@ -2000,7 +1988,7 @@ const AnaSayfaContent = React.memo(() => {
               }}
             />
           </Box>
-          
+
           <Button
             variant="contained"
             onClick={() => setShowFirstTimeLoader(false)}
@@ -2025,7 +2013,7 @@ const AnaSayfaContent = React.memo(() => {
             Devam Et
           </Button>
         </Box>
-        
+
         <style>{`
           @keyframes fadeIn {
             from { opacity: 0; }
@@ -2068,199 +2056,199 @@ const AnaSayfaContent = React.memo(() => {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <Box sx={{ 
+      <Box sx={{
         bgcolor: 'background.default',
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column'
       }}>
-        <Header 
-          baslik="Ortak Sınav Yerleştirme Sistemi" 
+        <Header
+          baslik="Ortak Sınav Yerleştirme Sistemi"
           onHomeClick={() => tabDegistir('genel-ayarlar')}
           onTestDashboardClick={() => tabDegistir('test-dashboard')}
           showNav={false}
         />
-      
-      <Container maxWidth="xl" sx={{ py: 2, px: 0, pb: 1, flex: 1 }}>
 
-        {/* Yükleme durumu - testlerde beklenen metin */}
-        {yukleme && ogrenciler.length === 0 && (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Veriler yükleniyor...
-          </Alert>
-        )}
+        <Container maxWidth="xl" sx={{ py: 2, px: 0, pb: 1, flex: 1 }}>
 
-        {/* Hata Mesajı */}
-        {hata && (
-          <Alert 
-            severity="error" 
-            sx={{ mb: 3 }}
-            onClose={hataTemizle}
-          >
-            {hata}
-          </Alert>
-        )}
+          {/* Yükleme durumu - testlerde beklenen metin */}
+          {yukleme && ogrenciler.length === 0 && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Veriler yükleniyor...
+            </Alert>
+          )}
 
-        {readOnly && (
-          <Alert
-            severity="info"
-            icon={<LockIcon fontSize="inherit" />}
-            sx={{ 
-              mb: 3, 
-              textAlign: 'center',
-              '& .MuiAlert-message': {
+          {/* Hata Mesajı */}
+          {hata && (
+            <Alert
+              severity="error"
+              sx={{ mb: 3 }}
+              onClose={hataTemizle}
+            >
+              {hata}
+            </Alert>
+          )}
+
+          {readOnly && (
+            <Alert
+              severity="info"
+              icon={<LockIcon fontSize="inherit" />}
+              sx={{
+                mb: 3,
                 textAlign: 'center',
-                width: '100%',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center'
-              }
+                '& .MuiAlert-message': {
+                  textAlign: 'center',
+                  width: '100%',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }
+              }}
+            >
+              <Box sx={{ textAlign: 'center', width: '100%' }}>
+                Bu oturumda <strong>sadece görüntüleme</strong> yetkisine sahipsiniz. Planları
+                yükleyebilir ve yazdırabilirsiniz, ancak değişiklik yapmak için yönetici
+                girişi gereklidir.
+              </Box>
+            </Alert>
+          )}
+
+          {/* Tab Navigation */}
+          <Paper
+            elevation={1}
+            sx={{
+              mb: { xs: 2, sm: 3 },
+              position: { xs: 'sticky', sm: 'relative' },
+              top: { xs: 0, sm: 0 },
+              zIndex: { xs: 1100, sm: 1 },
+              backgroundColor: 'background.paper',
+              width: '100%'
             }}
           >
-            <Box sx={{ textAlign: 'center', width: '100%' }}>
-              Bu oturumda <strong>sadece görüntüleme</strong> yetkisine sahipsiniz. Planları
-              yükleyebilir ve yazdırabilirsiniz, ancak değişiklik yapmak için yönetici
-              girişi gereklidir.
-            </Box>
-          </Alert>
-        )}
-
-        {/* Tab Navigation */}
-        <Paper 
-          elevation={1} 
-          sx={{ 
-            mb: { xs: 2, sm: 3 },
-            position: { xs: 'sticky', sm: 'relative' },
-            top: { xs: 0, sm: 0 },
-            zIndex: { xs: 1100, sm: 1 },
-            backgroundColor: 'background.paper',
-            width: '100%'
-          }}
-        >
-          <Tabs
-            value={aktifTab}
-            onChange={(e, newValue) => tabDegistir(newValue)}
-            variant={isMobile ? "scrollable" : "standard"}
-            scrollButtons={isMobile ? "auto" : false}
-            centered={!isMobile}
-            allowScrollButtonsMobile
-            sx={{ 
-              borderBottom: 1, 
-              borderColor: 'divider',
-              '& .MuiTabs-scrollButtons': {
-                '&.Mui-disabled': {
-                  opacity: 0.3
+            <Tabs
+              value={aktifTab}
+              onChange={(e, newValue) => tabDegistir(newValue)}
+              variant={isMobile ? "scrollable" : "standard"}
+              scrollButtons={isMobile ? "auto" : false}
+              centered={!isMobile}
+              allowScrollButtonsMobile
+              sx={{
+                borderBottom: 1,
+                borderColor: 'divider',
+                '& .MuiTabs-scrollButtons': {
+                  '&.Mui-disabled': {
+                    opacity: 0.3
+                  }
+                },
+                '& .MuiTab-root': {
+                  minWidth: { xs: 'auto', sm: 'auto' },
+                  px: { xs: 1, sm: 2 },
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  whiteSpace: 'nowrap'
                 }
-              },
-              '& .MuiTab-root': {
-                minWidth: { xs: 'auto', sm: 'auto' },
-                px: { xs: 1, sm: 2 },
-                fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                whiteSpace: 'nowrap'
-              }
-            }}
-          >
-            <Tab 
-              icon={<SettingsIcon />} 
-              label={"Ayarlar"} 
-              value="genel-ayarlar"
-              sx={{ textTransform: 'none' }}
-            />
-            <Tab 
-              icon={<PeopleIcon />} 
-              label={"Öğrenciler"} 
-              value="ogrenciler"
-              sx={{ textTransform: 'none' }}
-            />
-            <Tab 
-              icon={<BookIcon />} 
-              label={"Dersler"} 
-              value="ayarlar"
-              sx={{ textTransform: 'none' }}
-            />
-            <Tab 
-              icon={<MeetingRoomIcon />} 
-              label={"Sınav Salonları"} 
-              value="salonlar"
-              sx={{ textTransform: 'none' }}
-            />
-          <Tab 
-            icon={<AssignmentIcon />} 
-            label={"Sabit Atamalar"} 
-            value="sabit-atamalar"
-            sx={{ textTransform: 'none' }}
-          />
-            <Tab 
-              icon={<AssessmentIcon />} 
-              label={"Planlama Yap"} 
-              value="planlama"
-              sx={{ textTransform: 'none' }}
-            />
-            <Tab 
-              icon={<ChairIcon />} 
-              label={"Salon Planı"} 
-              value="salon-plani"
-              sx={{ textTransform: 'none' }}
-            />
-            <Tab 
-              icon={<SaveIcon />} 
-              label={"Kayıtlı Planlar"} 
-              value="kayitli-planlar"
-              sx={{ textTransform: 'none' }}
-            />
-            {(() => {
-              try {
-                const urlParams = new URLSearchParams(window.location.search);
-                const enabledByQuery = urlParams.get('dbtest') === '1';
-                const enabledByStorage = localStorage.getItem('enable_db_test') === '1';
-                if (enabledByQuery || enabledByStorage) {
-                  if (enabledByQuery) localStorage.setItem('enable_db_test', '1');
-                  return (
-                    <Tab 
-                      icon={<BugReportIcon />} 
-                      label={("Veritabanı Test").toLocaleUpperCase('tr-TR')} 
-                      value="database-test"
-                      sx={{ textTransform: 'none' }}
-                    />
-                  );
-                }
-              } catch (e) {
-                logger.debug('Database test tab görünürlük kontrolünde hata:', e);
-              }
-              return null;
-            })()}
-          </Tabs>
-        </Paper>
-
-        {/* Tab Content */}
-        {renderTabIcerik()}
-
-        
-        {/* Test ortamı dışında Plan Kaydet butonunu gösterme */}
-        {process.env.NODE_ENV === 'test' && (
-          <Box sx={{ mt: 2 }}>
-            <Button variant="outlined" onClick={handleSaveClick}>
-              Plan Kaydet
-            </Button>
-          </Box>
-        )}
-
-        {/* Gizli PDF Export Bileşeni - Lazy loaded */}
-        {yerlestirmeSonucu && (
-          <Box sx={{ position: 'absolute', left: '-9999px', top: '-9999px', visibility: 'hidden' }}>
-            <Suspense fallback={null}>
-              <LazySalonPlaniPrintable 
-                ref={salonPlaniPrintRef}
-                yerlestirmeSonucu={yerlestirmeSonucu}
-                ayarlar={ayarlar}
+              }}
+            >
+              <Tab
+                icon={<SettingsIcon />}
+                label={"Ayarlar"}
+                value="genel-ayarlar"
+                sx={{ textTransform: 'none' }}
               />
-            </Suspense>
-          </Box>
-        )}
-      </Container>
+              <Tab
+                icon={<PeopleIcon />}
+                label={"Öğrenciler"}
+                value="ogrenciler"
+                sx={{ textTransform: 'none' }}
+              />
+              <Tab
+                icon={<BookIcon />}
+                label={"Dersler"}
+                value="ayarlar"
+                sx={{ textTransform: 'none' }}
+              />
+              <Tab
+                icon={<MeetingRoomIcon />}
+                label={"Sınav Salonları"}
+                value="salonlar"
+                sx={{ textTransform: 'none' }}
+              />
+              <Tab
+                icon={<AssignmentIcon />}
+                label={"Sabit Atamalar"}
+                value="sabit-atamalar"
+                sx={{ textTransform: 'none' }}
+              />
+              <Tab
+                icon={<AssessmentIcon />}
+                label={"Planlama Yap"}
+                value="planlama"
+                sx={{ textTransform: 'none' }}
+              />
+              <Tab
+                icon={<ChairIcon />}
+                label={"Salon Planı"}
+                value="salon-plani"
+                sx={{ textTransform: 'none' }}
+              />
+              <Tab
+                icon={<SaveIcon />}
+                label={"Kayıtlı Planlar"}
+                value="kayitli-planlar"
+                sx={{ textTransform: 'none' }}
+              />
+              {(() => {
+                try {
+                  const urlParams = new URLSearchParams(window.location.search);
+                  const enabledByQuery = urlParams.get('dbtest') === '1';
+                  const enabledByStorage = localStorage.getItem('enable_db_test') === '1';
+                  if (enabledByQuery || enabledByStorage) {
+                    if (enabledByQuery) localStorage.setItem('enable_db_test', '1');
+                    return (
+                      <Tab
+                        icon={<BugReportIcon />}
+                        label={("Veritabanı Test").toLocaleUpperCase('tr-TR')}
+                        value="database-test"
+                        sx={{ textTransform: 'none' }}
+                      />
+                    );
+                  }
+                } catch (e) {
+                  logger.debug('Database test tab görünürlük kontrolünde hata:', e);
+                }
+                return null;
+              })()}
+            </Tabs>
+          </Paper>
+
+          {/* Tab Content */}
+          {renderTabIcerik()}
+
+
+          {/* Test ortamı dışında Plan Kaydet butonunu gösterme */}
+          {process.env.NODE_ENV === 'test' && (
+            <Box sx={{ mt: 2 }}>
+              <Button variant="outlined" onClick={handleSaveClick}>
+                Plan Kaydet
+              </Button>
+            </Box>
+          )}
+
+          {/* Gizli PDF Export Bileşeni - Lazy loaded */}
+          {yerlestirmeSonucu && (
+            <Box sx={{ position: 'absolute', left: '-9999px', top: '-9999px', visibility: 'hidden' }}>
+              <Suspense fallback={null}>
+                <LazySalonPlaniPrintable
+                  ref={salonPlaniPrintRef}
+                  yerlestirmeSonucu={yerlestirmeSonucu}
+                  ayarlar={ayarlar}
+                />
+              </Suspense>
+            </Box>
+          )}
+        </Container>
 
         <Footer />
-        
+
         {/* Kaydet FAB */}
         <Fab
           color="secondary"
@@ -2329,39 +2317,40 @@ const AnaSayfaContent = React.memo(() => {
             <ListItemText primary="Salon İmza Listesi" />
           </MenuItem>
         </Menu>
-        
+
         {/* PDF Export Bileşenleri - Görünür ama ekranda görünmez */}
-        <Box sx={{ 
-          position: 'absolute', 
-          left: '-9999px', 
+        <Box sx={{
+          position: 'absolute',
+          left: '-9999px',
           top: '-9999px',
           visibility: 'hidden'
         }}>
           {/* Salon Planı - Lazy loaded */}
           <Suspense fallback={null}>
-            <LazySalonPlaniPrintable 
+            <LazySalonPlaniPrintable
               ref={salonPlaniPrintRef}
               yerlestirmeSonucu={yerlestirmeSonucu}
               ayarlar={ayarlar}
             />
           </Suspense>
-          
+
           {/* Sınıf Listesi - Lazy loaded */}
           <Suspense fallback={null}>
-            <LazySalonOgrenciListesiPrintable 
+            <LazySalonOgrenciListesiPrintable
               ref={sinifListesiPrintRef}
               ogrenciler={ogrenciler}
               yerlestirmeSonucu={yerlestirmeSonucu}
               ayarlar={ayarlar}
             />
           </Suspense>
-          
+
           {/* Salon İmza Listesi - Lazy loaded */}
           <Suspense fallback={null}>
-            <LazySalonImzaListesiPrintable 
+            <LazySalonImzaListesiPrintable
               ref={salonImzaListesiPrintRef}
               yerlestirmeSonucu={yerlestirmeSonucu}
               ayarlar={ayarlar}
+              tumOgrenciler={ogrenciler}
             />
           </Suspense>
         </Box>

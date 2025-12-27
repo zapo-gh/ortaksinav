@@ -670,7 +670,12 @@ class PlanManager {
       },
 
       // Ayarlar bilgilerini de kaydet
-      ayarlar: sanitizeSettingsMap(planData.ayarlar || {})
+      ayarlar: sanitizeSettingsMap(planData.ayarlar || {}),
+
+      // Sabit atamalar (pinned students)
+      sabitOgrenciler: Array.isArray(planData.sabitOgrenciler)
+        ? planData.sabitOgrenciler.map(ogr => this.cleanStudentData(ogr))
+        : []
     };
 
     // Toplam öğrenci sayısını hesapla

@@ -41,14 +41,15 @@ import {
   Add as AddIcon,
   Delete as DeleteIcon,
   Warning as WarningIcon,
-  Search as SearchIcon
+  Search as SearchIcon,
+  Save as SaveIcon
 } from '@mui/icons-material';
 import * as XLSX from 'xlsx';
 import { useExam } from '../context/ExamContext';
 import { useNotifications } from './NotificationSystem';
 
 // Memoized Student Row Component
-const StudentRow = memo(({ ogrenci, index, onSil, readOnly }) => {
+const StudentRow = memo(({ ogrenci, index, onSil, onGuncelle, readOnly }) => {
   return (
     <TableRow hover>
       <TableCell>
@@ -73,6 +74,28 @@ const StudentRow = memo(({ ogrenci, index, onSil, readOnly }) => {
           color="primary"
           variant="outlined"
         />
+      </TableCell>
+      <TableCell>
+        <FormControl fullWidth size="small" variant="outlined" sx={{ minWidth: 150 }}>
+          <Select
+            value={ogrenci.dal || ''}
+            onChange={(e) => onGuncelle(ogrenci.id, 'dal', e.target.value)}
+            displayEmpty
+            disabled={readOnly}
+            sx={{
+              height: 32,
+              fontSize: '0.875rem',
+              '& .MuiSelect-select': { py: 0.5 }
+            }}
+          >
+            <MenuItem value="">
+              <em style={{ color: '#999' }}>Seçiniz</em>
+            </MenuItem>
+            <MenuItem value="Ebe Yardımcılığı">Ebe Yardımcılığı</MenuItem>
+            <MenuItem value="Hemşire Yardımcılığı">Hemşire Yardımcılığı</MenuItem>
+            <MenuItem value="Sağlık Bakım Teknisyenliği">Sağlık Bakım Teknisyenliği</MenuItem>
+          </Select>
+        </FormControl>
       </TableCell>
       <TableCell>
         <Chip
@@ -108,7 +131,30 @@ const StudentRow = memo(({ ogrenci, index, onSil, readOnly }) => {
 });
 
 const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
-  const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle, isWriteAllowed } = useExam();
+  const { ogrencilerEkle, ogrenciSil, ogrencileriTemizle, ogrencilerYukle, isWriteAllowed } = useExam();
+  const [localOgrenciler, setLocalOgrenciler] = useState(ogrenciler || []);
+
+  // Props'tan gelen veriyi local state ile senkronize et
+  useEffect(() => {
+    setLocalOgrenciler(ogrenciler || []);
+  }, [ogrenciler]);
+
+  // Öğrenci güncelleme fonksiyonu
+  const handleOgrenciGuncelle = useCallback((id, field, value) => {
+    setLocalOgrenciler(prev => prev.map(o =>
+      o.id === id ? { ...o, [field]: value } : o
+    ));
+  }, []);
+
+  // Veritabanı güncelleme fonksiyonu
+  const handleVeritabaniGuncelle = () => {
+    if (yerlesimPlaniVarMi) {
+      showError('Mevcut bir yerleştirme planı bulunduğu için güncelleme yapılamaz.');
+      return;
+    }
+    ogrencilerYukle(localOgrenciler);
+    showSuccess('Öğrenci listesi başarıyla güncellendi!');
+  };
   const readOnly = process.env.NODE_ENV === 'test' ? false : !isWriteAllowed;
   const { showSuccess, showError, showWarning } = useNotifications();
   const [yukleme, setYukleme] = useState(false);
@@ -206,7 +252,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
   // Filtrelenmiş öğrenci listesi - debounced arama terimi ile hesapla (performans optimizasyonu)
   const filtrelenmisOgrenciler = React.useMemo(() => {
     // Filtreleme mantığı
-    let filtered = ogrenciler;
+    let filtered = localOgrenciler;
     if (!manualEklemeAcik && aramaTerimi.trim()) {
       const isNumber = /^\d+$/.test(aramaTerimi);
       const isText = !isNumber && aramaTerimi.length >= 3;
@@ -222,7 +268,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
           return cache.get(text);
         };
 
-        filtered = ogrenciler.filter(ogrenci => {
+        filtered = localOgrenciler.filter(ogrenci => {
           const ad = ogrenci.ad || '';
           const soyad = ogrenci.soyad || '';
           const numara = ogrenci.numara?.toString() || '';
@@ -243,10 +289,12 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
       const sinifKiyas = sA.localeCompare(sB, 'tr', { numeric: true });
       if (sinifKiyas !== 0) return sinifKiyas;
 
-      // Aynı sınıftakileri isme göre sırala
-      return (a.ad || '').localeCompare(b.ad || '', 'tr');
+      // Aynı sınıftakileri öğrenci numarasına göre sırala (artan)
+      const numA = parseInt(a.numara, 10) || 0;
+      const numB = parseInt(b.numara, 10) || 0;
+      return numA - numB;
     });
-  }, [ogrenciler, aramaTerimi, normalizeText, manualEklemeAcik]);
+  }, [localOgrenciler, aramaTerimi, normalizeText, manualEklemeAcik]);
   const [manuelOgrenci, setManuelOgrenci] = useState({
     ad: '',
     soyad: '',
@@ -260,7 +308,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
 
   // Öğrenci silme fonksiyonları
   const handleOgrenciSil = (ogrenciId) => {
-    const ogrenci = ogrenciler.find(o => o.id === ogrenciId);
+    const ogrenci = localOgrenciler.find(o => o.id === ogrenciId);
 
     if (!ogrenci) {
       console.error('Silinecek öğrenci bulunamadı:', ogrenciId);
@@ -288,7 +336,10 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
     }
 
     if (silinecekOgrenciId) {
-      ogrenciSil(silinecekOgrenciId);
+      // ogrenciSil yerine ogrencilerYukle kullanarak localOgrenciler üzerinden silme yapıyoruz
+      const updatedList = localOgrenciler.filter(o => o.id !== silinecekOgrenciId);
+      // Hem local state'i hem de global state'i güncelle (veritabanına yazar)
+      ogrencilerYukle(updatedList);
     }
     setSilmeDialogAcik(false);
     setSilinecekOgrenciId(null);
@@ -445,7 +496,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
     }
 
     // Öğrenci numarası kontrolü (duplicate check)
-    const mevcutNumara = ogrenciler.find(o => String(o.numara) === String(sanitizedFormData.numara));
+    const mevcutNumara = localOgrenciler.find(o => String(o.numara) === String(sanitizedFormData.numara));
     if (mevcutNumara) {
       showError('Bu öğrenci numarası zaten kullanılıyor!');
       return;
@@ -468,7 +519,9 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
       return;
     }
 
-    ogrencilerEkle([yeniOgrenci]);
+    // ogrencilerEkle yerine ogrencilerYukle
+    const updatedList = [...localOgrenciler, yeniOgrenci];
+    ogrencilerYukle(updatedList);
     showSuccess(`✅ ${yeniOgrenci.ad} ${yeniOgrenci.soyad} başarıyla eklendi!`);
 
     // Formu temizle
@@ -507,7 +560,9 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
       return;
     }
 
-    ogrencilerEkle(bekleyenOgrenciler);
+    // ogrencilerEkle yerine ogrencilerYukle
+    const updatedList = [...localOgrenciler, ...bekleyenOgrenciler];
+    ogrencilerYukle(updatedList);
     setDialogAcik(false);
     const ogrenciSayisi = bekleyenOgrenciler.length;
     setBekleyenOgrenciler([]);
@@ -522,7 +577,9 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
     }
 
     const digerOgrenciler = bekleyenOgrenciler.filter(ogrenci => !ogrenci.sinif.startsWith('12-'));
-    ogrencilerEkle(digerOgrenciler);
+    // ogrencilerEkle yerine ogrencilerYukle
+    const updatedList = [...localOgrenciler, ...digerOgrenciler];
+    ogrencilerYukle(updatedList);
     setDialogAcik(false);
     const ogrenciSayisi = digerOgrenciler.length;
     setBekleyenOgrenciler([]);
@@ -544,7 +601,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
     }
 
     // Mevcut öğrenci listesi kontrolü - Liste varsa yeni liste yüklenemez
-    const mevcutOgrenciSayisi = Array.isArray(ogrenciler) ? ogrenciler.length : 0;
+    const mevcutOgrenciSayisi = Array.isArray(localOgrenciler) ? localOgrenciler.length : 0;
     if (mevcutOgrenciSayisi > 0) {
       console.log('⚠️ Mevcut öğrenci listesi tespit edildi:', mevcutOgrenciSayisi, 'öğrenci');
       // showError kullan - daha görünür olsun
@@ -935,7 +992,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
             let ozelDurum = false;
 
             const ogrenci = {
-              id: ogrenciler.length + yeniOgrenciler.length + index + 1,
+              id: (localOgrenciler.length || 0) + yeniOgrenciler.length + index + 1,
               ad: adi,
               soyad: soyadi || '', // Soyad yoksa boş string
               numara: ogrenciNo,
@@ -1051,7 +1108,9 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
             return;
           }
 
-          ogrencilerEkle(yeniOgrenciler);
+          // ogrencilerEkle yerine ogrencilerYukle
+          const updatedList = [...localOgrenciler, ...yeniOgrenciler];
+          ogrencilerYukle(updatedList);
           setYukleme(false);
           showSuccess(`✅ ${yeniOgrenciler.length} öğrenci başarıyla yüklendi!`);
         }
@@ -1148,6 +1207,17 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
               color="primary"
               variant="outlined"
             />
+            {/* Veritabanı Güncelle butonu */}
+            <Button
+              variant="contained"
+              color="secondary"
+              startIcon={<SaveIcon />}
+              onClick={handleVeritabaniGuncelle}
+              disabled={readOnly || yerlesimPlaniVarMi}
+              sx={{ ml: 2 }}
+            >
+              Veritabanı Güncelle
+            </Button>
 
             {/* Arama Butonu/Input - Tek Element */}
             <Box
@@ -1285,6 +1355,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
                     <TableCell>Öğrenci No</TableCell>
                     <TableCell>Ad Soyad</TableCell>
                     <TableCell>Sınıf</TableCell>
+                    <TableCell>Dal</TableCell>
                     <TableCell>Cinsiyet</TableCell>
                     <TableCell>İşlemler</TableCell>
                   </TableRow>
@@ -1298,6 +1369,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
                         ogrenci={ogrenci}
                         index={page * rowsPerPage + index}
                         onSil={handleOgrenciSil}
+                        onGuncelle={handleOgrenciGuncelle}
                         readOnly={readOnly}
                       />
                     ))}
@@ -1318,7 +1390,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
           )}
 
           {/* Arama sonucu bulunamadığında */}
-          {!manualEklemeAcik && aramaTerimi && filtrelenmisOgrenciler.length === 0 && ogrenciler.length > 0 && (
+          {!manualEklemeAcik && aramaTerimi && filtrelenmisOgrenciler.length === 0 && localOgrenciler.length > 0 && (
             <Box sx={{ textAlign: 'center', py: 4 }}>
               <SearchIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
               <Typography variant="h6" color="text.secondary" gutterBottom>
@@ -1340,7 +1412,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
           )}
 
           {/* Hiç öğrenci yoksa */}
-          {ogrenciler.length === 0 && (
+          {localOgrenciler.length === 0 && (
             <Box sx={{ textAlign: 'center', py: 4 }}>
               <PeopleIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
               <Typography variant="h6" color="text.secondary" gutterBottom>
