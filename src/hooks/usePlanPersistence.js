@@ -51,23 +51,16 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
             const ayarlarKopya = JSON.parse(JSON.stringify(ayarlar || {}));
             const { kayitliSalonlar, ...ayarlarKopyaTemiz } = ayarlarKopya;
 
+            // Metadata eşleşme riskini önlemek için bu bloğu devre dışı bıraktık.
+            // Sadece yerleştirme sonucundaki veriyi koruyoruz.
             const guncelTumSalonlar = (yerlestirmeSonucu.tumSalonlar || []).map(salon => {
-                const guncelSalon = salonlar.find(s => s.id === salon.id || s.salonId === salon.salonId);
-                if (guncelSalon) {
-                    return {
-                        ...salon,
-                        ad: guncelSalon.ad || guncelSalon.salonAdi || salon.ad,
-                        salonAdi: guncelSalon.salonAdi || guncelSalon.ad || salon.salonAdi,
-                        kapasite: guncelSalon.kapasite || salon.kapasite,
-                        siraDizilimi: guncelSalon.siraDizilimi || salon.siraDizilimi
-                    };
-                }
+                // Sadece temel temizlik
                 return salon;
             });
 
             const guncelSalon = guncelTumSalonlar.find(s =>
-                s.id === yerlestirmeSonucu.salon?.id ||
-                s.salonId === yerlestirmeSonucu.salon?.salonId
+                String(s.id) === String(yerlestirmeSonucu.salon?.id) ||
+                String(s.salonId) === String(yerlestirmeSonucu.salon?.salonId)
             ) || yerlestirmeSonucu.salon;
 
             const mevcutOgrenciIdleri = new Set(ogrenciler.map(o => o.id));
@@ -90,7 +83,7 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
             } : guncelSalon;
 
             const guncelTumSalonlarFinal = guncelTumSalonlar.map(salon => {
-                if (salon.id === guncelSalonFinal?.id || salon.salonId === guncelSalonFinal?.salonId) {
+                if (String(salon.id) === String(guncelSalonFinal?.id) || String(salon.salonId) === String(guncelSalonFinal?.salonId)) {
                     return guncelSalonFinal;
                 }
                 const guncelMasalar = (salon.masalar || []).map(masa => {
@@ -197,13 +190,12 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
             }
 
             let tumSalonlarSirali = planData.tumSalonlar;
-            if (Array.isArray(tumSalonlarSirali) && tumSalonlarSirali.length > 0) {
-                tumSalonlarSirali = [...tumSalonlarSirali].sort((a, b) => {
-                    const aId = parseInt(a.id || a.salonId || 0, 10);
-                    const bId = parseInt(b.id || b.salonId || 0, 10);
-                    return aId - bId;
-                });
-            }
+            // Salonları sıralama işlemini kaldırıyoruz - Kayıtlı sırayı koru
+            // tumSalonlarSirali = [...tumSalonlarSirali].sort((a, b) => {
+            //     const aId = parseInt(a.id || a.salonId || 0, 10);
+            //     const bId = parseInt(b.id || b.salonId || 0, 10);
+            //     return aId - bId;
+            // });
 
             const yerlestirmeFormatinda = {
                 id: resolvedPlanId,
@@ -248,12 +240,8 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
                 ayarlarGuncelle(metaFallback);
             }
 
-            if (yerlestirmeFormatinda.salon && (!yerlestirmeFormatinda.salon.masalar || yerlestirmeFormatinda.salon.masalar.length === 0)) {
-                const ilkSalon = yerlestirmeFormatinda.tumSalonlar?.[0];
-                if (ilkSalon && ilkSalon.masalar) {
-                    yerlestirmeFormatinda.salon.masalar = ilkSalon.masalar;
-                }
-            }
+            // Bu blok kaldırıldı: Aktif salon eşleştirmesi 295. satırda daha güvenli yapılıyor
+            // if (yerlestirmeFormatinda.salon && (!yerlestirmeFormatinda.salon.masalar || ...)) { ... }
 
             // Öğrenci bilgilerini güncel liste ile senkronize et
             const ogrenciMap = new Map(ogrenciler.map(o => [o.id?.toString(), o]));
@@ -265,13 +253,21 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
                             if (masa.ogrenci && masa.ogrenci.id) {
                                 const guncelOgrenci = ogrenciMap.get(masa.ogrenci.id.toString());
                                 if (guncelOgrenci) {
-                                    // Öğrenci bilgilerini güncel verilerle birleştir
-                                    masa.ogrenci = {
-                                        ...masa.ogrenci,
-                                        ...guncelOgrenci,
-                                        // Plan'daki pozisyon bilgilerini koru
-                                        masaNumarasi: masa.ogrenci.masaNumarasi || masa.masaNumarasi
-                                    };
+                                    // GÜVENLİK KONTROLÜ: ID eşleşse bile Numara eşleşmiyorsa, bu yeni listedeki farklı bir öğrencidir (ID çakışması).
+                                    // Bu durumda güncel veriyi KULLANMA, kayıtlı plandaki orijinal veriyi koru.
+                                    const numaraEslesti = String(guncelOgrenci.numara).trim() === String(masa.ogrenci.numara).trim();
+
+                                    if (numaraEslesti) {
+                                        // Öğrenci bilgilerini güncel verilerle birleştir
+                                        masa.ogrenci = {
+                                            ...masa.ogrenci,
+                                            ...guncelOgrenci,
+                                            // Plan'daki pozisyon bilgilerini koru
+                                            masaNumarasi: masa.ogrenci.masaNumarasi || masa.masaNumarasi
+                                        };
+                                    } else {
+                                        logger.warn(`⚠️ ID Çakışması Önlendi: Plan'daki ID:${masa.ogrenci.id} (${masa.ogrenci.ad}) ile Güncel ID:${guncelOgrenci.id} (${guncelOgrenci.ad}) eşleşmiyor.`);
+                                    }
                                 }
                             }
                             return masa;
