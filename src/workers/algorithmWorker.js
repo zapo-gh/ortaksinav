@@ -4,25 +4,27 @@
  */
 
 // Import required modules
-importScripts('../algorithms/gelismisYerlestirmeAlgoritmasi.js');
-importScripts('../utils/logger.js');
+import { gelismisYerlestirme } from '../algorithms/gelismisYerlestirmeAlgoritmasi.js';
+import { validateStudentList } from '../utils/studentValidation.js';
+import { parseExcelFile } from '../utils/excelParser.js';
+import logger from '../utils/logger.js';
 
 // Worker message handler
-self.onmessage = function(e) {
+self.onmessage = async function (e) {
   const { type, data } = e.data;
 
   try {
     switch (type) {
       case 'RUN_ALGORITHM':
-        handleAlgorithmRun(data);
+        await handleAlgorithmRun(data);
         break;
 
       case 'VALIDATE_DATA':
-        handleDataValidation(data);
+        await handleDataValidation(data);
         break;
 
       case 'PARSE_EXCEL':
-        handleExcelParse(data);
+        await handleExcelParse(data);
         break;
 
       default:
@@ -43,10 +45,12 @@ self.onmessage = function(e) {
 /**
  * Handle algorithm execution
  */
-function handleAlgorithmRun(data) {
-  const { ogrenciler, salonlar, ayarlar, seed } = data;
+async function handleAlgorithmRun(data) {
+  const { ogrenciler, salonlar, ayarlar } = data;
 
-  // Progress callback
+  // Progress callback wrapper
+  // Not: gelismisYerlestirme şu an progress callback desteklemiyor olabilir,
+  // ancak ileride desteklerse buraya eklenebilir.
   const progressCallback = (progress, message) => {
     self.postMessage({
       type: 'PROGRESS',
@@ -56,14 +60,12 @@ function handleAlgorithmRun(data) {
   };
 
   try {
-    // Simulate progress updates
-    progressCallback(10, 'Algoritma başlatılıyor...');
-    progressCallback(20, 'Öğrenci verileri hazırlanıyor...');
+    progressCallback(10, 'Algoritma hazırlanıyor...');
 
-    // Import and run algorithm
-    const result = self.gelismisYerlestirme(ogrenciler, salonlar, ayarlar);
+    // Run the actual algorithm
+    // Not: gelismisYerlestirme senkron veya asenkron olabilir, await ile garantiye alalım
+    const result = await gelismisYerlestirme(ogrenciler, salonlar, ayarlar);
 
-    progressCallback(90, 'Sonuçlar hazırlanıyor...');
     progressCallback(100, 'Tamamlandı!');
 
     self.postMessage({
@@ -72,9 +74,10 @@ function handleAlgorithmRun(data) {
     });
 
   } catch (error) {
+    logger.error('Algorithm worker error:', error);
     self.postMessage({
       type: 'ALGORITHM_ERROR',
-      error: error.message
+      error: error.message || 'Algoritma çalıştırılırken bir hata oluştu'
     });
   }
 }
@@ -82,39 +85,29 @@ function handleAlgorithmRun(data) {
 /**
  * Handle data validation
  */
-function handleDataValidation(data) {
-  const { students, constraints } = data;
+async function handleDataValidation(data) {
+  const { students } = data;
 
   try {
-    // Simulate validation progress
     self.postMessage({
       type: 'VALIDATION_PROGRESS',
       progress: 50,
       message: 'Veriler doğrulanıyor...'
     });
 
-    // Perform validation logic
-    const validationResult = {
-      isValid: true,
-      errors: [],
-      warnings: [],
-      summary: {
-        totalStudents: students.length,
-        validStudents: students.length,
-        invalidStudents: 0,
-        studentsWithWarnings: 0
-      }
-    };
+    // Run real validation
+    const result = validateStudentList(students);
 
     self.postMessage({
       type: 'VALIDATION_COMPLETE',
-      result: validationResult
+      result
     });
 
   } catch (error) {
+    logger.error('Validation worker error:', error);
     self.postMessage({
       type: 'VALIDATION_ERROR',
-      error: error.message
+      error: error.message || 'Validasyon sırasında bir hata oluştu'
     });
   }
 }
@@ -122,46 +115,29 @@ function handleDataValidation(data) {
 /**
  * Handle Excel parsing
  */
-function handleExcelParse(data) {
+async function handleExcelParse(data) {
   const { file, options } = data;
 
   try {
     self.postMessage({
       type: 'PARSE_PROGRESS',
-      progress: 25,
-      message: 'Excel dosyası yükleniyor...'
+      progress: 20,
+      message: 'Excel dosyası işleniyor...'
     });
 
-    // Simulate Excel parsing
-    // In real implementation, this would use XLSX library
-    const mockResult = {
-      success: true,
-      students: [],
-      statistics: {
-        totalRows: 100,
-        parsedStudents: 95,
-        validStudents: 90,
-        invalidStudents: 5,
-        studentsWithWarnings: 3,
-        successRate: 94.7
-      }
-    };
-
-    self.postMessage({
-      type: 'PARSE_PROGRESS',
-      progress: 75,
-      message: 'Veriler işleniyor...'
-    });
+    // Run real excel parser
+    const result = await parseExcelFile(file);
 
     self.postMessage({
       type: 'PARSE_COMPLETE',
-      result: mockResult
+      result
     });
 
   } catch (error) {
+    logger.error('Excel parser worker error:', error);
     self.postMessage({
       type: 'PARSE_ERROR',
-      error: error.message
+      error: error.message || 'Excel dosyası işlenirken bir hata oluştu'
     });
   }
 }

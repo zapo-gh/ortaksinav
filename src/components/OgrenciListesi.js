@@ -386,7 +386,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
     setTumunuSilDialogAcik(true);
   };
 
-  const handleTumunuSilOnay = () => {
+  const handleTumunuSilOnay = async () => {
     // Yerleştirme planı kontrolü
     if (yerlesimPlaniVarMi) {
       showError('Mevcut bir yerleştirme planı bulunduğu için öğrenci listesi temizlenemez. Önce mevcut planı temizleyin.');
@@ -394,21 +394,31 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
       return;
     }
 
-    ogrencileriTemizle();
+    setYukleme(true);
+    try {
+      await ogrencileriTemizle();
+      showSuccess('Tüm öğrenciler başarıyla silindi.');
 
-    // File input'ı da temizle ve state'i sıfırla
-    const excelInput = document.getElementById('excel-file-input');
-    if (excelInput) {
-      excelInput.value = '';
-      excelInput.dispatchEvent(new Event('change', { bubbles: true }));
+      // File input'ı da temizle ve state'i sıfırla
+      const excelInput = document.getElementById('excel-file-input');
+      if (excelInput) {
+        excelInput.value = '';
+        excelInput.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+
+      setBekleyenOgrenciler([]);
+      setDialogAcik(false);
+      setTumunuSilDialogAcik(false);
+
+      // Normalde ogrencileriTemizle içinde çağrılır ama garanti olsun
+      setLocalOgrenciler([]);
+
+    } catch (error) {
+      console.error('Silme hatası:', error);
+      showError('Öğrenciler silinirken bir hata oluştu: ' + (error.message || 'Bilinmeyen hata'));
+    } finally {
+      setYukleme(false);
     }
-
-    // Hata ve yükleme durumlarını da temizle
-    setYukleme(false);
-    setDialogAcik(false);
-    setBekleyenOgrenciler([]);
-
-    setTumunuSilDialogAcik(false);
   };
 
   const handleTumunuSilIptal = () => {

@@ -262,7 +262,18 @@ export const ExamProvider = ({ children }) => {
     ogrenciSec: toggleOgrenciSec,
     ogrenciSecimiTemizle: clearSeciliOgrenciler,
     ogrenciSil: deleteOgrenci,
-    ogrencileriTemizle: clearOgrenciler,
+    ogrencileriTemizle: async () => {
+      try {
+        await firestoreClient.saveStudents([]);
+        logger.info('✅ Tüm öğrenciler veritabanından silindi');
+        clearOgrenciler();
+        await queryClient.invalidateQueries(['students']);
+        return { success: true };
+      } catch (error) {
+        logger.error('❌ Öğrenciler silinemedi:', error);
+        throw error;
+      }
+    },
     siniflarYukle: setSiniflar,
     sinifSec: setSeciliSinif,
     salonlarGuncelle: setSalonlar,

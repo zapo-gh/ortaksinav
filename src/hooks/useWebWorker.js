@@ -18,7 +18,7 @@ export const useWebWorker = (workerPath) => {
   // Initialize worker
   useEffect(() => {
     try {
-      workerRef.current = new Worker(workerPath);
+      workerRef.current = new Worker(new URL(workerPath, import.meta.url), { type: 'module' });
 
       workerRef.current.onmessage = (e) => {
         const { type, ...data } = e.data;
