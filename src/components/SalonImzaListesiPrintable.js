@@ -200,8 +200,8 @@ const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {},
                 maxWidth: '100%',
                 margin: '0 auto',
                 '@media print': {
-                  width: '100%',
-                  maxWidth: '100%',
+                  width: '98%', // 100% yerine %98 yaparak sağ çizgiyi kurtar
+                  maxWidth: '98%',
                   margin: '0 auto'
                 }
               }}>
@@ -480,7 +480,7 @@ const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {},
                   Toplam: {placedPinned.length}
                 </Typography>
               </Box>
-              <TableContainer component={Paper} sx={{ mb: 1, width: '100%', maxWidth: '700px', margin: '0 auto', '@media print': { width: '100%', maxWidth: '100%' } }}>
+              <TableContainer component={Paper} sx={{ mb: 1, width: '100%', maxWidth: '700px', margin: '0 auto', '@media print': { width: '98%', maxWidth: '98%' } }}>
                 <Table size="small" sx={{
                   border: '1px solid #ddd',
                   '& .MuiTableCell-root': { padding: '2px 6px', fontSize: '0.8rem', border: '1px solid #ddd', textAlign: 'center' },
