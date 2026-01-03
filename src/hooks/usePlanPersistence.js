@@ -285,15 +285,22 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
             }
 
             // Yerleşilemeyen öğrenciler için de güncelleme yap
+            // Yerleşilemeyen öğrenciler için de güncelleme yap ve ID Çakışmasını kontrol et
             if (yerlestirmeFormatinda.yerlesilemeyenOgrenciler && Array.isArray(yerlestirmeFormatinda.yerlesilemeyenOgrenciler)) {
                 yerlestirmeFormatinda.yerlesilemeyenOgrenciler = yerlestirmeFormatinda.yerlesilemeyenOgrenciler.map(ogrenci => {
                     if (ogrenci && ogrenci.id) {
                         const guncelOgrenci = ogrenciMap.get(ogrenci.id.toString());
                         if (guncelOgrenci) {
-                            return {
-                                ...ogrenci,
-                                ...guncelOgrenci
-                            };
+                            // GÜVENLİK: ID çakışması kontrolü
+                            const numaraEslesti = String(guncelOgrenci.numara).trim() === String(ogrenci.numara).trim();
+                            if (numaraEslesti) {
+                                return {
+                                    ...ogrenci,
+                                    ...guncelOgrenci
+                                };
+                            } else {
+                                logger.warn(`⚠️ Yerleşilemeyenlerde ID Çakışması: ${ogrenci.id} - Numara eşleşmedi.`);
+                            }
                         }
                     }
                     return ogrenci;
@@ -304,27 +311,92 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
 
             const hasExplicitSabit = planData.sabitOgrenciler && Array.isArray(planData.sabitOgrenciler);
             if (hasExplicitSabit) {
+                // Haritaları hazırla (Performans için döngü dışında)
+                const currentSalonMapById = new Map(salonlar.map(s => [String(s.id), s]));
+                const currentSalonMapByName = new Map(salonlar.map(s => [s.ad?.trim(), s]));
+                const savedSalonMapById = new Map((yerlestirmeFormatinda.tumSalonlar || []).map(s => [String(s.id), s]));
+
                 ogrenciler.forEach(ogrenci => {
-                    const planSabit = planData.sabitOgrenciler.find(ps => ps.id?.toString() === ogrenci.id?.toString());
+                    // Önce ID'ye göre, sonra NUMARA'ya göre eşleşme ara
+                    const planSabit = planData.sabitOgrenciler.find(ps =>
+                        ps.id?.toString() === ogrenci.id?.toString() ||
+                        (ps.numara && String(ps.numara).trim() === String(ogrenci.numara).trim())
+                    );
+
                     if (planSabit) {
-                        ogrenciPin(ogrenci.id, planSabit.pinnedSalonId, planSabit.pinnedMasaId);
+                        // Bulunan kaydın Numara'sı eşleşiyor mu?
+                        const numaraEslesti = String(planSabit.numara).trim() === String(ogrenci.numara).trim();
+
+                        if (numaraEslesti) {
+                            // SALON ve MASA ID Çözümleme (Deep Recovery)
+                            let targetSalonId = planSabit.pinnedSalonId;
+                            let targetMasaId = planSabit.pinnedMasaId;
+
+                            // 1. Salon ID değişmiş mi kontrol et
+                            let currentTargetSalon = currentSalonMapById.get(String(targetSalonId));
+
+                            // ID ile bulunamadıysa İSİM ile bulmaya çalış (Salonlar silinip tekrar açılmış olabilir)
+                            if (!currentTargetSalon) {
+                                const savedSalon = savedSalonMapById.get(String(targetSalonId));
+                                if (savedSalon) {
+                                    currentTargetSalon = currentSalonMapByName.get(savedSalon.ad?.trim());
+                                    if (currentTargetSalon) {
+                                        targetSalonId = currentTargetSalon.id; // Yeni ID'yi kullan
+                                        // logger.info(`Salon ID güncellendi (İsim eşleşmesi): ${savedSalon.ad} -> ${targetSalonId}`);
+                                    }
+                                }
+                            }
+
+                            // 2. Masa ID değişmiş mi kontrol et (Eğer Salon bulunduysa)
+                            if (currentTargetSalon) {
+                                // Mevcut masanın ID'si güncel salonda var mı?
+                                const masaExists = (currentTargetSalon.masalar || []).some(m => String(m.id) === String(targetMasaId));
+
+                                // ID yoksa, MASA NUMARASI ile bulmaya çalış (Masalar yeniden üretilmiş olabilir)
+                                if (!masaExists) {
+                                    // Kayıtlı planda bu masanın numarasını bul (savedSalonMapById'den)
+                                    const savedSalon = savedSalonMapById.get(String(planSabit.pinnedSalonId)); // Orijinal ID'yi kullan
+                                    const savedMasa = (savedSalon?.masalar || []).find(m => String(m.id) === String(planSabit.pinnedMasaId));
+
+                                    if (savedMasa) {
+                                        const matchingCurrentMasa = (currentTargetSalon.masalar || []).find(m => m.masaNumarasi === savedMasa.masaNumarasi);
+                                        if (matchingCurrentMasa) {
+                                            targetMasaId = matchingCurrentMasa.id; // Yeni Masa ID'yi kullan
+                                        }
+                                    }
+                                }
+
+                                // Tüm parçalar (Öğrenci, Salon, Masa) doğrulandıysa PİNLE
+                                ogrenciPin(ogrenci.id, targetSalonId, targetMasaId);
+                            } else {
+                                logger.warn(`⚠️ Sabit Atama Hatası: Salon bulunamadı. OrijinalID: ${planSabit.pinnedSalonId}`);
+                            }
+                        } else {
+                            logger.warn(`⚠️ Sabit Atamada ID Çakışması: ${ogrenci.id} - Numara eşleşmedi, pinleme atlandı.`);
+                        }
                     } else if (ogrenci.pinned) {
                         ogrenciUnpin(ogrenci.id);
                     }
                 });
             } else {
                 const planOgrencileri = new Map();
+                const planOgrencileriByNumara = new Map();
+
                 if (yerlestirmeFormatinda.tumSalonlar && Array.isArray(yerlestirmeFormatinda.tumSalonlar)) {
                     yerlestirmeFormatinda.tumSalonlar.forEach(salon => {
                         if (salon.masalar && Array.isArray(salon.masalar)) {
                             salon.masalar.forEach(masa => {
                                 if (masa.ogrenci && masa.ogrenci.id) {
-                                    planOgrencileri.set(masa.ogrenci.id.toString(), {
+                                    const ogrenciData = {
                                         ...masa.ogrenci,
                                         pinned: masa.ogrenci.pinned || false,
                                         pinnedSalonId: masa.ogrenci.pinnedSalonId || null,
                                         pinnedMasaId: masa.ogrenci.pinnedMasaId || null
-                                    });
+                                    };
+                                    planOgrencileri.set(masa.ogrenci.id.toString(), ogrenciData);
+                                    if (masa.ogrenci.numara) {
+                                        planOgrencileriByNumara.set(String(masa.ogrenci.numara).trim(), ogrenciData);
+                                    }
                                 }
                             });
                         }
@@ -333,20 +405,34 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
                 if (yerlestirmeFormatinda.yerlesilemeyenOgrenciler && Array.isArray(yerlestirmeFormatinda.yerlesilemeyenOgrenciler)) {
                     yerlestirmeFormatinda.yerlesilemeyenOgrenciler.forEach(ogrenci => {
                         if (ogrenci && ogrenci.id) {
-                            planOgrencileri.set(ogrenci.id.toString(), {
+                            const ogrenciData = {
                                 ...ogrenci,
                                 pinned: ogrenci.pinned || false,
                                 pinnedSalonId: ogrenci.pinnedSalonId || null,
                                 pinnedMasaId: ogrenci.pinnedMasaId || null
-                            });
+                            };
+                            planOgrencileri.set(ogrenci.id.toString(), ogrenciData);
+                            if (ogrenci.numara) {
+                                planOgrencileriByNumara.set(String(ogrenci.numara).trim(), ogrenciData);
+                            }
                         }
                     });
                 }
                 if (planOgrencileri.size > 0) {
                     ogrenciler.forEach(ogrenci => {
-                        const planOgrenci = planOgrencileri.get(ogrenci.id?.toString());
+                        let planOgrenci = planOgrencileri.get(ogrenci.id?.toString());
+                        if (!planOgrenci && ogrenci.numara) {
+                            planOgrenci = planOgrencileriByNumara.get(String(ogrenci.numara).trim());
+                        }
+
                         if (planOgrenci && (planOgrenci.pinned || planOgrenci.pinnedSalonId || planOgrenci.pinnedMasaId)) {
-                            ogrenciPin(ogrenci.id, planOgrenci.pinnedSalonId, planOgrenci.pinnedMasaId);
+                            // GÜVENLİK: ID çakışması kontrolü
+                            const numaraEslesti = String(planOgrenci.numara).trim() === String(ogrenci.numara).trim();
+                            if (numaraEslesti) {
+                                ogrenciPin(ogrenci.id, planOgrenci.pinnedSalonId, planOgrenci.pinnedMasaId);
+                            } else {
+                                logger.warn(`⚠️ İmplicit Sabitlemede ID Çakışması: ${ogrenci.id} - Numara eşleşmedi.`);
+                            }
                         } else if (ogrenci.pinned) {
                             ogrenciUnpin(ogrenci.id);
                         }
