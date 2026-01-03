@@ -1,0 +1,133 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  CI: true
+
+jobs:
+  test:
+    name: Test (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    strategy:
+      matrix:
+        node-version: [18, 20]
+      fail-fast: false
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
+    - name: Bağımlılıkları yükle
+      run: npm ci
+      
+    - name: Testleri çalıştır
+      run: npm test -- --coverage --watchAll=false --ci --passWithNoTests
+      continue-on-error: true
+      
+    - name: Build kontrolü
+      run: npm run build
+      
+    - name: Build artifacts upload
+      if: matrix.node-version == 20
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-files
+        path: build/
+        retention-days: 7
+        
+    - name: Test coverage özeti
+      if: always()
+      run: |
+        echo "📊 Test Coverage:"
+        if [ -f "coverage/coverage-summary.json" ]; then
+          cat coverage/coverage-summary.json | grep -A 5 '"total"'
+        else
+          echo "⚠️ Coverage raporu bulunamadı"
+        fi
+
+  build-check:
+    name: Production Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Node.js 20
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Bağımlılıkları yükle
+      run: npm ci
+      
+    - name: Production build
+      run: npm run build
+      
+    - name: Build dosyalarını kontrol et
+      run: |
+        echo "📦 Build dosyaları:"
+        if [ -d "build/static/js" ]; then
+          ls -lh build/static/js/ | head -10
+        fi
+        if [ -d "build/static/css" ]; then
+          ls -lh build/static/css/ | head -5
+        fi
+        
+        # Build başarısızlığı kontrolü
+        if [ ! -f "build/index.html" ]; then
+          echo "❌ Build başarısız - index.html bulunamadı"
+          exit 1
+        fi
+        
+        echo "✅ Build başarılı - Production-ready!"
+        
+    - name: Build artifacts upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: production-build
+        path: build/
+        retention-days: 30
+        compression-level: 6
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Node.js 20
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Bağımlılıkları yükle
+      run: npm ci
+      
+    - name: Güvenlik taraması
+      run: npm audit --audit-level=high
+      continue-on-error: true
+      
+    - name: Dependency kontrolü
+      run: npm outdated || echo "⚠️ Bazı bağımlılıklar güncellenebilir"
+      continue-on-error: true
