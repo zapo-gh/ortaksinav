@@ -394,6 +394,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
       return;
     }
 
+    setTumunuSilDialogAcik(false); // Modalı hemen kapat
     setYukleme(true);
     try {
       await ogrencileriTemizle();
@@ -408,7 +409,6 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
 
       setBekleyenOgrenciler([]);
       setDialogAcik(false);
-      setTumunuSilDialogAcik(false);
 
       // Normalde ogrencileriTemizle içinde çağrılır ama garanti olsun
       setLocalOgrenciler([]);
