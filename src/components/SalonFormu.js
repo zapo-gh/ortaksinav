@@ -794,6 +794,12 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
     return (
       <Card sx={{ maxWidth: 1200, mx: 'auto', mt: 2 }}>
         <CardContent>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+            <MeetingRoomIcon sx={{ mr: 1, color: 'primary.main' }} />
+            <Typography variant="h6" component="h2" sx={{ color: 'text.primary', fontWeight: 'bold' }}>
+              Sınav Salonları Yönetimi
+            </Typography>
+          </Box>
           <Alert severity="info" sx={{ mb: 3 }}>
             Salon listesi görüntüleme modunda. Düzenleme yapabilmek için yönetici olarak giriş yapın.
           </Alert>

@@ -9,7 +9,8 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  Alert
 } from '@mui/material';
 import {
   School as SchoolIcon,
@@ -109,9 +110,9 @@ const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, readOnly: readOnly
     <Card sx={{ maxWidth: 800, mx: 'auto', mt: 2 }}>
       <CardContent>
         {readOnly && (
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          <Alert severity="info" sx={{ mb: 3 }}>
             Bu alanı sadece görüntüleyebilirsiniz. Değişiklik yapmak için yönetici olarak giriş yapın.
-          </Typography>
+          </Alert>
         )}
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>

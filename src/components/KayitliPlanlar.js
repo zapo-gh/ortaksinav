@@ -465,6 +465,15 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
                             color="primary"
                             onClick={() => handlePlanYukle({ ...plan, id: planId })}
                             title="Planı Yükle"
+                            sx={{
+                              transition: 'all 0.2s ease',
+                              '&:hover': {
+                                transform: 'scale(1.08)',
+                                bgcolor: 'primary.main',
+                                color: 'white',
+                                boxShadow: 2
+                              }
+                            }}
                           >
                             <CloudDownloadIcon />
                           </IconButton>
@@ -475,6 +484,15 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
                                 color="info"
                                 onClick={() => handleArchiveClick(plan)}
                                 title="Planı Arşivle"
+                                sx={{
+                                  transition: 'all 0.2s ease',
+                                  '&:hover': {
+                                    transform: 'scale(1.08)',
+                                    bgcolor: 'info.main',
+                                    color: 'white',
+                                    boxShadow: 2
+                                  }
+                                }}
                               >
                                 <ArchiveIcon />
                               </IconButton>
@@ -483,6 +501,15 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
                                 color="secondary"
                                 onClick={() => handleRenameClick(plan)}
                                 title="Plan Adını Değiştir"
+                                sx={{
+                                  transition: 'all 0.2s ease',
+                                  '&:hover': {
+                                    transform: 'scale(1.08)',
+                                    bgcolor: 'secondary.main',
+                                    color: 'white',
+                                    boxShadow: 2
+                                  }
+                                }}
                               >
                                 <EditIcon />
                               </IconButton>
@@ -491,6 +518,15 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
                                 color="error"
                                 onClick={() => handleDeleteClick(planId)}
                                 title="Planı Sil"
+                                sx={{
+                                  transition: 'all 0.2s ease',
+                                  '&:hover': {
+                                    transform: 'scale(1.08)',
+                                    bgcolor: 'error.main',
+                                    color: 'white',
+                                    boxShadow: 2
+                                  }
+                                }}
                               >
                                 <DeleteIcon />
                               </IconButton>
@@ -565,6 +601,15 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
                                           color="primary"
                                           onClick={() => handlePlanYukle(plan)}
                                           title="Planı Yükle"
+                                          sx={{
+                                            transition: 'all 0.2s ease',
+                                            '&:hover': {
+                                              transform: 'scale(1.15)',
+                                              bgcolor: 'primary.main',
+                                              color: 'white',
+                                              boxShadow: 2
+                                            }
+                                          }}
                                         >
                                           <CloudDownloadIcon fontSize="small" />
                                         </IconButton>
@@ -574,6 +619,15 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
                                             color="warning"
                                             onClick={() => handleRestorePlan(plan.id)}
                                             title="Arşivden Çıkar"
+                                            sx={{
+                                              transition: 'all 0.2s ease',
+                                              '&:hover': {
+                                                transform: 'scale(1.15)',
+                                                bgcolor: 'warning.main',
+                                                color: 'white',
+                                                boxShadow: 2
+                                              }
+                                            }}
                                           >
                                             <UnarchiveIcon fontSize="small" />
                                           </IconButton>
