@@ -92,15 +92,15 @@ class PlanManager {
         const authResult = await waitForAuth();
         authOwnerId = authResult?.uid || getCurrentUserId() || null;
       } catch (authError) {
-        console.warn('⚠️ planManager.savePlan kimlik doğrulaması başarısız, offline mod kullanılacak:', authError);
+        logger.warn('⚠️ planManager.savePlan kimlik doğrulaması başarısız, offline mod kullanılacak:', authError);
       }
       const ownerId = authOwnerId || 'offline';
       if (ownerId === 'offline' && db.useFirestore) {
-        console.warn('⚠️ planManager: Firestore kimlik doğrulaması yok, IndexedDB moduna geçiliyor.');
+        logger.warn('⚠️ planManager: Firestore kimlik doğrulaması yok, IndexedDB moduna geçiliyor.');
         db.useFirestore = false;
       }
       if (ownerId === 'offline' && db.useFirestore) {
-        console.warn('⚠️ planManager: Firestore kimlik doğrulaması yok, IndexedDB moduna geçiliyor.');
+        logger.warn('⚠️ planManager: Firestore kimlik doğrulaması yok, IndexedDB moduna geçiliyor.');
         db.useFirestore = false;
       }
 
@@ -133,7 +133,7 @@ class PlanManager {
           return updatedId;
         }
       } catch (error) {
-        console.warn('⚠️ Plan kontrolü sırasında hata (yeni plan oluşturulacak):', error.message);
+        logger.warn('⚠️ Plan kontrolü sırasında hata (yeni plan oluşturulacak):', error.message);
       }
 
       // TÜM TEST PLANLARINI ENGelle (Firestore kota sorununu önlemek için)
@@ -169,7 +169,7 @@ class PlanManager {
         );
 
         if (isTestPlan) {
-          console.warn('⚠️ Test Plan kaydetme engellendi (Firestore kota koruması):', normalizedPlanName);
+          logger.warn('⚠️ Test Plan kaydetme engellendi (Firestore kota koruması):', normalizedPlanName);
           return null; // Kaydetme
         }
       }
@@ -184,7 +184,7 @@ class PlanManager {
       // Boş plan kontrolü
       const isEmpty = totalStudents === 0 && salonCount === 0;
       if (isEmpty) {
-        console.warn('⚠️ Boş plan kaydetme atlandı (0 öğrenci, 0 salon).');
+        logger.warn('⚠️ Boş plan kaydetme atlandı (0 öğrenci, 0 salon).');
         return null;
       }
 
@@ -192,7 +192,7 @@ class PlanManager {
       if (process.env.NODE_ENV !== 'test') {
         // Minimal test plan kontrolü: 5'ten az öğrenci VE 2'den az salon = muhtemelen test planı
         if (totalStudents <= 5 && salonCount <= 2 && (totalStudents === 1 || salonCount === 1)) {
-          console.warn(`⚠️ Minimal test plan kaydetme engellendi (${totalStudents} öğrenci, ${salonCount} salon):`, normalizedPlanName);
+          logger.warn(`⚠️ Minimal test plan kaydetme engellendi (${totalStudents} öğrenci, ${salonCount} salon):`, normalizedPlanName);
           return null; // Kaydetme
         }
       }
@@ -245,15 +245,15 @@ class PlanManager {
       if (db?.useFirestore !== undefined) {
         logger.debug('✅ planManager: DatabaseAdapter kullanılıyor, useFirestore:', db.useFirestore);
       } else {
-        console.warn('⚠️ planManager: DatabaseAdapter KULLANILMIYOR! Doğrudan IndexedDB kullanılıyor olabilir!');
-        console.warn('⚠️ db objesi:', db);
+        logger.warn('⚠️ planManager: DatabaseAdapter KULLANILMIYOR! Doğrudan IndexedDB kullanılıyor olabilir!');
+        logger.warn('⚠️ db objesi:', db);
       }
 
       const savedPlan = await db.savePlan(planPayload);
 
       logger.debug('✅ planManager: Plan başarıyla kaydedildi:', savedPlan);
-      console.log('✅ planManager: Kaydedilen plan ID tipi:', typeof savedPlan);
-      console.log('✅ planManager: Kaydedilen plan ID değeri:', savedPlan);
+      logger.info('✅ planManager: Kaydedilen plan ID tipi:', typeof savedPlan);
+      logger.info('✅ planManager: Kaydedilen plan ID değeri:', savedPlan);
 
       if (savedPlan) {
         this.setCurrentPlan({ id: savedPlan, name: normalizedPlanName, ownerId });
@@ -262,7 +262,7 @@ class PlanManager {
       return savedPlan;
 
     } catch (error) {
-      console.error('❌ Plan kaydetme hatası:', error);
+      logger.error('❌ Plan kaydetme hatası:', error);
       throw error;
     }
   }
@@ -278,7 +278,7 @@ class PlanManager {
         const authResult = await waitForAuth();
         authOwnerId = authResult?.uid || getCurrentUserId() || null;
       } catch (authError) {
-        console.warn('⚠️ planManager.loadPlan kimlik doğrulaması başarısız, misafir modunda devam ediliyor:', authError);
+        logger.warn('⚠️ planManager.loadPlan kimlik doğrulaması başarısız, misafir modunda devam ediliyor:', authError);
       }
 
       // planId validation - test ortamında null ID'lere izin ver
@@ -310,7 +310,7 @@ class PlanManager {
       // Veritabanından planı al - hem string hem number ID'leri destekler
       let plan = await db.getPlan(normalizedPlanId);
       if (!plan && typeof planId === 'string') {
-        console.warn(`ℹ️ planManager: Plan "${planId}" IndexedDB'de bulunamadı, Firestore'dan yükleniyor...`);
+        logger.warn(`ℹ️ planManager: Plan "${planId}" IndexedDB'de bulunamadı, Firestore'dan yükleniyor...`);
         try {
           const loadRemotePlan = async () => {
             if (db.firestore && typeof db.firestore.loadPlan === 'function') {
@@ -351,11 +351,11 @@ class PlanManager {
                 data: plan.data
               });
             } catch (mirrorError) {
-              console.warn('⚠️ planManager: Firestore planı IndexedDB\'ye yansıtılamadı:', mirrorError);
+              logger.warn('⚠️ planManager: Firestore planı IndexedDB\'ye yansıtılamadı:', mirrorError);
             }
           }
         } catch (remoteError) {
-          console.error('❌ planManager: Firestore plan yükleme hatası:', remoteError);
+          logger.error('❌ planManager: Firestore plan yükleme hatası:', remoteError);
         }
       }
 
@@ -399,7 +399,7 @@ class PlanManager {
       return result;
 
     } catch (error) {
-      console.error('❌ Plan yükleme hatası:', error);
+      logger.error('❌ Plan yükleme hatası:', error);
       throw error;
     }
   }
@@ -416,7 +416,7 @@ class PlanManager {
       const validIdPlans = plans.filter(p => {
         const hasValidId = p.id !== null && p.id !== undefined && p.id !== '';
         if (!hasValidId) {
-          console.warn('⚠️ Geçersiz Plan ID\'ye sahip plan bulundu ve atlandı:', p);
+          logger.warn('⚠️ Geçersiz Plan ID\'ye sahip plan bulundu ve atlandı:', p);
         }
         return hasValidId;
       });
@@ -429,12 +429,12 @@ class PlanManager {
         p.isArchived !== true
       );
       if (emptyPlans.length > 0) {
-        console.warn(`🧹 ${emptyPlans.length} boş plan bulundu, siliniyor...`);
+        logger.warn(`🧹 ${emptyPlans.length} boş plan bulundu, siliniyor...`);
         for (const p of emptyPlans) {
           try {
             await db.deletePlan(p.id);
           } catch (e) {
-            console.warn('Plan silme hatası:', p.id, e);
+            logger.warn('Plan silme hatası:', p.id, e);
           }
         }
       }
@@ -458,7 +458,7 @@ class PlanManager {
       });
 
       if (nonEmptyPlans.length !== withoutTestPlans.length) {
-        console.warn(`⚠️ ${nonEmptyPlans.length - withoutTestPlans.length} test plan filtrelendi`);
+        logger.warn(`⚠️ ${nonEmptyPlans.length - withoutTestPlans.length} test plan filtrelendi`);
       }
 
       logger.debug('✅ Tüm planlar yüklendi:', withoutTestPlans.length, 'geçerli plan');
@@ -484,8 +484,8 @@ class PlanManager {
       logger.debug('✅ Planlar map edildi:', mappedPlans.length, 'plan');
       return mappedPlans;
     } catch (error) {
-      console.error('❌ HATA - Plan listesi yükleme hatası:', error);
-      console.error('❌ Hata detayı:', error.message, error.stack);
+      logger.error('❌ HATA - Plan listesi yükleme hatası:', error);
+      logger.error('❌ Hata detayı:', error.message, error.stack);
       throw error;
     }
   }
@@ -522,7 +522,7 @@ class PlanManager {
       await db.deletePlan(normalizedPlanId);
       logger.debug('✅ Plan silindi:', planId);
     } catch (error) {
-      console.error('❌ Plan silme hatası:', error);
+      logger.error('❌ Plan silme hatası:', error);
       throw error;
     }
   }
@@ -540,7 +540,7 @@ class PlanManager {
           const authResult = await waitForAuth();
           authOwnerId = authResult?.uid || getCurrentUserId() || null;
         } catch (authError) {
-          console.warn('⚠️ planManager.updatePlan kimlik doğrulaması başarısız, offline mod kullanılacak:', authError);
+          logger.warn('⚠️ planManager.updatePlan kimlik doğrulaması başarısız, offline mod kullanılacak:', authError);
         }
       }
       const ownerId = authOwnerId || 'offline';
@@ -575,7 +575,7 @@ class PlanManager {
 
       return updatedPlanId;
     } catch (error) {
-      console.error('❌ Plan güncelleme hatası:', error);
+      logger.error('❌ Plan güncelleme hatası:', error);
       throw error;
     }
   }
@@ -602,7 +602,7 @@ class PlanManager {
       logger.debug('✅ Plan başarıyla arşivlendi:', planId);
       return true;
     } catch (error) {
-      console.error('❌ Plan arşivleme hatası:', error);
+      logger.error('❌ Plan arşivleme hatası:', error);
       throw error;
     }
   }
@@ -626,7 +626,7 @@ class PlanManager {
       logger.debug('✅ Plan başarıyla restore edildi:', planId);
       return true;
     } catch (error) {
-      console.error('❌ Plan restore hatası:', error);
+      logger.error('❌ Plan restore hatası:', error);
       throw error;
     }
   }
@@ -788,19 +788,19 @@ class PlanManager {
 
     // Temel yapıyı kontrol et
     if (!planData.tumSalonlar || !Array.isArray(planData.tumSalonlar)) {
-      console.warn('⚠️ tumSalonlar bulunamadı, boş array oluşturuluyor');
+      logger.warn('⚠️ tumSalonlar bulunamadı, boş array oluşturuluyor');
       planData.tumSalonlar = [];
     }
 
     if (planData.tumSalonlar.length === 0) {
-      console.warn('⚠️ tumSalonlar boş, ana salon varsa onu kullanıyoruz');
+      logger.warn('⚠️ tumSalonlar boş, ana salon varsa onu kullanıyoruz');
 
       // Ana salon varsa, onu tumSalonlar'a ekle
       if (planData.salon) {
         logger.debug('✅ Ana salon tumSalonlar\'a ekleniyor');
         planData.tumSalonlar = [planData.salon];
       } else {
-        console.warn('❌ Ana salon da bulunamadı, varsayılan salon oluşturuluyor');
+        logger.warn('❌ Ana salon da bulunamadı, varsayılan salon oluşturuluyor');
         planData.tumSalonlar = [this.createDefaultSalon()];
       }
     }
@@ -849,7 +849,7 @@ class PlanManager {
         const satir = Math.ceil(Math.sqrt(kapasite)) || 6;
         const sutun = Math.ceil(kapasite / satir) || 5;
         siraDizilimi = { satir, sutun };
-        console.warn('⚠️ Salon siraDizilimi eksik, varsayılan değerler ekleniyor:', salon.salonAdi || salon.ad);
+        logger.warn('⚠️ Salon siraDizilimi eksik, varsayılan değerler ekleniyor:', salon.salonAdi || salon.ad);
       }
 
       return {
@@ -931,3 +931,4 @@ class PlanManager {
 const planManager = new PlanManager();
 
 export default planManager;
+

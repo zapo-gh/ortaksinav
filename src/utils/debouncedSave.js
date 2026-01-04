@@ -2,6 +2,7 @@
  * Debounced kayıt sistemi
  * Kullanıcı durduktan sonra kayıt yapar
  */
+import logger from './logger';
 class DebouncedSave {
   constructor() {
     this.saveTimeout = null;
@@ -25,10 +26,10 @@ class DebouncedSave {
     this.saveTimeout = setTimeout(async () => {
       try {
         await saveFunction(this.pendingData);
-        console.log('✅ Debounced kayıt tamamlandı');
+        logger.info('✅ Debounced kayıt tamamlandı');
         this.pendingData = null;
       } catch (error) {
-        console.error('❌ Debounced kayıt hatası:', error);
+        logger.error('❌ Debounced kayıt hatası:', error);
       }
     }, this.saveDelay);
   }
@@ -59,4 +60,5 @@ class DebouncedSave {
 const debouncedSave = new DebouncedSave();
 
 export default debouncedSave;
+
 
