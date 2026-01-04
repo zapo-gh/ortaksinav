@@ -139,7 +139,7 @@ const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, readOnly: readOnly
             />
           </Box>
 
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
             <TextField
               label="Eğitim Öğretim Yılı"
               name="egitimYili"
@@ -175,7 +175,7 @@ const GenelAyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, readOnly: readOnly
             <Divider sx={{ mb: 2 }} />
           </Box>
 
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
             <FormControl fullWidth variant="outlined" error={Boolean(errors.sinavDonemi)} disabled={readOnly}>
               <InputLabel>Sınav Dönemi</InputLabel>
               <Select

@@ -459,7 +459,7 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
                         }
                       />
                       <ListItemSecondaryAction>
-                        <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Box sx={{ display: 'flex', gap: { xs: 0.25, sm: 0.5, md: 1 } }}>
                           <IconButton
                             edge="end"
                             color="primary"

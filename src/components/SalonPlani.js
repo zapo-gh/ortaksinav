@@ -1131,7 +1131,7 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
             flexDirection: { xs: 'column', sm: 'row' },
             alignItems: { xs: 'center', sm: 'flex-start' }
           }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: { xs: '100%', sm: 'auto' }, maxWidth: '100%' }}>
               {aktifPlanAdi ? (
                 <Chip
                   label={`Plan: ${aktifPlanAdi}`}
@@ -1139,20 +1139,25 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
                   variant="outlined"
                   size="small"
                   sx={{
-                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                    fontSize: { xs: '0.65rem', sm: '0.75rem' },
                     fontWeight: 500,
-                    maxWidth: '100%',
+                    maxWidth: { xs: '200px', sm: 'none' }, minWidth: 0,
                     textTransform: 'none',
-                    whiteSpace: 'normal',
-                    lineHeight: 1.3
+                    '& .MuiChip-label': {
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      display: 'block'
+                    }
                   }}
+                  title={`Plan: ${aktifPlanAdi}`}
                 />
               ) : null}
               <Tooltip title="Yerleşimi Temizle">
                 <Button
                   variant="outlined"
                   color="error"
-                  startIcon={<DeleteIcon />}
+                  startIcon={<DeleteIcon sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }} />}
                   onClick={async () => {
                     const confirmed = await showConfirm('Tüm yerleştirme sonuçlarını temizlemek istediğinizden emin misiniz?');
                     if (confirmed) {
@@ -1162,17 +1167,26 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
                     }
                   }}
                   sx={{
+                    flexShrink: 0,
+
                     bgcolor: 'error.50',
                     borderColor: 'error.200',
                     color: 'error.main',
-                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                    fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                    px: { xs: 1, sm: 1.5 },
+                    py: { xs: 0, sm: 0.75 },
+                    height: { xs: 24, sm: 'auto' },
+                    minWidth: { xs: 'auto', sm: 'auto' },
+                    '& .MuiButton-startIcon': {
+                      mr: { xs: 0.5, sm: 1 }
+                    },
                     '&:hover': {
                       bgcolor: 'error.100',
                       borderColor: 'error.300'
                     }
                   }}
                 >
-                  Yerleşimi Temizle
+                  <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Yerleşimi </Box>Temizle
                 </Button>
               </Tooltip>
             </Box>
