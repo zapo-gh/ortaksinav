@@ -92,7 +92,7 @@ export const _saveToStorage = (key, value) => {
             }, 2000);
         }
     } catch (err) {
-        console.error(`❌ ${key} kaydedilirken hata:`, err);
+        logger.error(`❌ ${key} kaydedilirken hata:`, err);
     }
 };
 

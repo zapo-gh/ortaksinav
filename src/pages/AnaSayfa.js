@@ -430,6 +430,11 @@ const AnaSayfaContent = React.memo(() => {
     </ErrorBoundary>
   ), [ogrenciler, ayarlar, salonlar, handleYerlestirmeYap, yukleme]);
 
+  // Aktif salonlar hesaplaması - performans için useMemo ile cache'lendi
+  const aktifSalonlar = useMemo(() => {
+    return salonlar?.filter(salon => salon.aktif !== false) || [];
+  }, [salonlar]);
+
   // Tab içerik render fonksiyonu
   const renderTabIcerik = () => {
     switch (aktifTab) {
@@ -452,8 +457,7 @@ const AnaSayfaContent = React.memo(() => {
         return planlamaContent;
 
       case 'salon-plani':
-        // Sadece aktif salonları göster
-        const aktifSalonlar = salonlar?.filter(salon => salon.aktif !== false) || [];
+        // aktifSalonlar useMemo ile yukarıda tanımlandı
 
         // NOT: seciliSalonId seçimi useEffect'te yapılıyor - render sırasında state güncellemesi yapmayalım
         if (aktifSalonlar.length > 0 && !yerlestirmeSonucu) {

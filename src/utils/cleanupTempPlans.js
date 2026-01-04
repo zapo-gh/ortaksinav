@@ -12,7 +12,7 @@ export const cleanupTempPlans = async () => {
   try {
     const role = await getUserRole();
     if (role !== 'admin') {
-      console.log('ℹ️ Geçici plan temizliği yalnızca yönetici oturumlarında çalışır. Public oturum, işlem atlandı.');
+      logger.info('ℹ️ Geçici plan temizliği yalnızca yönetici oturumlarında çalışır. Public oturum, işlem atlandı.');
       return {
         success: true,
         deletedCount: 0,
@@ -21,28 +21,28 @@ export const cleanupTempPlans = async () => {
       };
     }
 
-    console.log('🧹 Geçici planlar temizleniyor...');
-    
+    logger.info('🧹 Geçici planlar temizleniyor...');
+
     // Tüm planları al
     const allPlans = await db.getAllPlans();
-    console.log('📋 Tüm planlar alındı:', allPlans.length);
-    
+    logger.info('📋 Tüm planlar alındı:', allPlans.length);
+
     // Geçici planları filtrele
     const tempPlans = allPlans.filter(plan => {
       // plan.id'yi string'e çevir
       const planId = String(plan.id || '');
       const planName = String(plan.name || '');
-      
+
       const isTemp = planName.includes('Geçici Plan') || planId.startsWith('temp_');
-      console.log(`🔍 Plan kontrolü: ${planId} - ${planName} - Geçici: ${isTemp}`);
+      logger.info(`🔍 Plan kontrolü: ${planId} - ${planName} - Geçici: ${isTemp}`);
       return isTemp;
     });
-    
-    console.log(`📊 ${tempPlans.length} geçici plan bulundu`);
-    
+
+    logger.info(`📊 ${tempPlans.length} geçici plan bulundu`);
+
     // Akıllı limit sistemi: Maksimum 5 geçici plan tut
     const MAX_TEMP_PLANS = 5;
-    
+
     if (tempPlans.length > MAX_TEMP_PLANS) {
       // Tarihe göre sırala (en yeni en son)
       const sortedTempPlans = tempPlans.sort((a, b) => {
@@ -50,25 +50,25 @@ export const cleanupTempPlans = async () => {
         const dateB = new Date(b.date || b.createdAt || 0);
         return dateB - dateA;
       });
-      
+
       // En yeni 5 planı koru, diğerlerini sil
       const plansToKeep = sortedTempPlans.slice(0, MAX_TEMP_PLANS);
       const plansToDelete = sortedTempPlans.slice(MAX_TEMP_PLANS);
-      
-      console.log(`🗑️ ${plansToDelete.length} eski geçici plan silinecek (${plansToKeep.length} plan korunacak)`);
-      
+
+      logger.info(`🗑️ ${plansToDelete.length} eski geçici plan silinecek (${plansToKeep.length} plan korunacak)`);
+
       for (const plan of plansToDelete) {
         try {
           await db.deletePlan(plan.id);
-          console.log(`✅ Eski geçici plan silindi: ${plan.id}`);
+          logger.info(`✅ Eski geçici plan silindi: ${plan.id}`);
         } catch (deleteError) {
-          console.error(`❌ Plan silme hatası (${plan.id}):`, deleteError);
+          logger.error(`❌ Plan silme hatası (${plan.id}):`, deleteError);
           // Tek plan silme hatası tüm işlemi durdurmasın
         }
       }
-      
-      console.log(`✅ ${plansToDelete.length} eski geçici plan temizlendi, ${plansToKeep.length} plan korundu`);
-      
+
+      logger.info(`✅ ${plansToDelete.length} eski geçici plan temizlendi, ${plansToKeep.length} plan korundu`);
+
       return {
         success: true,
         deletedCount: plansToDelete.length,
@@ -82,22 +82,22 @@ export const cleanupTempPlans = async () => {
         const dateB = new Date(b.date || b.createdAt || 0);
         return dateB - dateA;
       });
-      
+
       const plansToDelete = sortedTempPlans.slice(1);
-      
-      console.log(`🗑️ ${plansToDelete.length} plan silinecek (eski sistem)`);
-      
+
+      logger.info(`🗑️ ${plansToDelete.length} plan silinecek (eski sistem)`);
+
       for (const plan of plansToDelete) {
         try {
           await db.deletePlan(plan.id);
-          console.log(`✅ Geçici plan silindi: ${plan.id}`);
+          logger.info(`✅ Geçici plan silindi: ${plan.id}`);
         } catch (deleteError) {
-          console.error(`❌ Plan silme hatası (${plan.id}):`, deleteError);
+          logger.error(`❌ Plan silme hatası (${plan.id}):`, deleteError);
         }
       }
-      
-      console.log(`✅ ${plansToDelete.length} geçici plan temizlendi`);
-      
+
+      logger.info(`✅ ${plansToDelete.length} geçici plan temizlendi`);
+
       return {
         success: true,
         deletedCount: plansToDelete.length,
@@ -105,7 +105,7 @@ export const cleanupTempPlans = async () => {
         message: `${plansToDelete.length} geçici plan silindi, 1 plan korundu`
       };
     } else if (tempPlans.length === 1) {
-      console.log('ℹ️ Sadece 1 geçici plan var, temizleme gerekmiyor');
+      logger.info('ℹ️ Sadece 1 geçici plan var, temizleme gerekmiyor');
       return {
         success: true,
         deletedCount: 0,
@@ -113,7 +113,7 @@ export const cleanupTempPlans = async () => {
         message: 'Sadece 1 geçici plan var, temizleme gerekmiyor'
       };
     } else {
-      console.log('ℹ️ Temizlenecek geçici plan bulunamadı');
+      logger.info('ℹ️ Temizlenecek geçici plan bulunamadı');
       return {
         success: true,
         deletedCount: 0,
@@ -121,9 +121,8 @@ export const cleanupTempPlans = async () => {
         message: 'Temizlenecek geçici plan bulunamadı'
       };
     }
-    
+
   } catch (error) {
-    console.error('❌ Geçici planlar temizlenirken hata:', error);
     logger.error('❌ Geçici planlar temizlenirken hata:', error);
     return {
       success: false,
@@ -146,7 +145,7 @@ export const updateTempPlan = async (planData) => {
       const planName = String(plan.name || '');
       return planName.includes('Geçici Plan') || planId.startsWith('temp_');
     });
-    
+
     if (existingTempPlan) {
       // Mevcut geçici planı güncelle
       const updatedPlan = {
@@ -156,13 +155,13 @@ export const updateTempPlan = async (planData) => {
         totalStudents: planData.salon?.ogrenciler?.length || 0,
         salonCount: planData.tumSalonlar?.length || 1
       };
-      
+
       await db.savePlan(updatedPlan);
-      console.log('🔄 Mevcut geçici plan güncellendi');
-      
+      logger.info('🔄 Mevcut geçici plan güncellendi');
+
       // Otomatik temizlik kontrolü
       await autoCleanupIfNeeded();
-      
+
       return updatedPlan;
     } else {
       // Yeni geçici plan oluştur
@@ -174,13 +173,13 @@ export const updateTempPlan = async (planData) => {
         totalStudents: planData.salon?.ogrenciler?.length || 0,
         salonCount: planData.tumSalonlar?.length || 1
       };
-      
+
       await db.savePlan(newTempPlan);
-      console.log('✨ Yeni geçici plan oluşturuldu');
-      
+      logger.info('✨ Yeni geçici plan oluşturuldu');
+
       // Otomatik temizlik kontrolü
       await autoCleanupIfNeeded();
-      
+
       return newTempPlan;
     }
   } catch (error) {
@@ -197,7 +196,7 @@ export const cleanupDuplicateSalons = async () => {
   try {
     const role = await getUserRole();
     if (role !== 'admin') {
-      console.log('ℹ️ Salon duplikasyon temizliği yalnızca yönetici oturumlarında çalışır. Public oturum, işlem atlandı.');
+      logger.info('ℹ️ Salon duplikasyon temizliği yalnızca yönetici oturumlarında çalışır. Public oturum, işlem atlandı.');
       return {
         success: true,
         deletedCount: 0,
@@ -209,7 +208,7 @@ export const cleanupDuplicateSalons = async () => {
     await waitForAuth();
     const ownerId = getCurrentUserId();
     if (!ownerId) {
-      console.log('ℹ️ Salon temizliği için geçerli bir kullanıcı bulunamadı.');
+      logger.info('ℹ️ Salon temizliği için geçerli bir kullanıcı bulunamadı.');
       return {
         success: true,
         deletedCount: 0,
@@ -218,13 +217,13 @@ export const cleanupDuplicateSalons = async () => {
       };
     }
 
-    console.log('🧹 Firestore salon duplikasyon temizliği başlatılıyor...');
+    logger.info('🧹 Firestore salon duplikasyon temizliği başlatılıyor...');
     const salonsRef = collection(firestoreClient.db, 'salons');
     const salonsQuery = query(salonsRef, where('ownerId', '==', ownerId));
     const snapshot = await getDocs(salonsQuery);
 
     if (snapshot.empty) {
-      console.log('ℹ️ Firestore\'da temizlenecek salon bulunamadı.');
+      logger.info('ℹ️ Firestore\'da temizlenecek salon bulunamadı.');
       return {
         success: true,
         deletedCount: 0,
@@ -269,7 +268,7 @@ export const cleanupDuplicateSalons = async () => {
     });
 
     if (duplicates.length === 0) {
-      console.log('ℹ️ Firestore salon kayıtlarında duplikasyon bulunmadı.');
+      logger.info('ℹ️ Firestore salon kayıtlarında duplikasyon bulunmadı.');
       return {
         success: true,
         deletedCount: 0,
@@ -282,7 +281,7 @@ export const cleanupDuplicateSalons = async () => {
     duplicates.forEach(item => batch.delete(item.ref));
     await batch.commit();
 
-    console.log(`✅ Firestore salon duplikasyon temizliği tamamlandı. Silinen: ${duplicates.length}, Kalan: ${seen.size}`);
+    logger.info(`✅ Firestore salon duplikasyon temizliği tamamlandı. Silinen: ${duplicates.length}, Kalan: ${seen.size}`);
     return {
       success: true,
       deletedCount: duplicates.length,
@@ -290,7 +289,6 @@ export const cleanupDuplicateSalons = async () => {
       message: `${duplicates.length} salon kaydı silindi, ${seen.size} kayıt korundu`
     };
   } catch (error) {
-    console.error('❌ Salon duplikasyon temizliği sırasında hata:', error);
     logger.error('❌ Salon duplikasyon temizliği sırasında hata:', error);
     return {
       success: false,
@@ -311,16 +309,16 @@ const autoCleanupIfNeeded = async () => {
       const planName = String(plan.name || '');
       return planName.includes('Geçici Plan') || planId.startsWith('temp_');
     });
-    
+
     const MAX_TEMP_PLANS = 5;
-    
+
     if (tempPlans.length > MAX_TEMP_PLANS) {
-      console.log(`🤖 Otomatik temizlik tetiklendi: ${tempPlans.length} > ${MAX_TEMP_PLANS}`);
+      logger.info(`🤖 Otomatik temizlik tetiklendi: ${tempPlans.length} > ${MAX_TEMP_PLANS}`);
       const result = await cleanupTempPlans();
-      console.log(`🤖 Otomatik temizlik tamamlandı: ${result.deletedCount} plan silindi`);
+      logger.info(`🤖 Otomatik temizlik tamamlandı: ${result.deletedCount} plan silindi`);
     }
   } catch (error) {
-    console.error('❌ Otomatik temizlik hatası:', error);
+    logger.error('❌ Otomatik temizlik hatası:', error);
     // Otomatik temizlik hatası ana işlemi durdurmasın
   }
 };
