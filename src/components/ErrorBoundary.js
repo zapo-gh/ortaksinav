@@ -7,12 +7,16 @@ import errorTracker from '../utils/errorTracker';
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { 
-      hasError: false, 
-      error: null, 
+    this.state = {
+      hasError: false,
+      error: null,
       errorInfo: null,
-      showDetails: false 
+      showDetails: false
     };
+    // Bind methods
+    this.handleReset = this.handleReset.bind(this);
+    this.handleRefresh = this.handleRefresh.bind(this);
+    this.toggleDetails = this.toggleDetails.bind(this);
   }
 
   static getDerivedStateFromError(error) {
@@ -24,7 +28,7 @@ class ErrorBoundary extends React.Component {
       error: error,
       errorInfo: errorInfo
     });
-    
+
     // Enhanced error logging
     const errorData = {
       error: error.toString(),
@@ -50,24 +54,24 @@ class ErrorBoundary extends React.Component {
     });
   }
 
-  handleReset = () => {
+  handleReset() {
     this.setState({
       hasError: false,
       error: null,
       errorInfo: null,
       showDetails: false
     });
-  };
+  }
 
-  handleRefresh = () => {
+  handleRefresh() {
     window.location.reload();
-  };
+  }
 
-  toggleDetails = () => {
+  toggleDetails() {
     this.setState(prevState => ({
       showDetails: !prevState.showDetails
     }));
-  };
+  }
 
   render() {
     if (this.state.hasError) {
@@ -135,7 +139,7 @@ class ErrorBoundary extends React.Component {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               {getHelpText()}
             </Typography>
-            
+
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap', mb: 2 }}>
               <Button
                 variant="contained"
@@ -169,11 +173,11 @@ class ErrorBoundary extends React.Component {
                   {showDetails ? 'Detayları Gizle' : 'Hata Detaylarını Göster'}
                 </Button>
                 <Collapse in={showDetails || isDevelopment}>
-                  <Box sx={{ 
-                    mt: 2, 
-                    p: 2, 
-                    bgcolor: 'grey.100', 
-                    borderRadius: 1, 
+                  <Box sx={{
+                    mt: 2,
+                    p: 2,
+                    bgcolor: 'grey.100',
+                    borderRadius: 1,
                     textAlign: 'left',
                     maxHeight: '400px',
                     overflow: 'auto'
@@ -181,7 +185,7 @@ class ErrorBoundary extends React.Component {
                     <Typography variant="subtitle2" color="error" sx={{ mb: 1, fontWeight: 'bold' }}>
                       Hata Mesajı:
                     </Typography>
-                    <Typography variant="caption" component="pre" sx={{ 
+                    <Typography variant="caption" component="pre" sx={{
                       fontFamily: 'monospace',
                       fontSize: '0.75rem',
                       whiteSpace: 'pre-wrap',
@@ -190,13 +194,13 @@ class ErrorBoundary extends React.Component {
                     }}>
                       {error.toString()}
                     </Typography>
-                    
+
                     {error.stack && (
                       <>
                         <Typography variant="subtitle2" color="error" sx={{ mb: 1, mt: 2, fontWeight: 'bold' }}>
                           Stack Trace:
                         </Typography>
-                        <Typography variant="caption" component="pre" sx={{ 
+                        <Typography variant="caption" component="pre" sx={{
                           fontFamily: 'monospace',
                           fontSize: '0.75rem',
                           whiteSpace: 'pre-wrap',
@@ -207,13 +211,13 @@ class ErrorBoundary extends React.Component {
                         </Typography>
                       </>
                     )}
-                    
+
                     {errorInfo && errorInfo.componentStack && (
                       <>
                         <Typography variant="subtitle2" color="error" sx={{ mb: 1, mt: 2, fontWeight: 'bold' }}>
                           Component Stack:
                         </Typography>
-                        <Typography variant="caption" component="pre" sx={{ 
+                        <Typography variant="caption" component="pre" sx={{
                           fontFamily: 'monospace',
                           fontSize: '0.75rem',
                           whiteSpace: 'pre-wrap',
