@@ -127,3 +127,32 @@ export const sanitizePlanMeta = (plan = {}) => {
 };
 
 
+
+/**
+ * Firestore için veriyi temizle: undefined değerleri kaldır veya null'a çevir,
+ * Date nesnelerini toString yapma, fonksiyonları drop et, NaN/Infinity'yi null yap.
+ */
+export const sanitizeForFirestore = (input) => {
+  const seen = new WeakSet();
+  const walk = (value) => {
+    if (value === undefined) return null; // Firestore undefined desteklemez
+    if (value === null) return null;
+    if (typeof value === 'function') return null;
+    if (typeof value === 'number' && (!Number.isFinite(value) || Number.isNaN(value))) return null;
+    if (value instanceof Date) return value; // native Date desteklenir
+    if (Array.isArray(value)) return value.map(walk);
+    if (typeof value === 'object') {
+      if (seen.has(value)) return null; // döngüsel referansı kır
+      seen.add(value);
+      const out = {};
+      for (const [k, v] of Object.entries(value)) {
+        // Anahtar her zaman string; değeri sanitize et
+        const sv = walk(v);
+        if (sv !== undefined) out[k] = sv;
+      }
+      return out;
+    }
+    return value;
+  };
+  return walk(input);
+};
