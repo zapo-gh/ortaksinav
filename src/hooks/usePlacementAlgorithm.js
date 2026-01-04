@@ -8,9 +8,8 @@ export const usePlacementAlgorithm = (
     salonlar,
     ayarlar,
     readOnly,
-    yuklemeBaslat,
     yerlestirmeYap,
-    tabDegistir,
+    onPlacementSuccess,
     hataAyarla,
     setActivePlanMeta,
     showError,
@@ -125,60 +124,56 @@ export const usePlacementAlgorithm = (
             return;
         }
 
-        planManager.invalidateCurrentPlan('yerlestirme_yap');
-        setActivePlanMeta(null);
-
         try {
-            yuklemeBaslat();
+            planManager.invalidateCurrentPlan('yerlestirme_yap');
+            setActivePlanMeta(null);
 
-            setTimeout(() => {
-                try {
-                    const aktifSalonlar = (salonlar || []).filter(salon => salon.aktif !== false);
+            const aktifSalonlar = (salonlar || []).filter(salon => salon.aktif !== false);
 
-                    if (aktifSalonlar.length === 0) {
-                        throw new Error('Aktif salon bulunamadı! Lütfen en az bir salonu aktif hale getirin.');
+            if (aktifSalonlar.length === 0) {
+                throw new Error('Aktif salon bulunamadı! Lütfen en az bir salonu aktif hale getirin.');
+            }
+
+            const seciliSiniflar = [];
+            if (ayarlar?.dersler && ayarlar.dersler.length > 0) {
+                ayarlar.dersler.forEach(ders => {
+                    if (ders.siniflar && ders.siniflar.length > 0) {
+                        seciliSiniflar.push(...ders.siniflar);
                     }
+                });
+            }
 
-                    const seciliSiniflar = [];
-                    if (ayarlar?.dersler && ayarlar.dersler.length > 0) {
-                        ayarlar.dersler.forEach(ders => {
-                            if (ders.siniflar && ders.siniflar.length > 0) {
-                                seciliSiniflar.push(...ders.siniflar);
-                            }
-                        });
-                    }
+            const benzersizSeciliSiniflar = [...new Set(seciliSiniflar)];
+            const seciliSinifOgrencileri = ogrenciler.filter(ogrenci =>
+                benzersizSeciliSiniflar.includes(ogrenci.sinif)
+            );
 
-                    const benzersizSeciliSiniflar = [...new Set(seciliSiniflar)];
-                    const seciliSinifOgrencileri = ogrenciler.filter(ogrenci =>
-                        benzersizSeciliSiniflar.includes(ogrenci.sinif)
-                    );
+            if (seciliSinifOgrencileri.length === 0) {
+                throw new Error('Seçili sınıflarda öğrenci bulunamadı! Lütfen ders ayarlarında sınıf seçimi yapın.');
+            }
 
-                    if (seciliSinifOgrencileri.length === 0) {
-                        throw new Error('Seçili sınıflarda öğrenci bulunamadı! Lütfen ders ayarlarında sınıf seçimi yapın.');
-                    }
+            // Senkron çalıştır
+            const sonuc = gelismisYerlestirme(seciliSinifOgrencileri, aktifSalonlar, ayarlar);
 
-                    const sonuc = gelismisYerlestirme(seciliSinifOgrencileri, aktifSalonlar, ayarlar);
+            if (sonuc && sonuc.istatistikler) {
+                sonuc.istatistikler.toplamOgrenci = ogrenciler.length;
+                sonuc.istatistikler.yerlesemeyenOgrenci = ogrenciler.length - (sonuc.istatistikler.yerlesenOgrenci || 0);
+            }
 
-                    if (sonuc && sonuc.istatistikler) {
-                        sonuc.istatistikler.toplamOgrenci = ogrenciler.length;
-                        sonuc.istatistikler.yerlesemeyenOgrenci = ogrenciler.length - (sonuc.istatistikler.yerlesenOgrenci || 0);
-                    }
+            if (!sonuc || !sonuc.salonlar || sonuc.salonlar.length === 0) {
+                throw new Error('Algoritma geçerli sonuç döndürmedi');
+            }
 
-                    if (!sonuc || !sonuc.salonlar || sonuc.salonlar.length === 0) {
-                        throw new Error('Algoritma geçerli sonuç döndürmedi');
-                    }
+            const formatlanmisSonuc = formatYerlestirmeSonucu(sonuc);
+            yerlestirmeYap(formatlanmisSonuc);
 
-                    const formatlanmisSonuc = formatYerlestirmeSonucu(sonuc);
-                    yerlestirmeYap(formatlanmisSonuc);
-                    tabDegistir('salon-plani');
-                } catch (error) {
-                    console.error('Yerleştirme hatası:', error);
-                    hataAyarla(`Yerleştirme sırasında bir hata oluştu: ${error.message}`);
-                }
-            }, 50);
+            // Success Modal çağrısı (önceden tabDegistir idi)
+            if (onPlacementSuccess) {
+                onPlacementSuccess(sonuc.istatistikler);
+            }
         } catch (error) {
-            console.error('Yerleştirme başlatma hatası:', error);
-            hataAyarla(`Yerleştirme başlatılamadı: ${error.message}`);
+            console.error('Yerleştirme hatası:', error);
+            hataAyarla(`Yerleştirme sırasında bir hata oluştu: ${error.message}`);
         }
     }, [
         readOnly,
@@ -187,10 +182,9 @@ export const usePlacementAlgorithm = (
         ayarlar,
         hataAyarla,
         setActivePlanMeta,
-        yuklemeBaslat,
         formatYerlestirmeSonucu,
         yerlestirmeYap,
-        tabDegistir,
+        onPlacementSuccess,
         showError
     ]);
 

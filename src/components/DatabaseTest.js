@@ -12,12 +12,14 @@ import {
   ListItemText,
   Divider
 } from '@mui/material';
-import db from '../database/database';
+import { useExam } from '../context/ExamContext';
 
 const DatabaseTest = () => {
   const [testResults, setTestResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const { startLoading, stopLoading } = useExam();
 
   const addTestResult = (test, status, message, data = null) => {
     setTestResults(prev => [...prev, {
@@ -31,6 +33,7 @@ const DatabaseTest = () => {
 
   const runDatabaseTests = async () => {
     setIsLoading(true);
+    startLoading('Veritabanı testleri çalıştırılıyor...');
     setError(null);
     setTestResults([]);
 
@@ -53,7 +56,7 @@ const DatabaseTest = () => {
         { id: 1, ad: 'Test', soyad: 'Öğrenci1', numara: '001', sinif: '9/A', cinsiyet: 'E' },
         { id: 2, ad: 'Test', soyad: 'Öğrenci2', numara: '002', sinif: '9/A', cinsiyet: 'K' }
       ];
-      
+
       await db.saveStudents(testStudents);
       addTestResult('Save Students', 'success', `${testStudents.length} öğrenci kaydedildi`, testStudents);
 
@@ -70,7 +73,7 @@ const DatabaseTest = () => {
         sinavSaati: '09:00',
         dersler: [{ ders: 'Matematik', siniflar: ['9/A'] }]
       };
-      
+
       await db.saveSettings(testSettings);
       addTestResult('Save Settings', 'success', 'Ayarlar kaydedildi', testSettings);
 
@@ -85,7 +88,7 @@ const DatabaseTest = () => {
         { id: 1, salonAdi: 'Test Salon 1', kapasite: 30, siraTipi: 'normal' },
         { id: 2, salonAdi: 'Test Salon 2', kapasite: 25, siraTipi: 'normal' }
       ];
-      
+
       await db.saveSalons(testSalons);
       addTestResult('Save Salons', 'success', `${testSalons.length} salon kaydedildi`, testSalons);
 
@@ -107,12 +110,14 @@ const DatabaseTest = () => {
       addTestResult('Error', 'error', `Test hatası: ${error.message}`);
     } finally {
       setIsLoading(false);
+      stopLoading();
     }
   };
 
   const clearDatabase = async () => {
     try {
       setIsLoading(true);
+      startLoading('Veritabanı temizleniyor...');
       await db.clearDatabase();
       setTestResults([]);
       setError(null);
@@ -122,12 +127,14 @@ const DatabaseTest = () => {
       addTestResult('Clear DB', 'error', `Temizleme hatası: ${error.message}`);
     } finally {
       setIsLoading(false);
+      stopLoading();
     }
   };
 
   const clearAutoPlans = async () => {
     try {
       setIsLoading(true);
+      startLoading('Otomatik kayıtlar temizleniyor...');
       await db.clearAutoPlans();
       setTestResults([]);
       setError(null);
@@ -137,6 +144,7 @@ const DatabaseTest = () => {
       addTestResult('Clear Auto Plans', 'error', `Temizleme hatası: ${error.message}`);
     } finally {
       setIsLoading(false);
+      stopLoading();
     }
   };
 
@@ -163,7 +171,7 @@ const DatabaseTest = () => {
       <Typography variant="h4" gutterBottom>
         Veritabanı Test Paneli
       </Typography>
-      
+
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
@@ -175,7 +183,7 @@ const DatabaseTest = () => {
             >
               {isLoading ? 'Testler Çalışıyor...' : 'Veritabanı Testlerini Çalıştır'}
             </Button>
-            
+
             <Button
               variant="outlined"
               color="warning"
@@ -184,7 +192,7 @@ const DatabaseTest = () => {
             >
               Veritabanını Temizle
             </Button>
-            
+
             <Button
               variant="outlined"
               color="error"
@@ -209,7 +217,7 @@ const DatabaseTest = () => {
             <Typography variant="h6" gutterBottom>
               Test Sonuçları
             </Typography>
-            
+
             <List>
               {testResults.map((result, index) => (
                 <React.Fragment key={index}>

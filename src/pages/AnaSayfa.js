@@ -58,6 +58,7 @@ import AyarlarFormu from '../components/AyarlarFormu';
 import SalonFormu from '../components/SalonFormu';
 import { useExamStore } from '../store/useExamStore';
 import { useNotifications, NotificationProvider } from '../components/NotificationSystem';
+import PlacementSuccessModal from '../components/PlacementSuccessModal';
 import { gelismisYerlestirme } from '../algorithms/gelismisYerlestirmeAlgoritmasi';
 import { calculateDeskNumbersForMasalar } from '../algorithms/gelismisYerlestirmeAlgoritmasi';
 import planManager from '../utils/planManager';
@@ -242,6 +243,34 @@ const AnaSayfaContent = React.memo(() => {
   const [activePlanMeta, setActivePlanMeta] = useState(null);
   const currentPlanDisplayName = activePlanMeta?.name || planManager.getCurrentPlanName() || '';
 
+  // Placement Success Modal State
+  const [successModalOpen, setSuccessModalOpen] = useState(false);
+  const [successStats, setSuccessStats] = useState(null);
+  const [successModalTitle, setSuccessModalTitle] = useState(null);
+  const [successModalMessage, setSuccessModalMessage] = useState(null);
+
+  // Yerleştirme Başarılı Handler
+  const handlePlacementSuccess = useCallback((stats) => {
+    setSuccessStats(stats);
+    setSuccessModalTitle('Yerleştirme Tamamlandı!');
+    setSuccessModalMessage('Öğrenciler başarıyla salonlara yerleştirildi.');
+    setSuccessModalOpen(true);
+  }, []);
+
+  // Plan Yükleme Başarılı Handler
+  const handleLoadSuccess = useCallback((stats) => {
+    setSuccessStats(stats);
+    setSuccessModalTitle('Plan Başarıyla Yüklendi!');
+    setSuccessModalMessage('Kayıtlı plan ve yerleşim verileri başarıyla yüklendi.');
+    setSuccessModalOpen(true);
+  }, []);
+
+  // Modal Kapanınca
+  const handleSuccessModalClose = useCallback(() => {
+    setSuccessModalOpen(false);
+    tabDegistir('salon-plani');
+  }, [tabDegistir]);
+
   const {
     printMenuAnchor,
     handlePrintMenuOpen,
@@ -256,7 +285,7 @@ const AnaSayfaContent = React.memo(() => {
     ayarlar
   );
 
-  const { handleSavePlan, handlePlanYukle } = usePlanPersistence(activePlanMeta, setActivePlanMeta);
+  const { handleSavePlan, handlePlanYukle } = usePlanPersistence(activePlanMeta, setActivePlanMeta, handleLoadSuccess);
   const { handleStudentMove, handleStudentTransfer } = useStudentPlacement(
     yerlestirmeSonucu,
     yerlestirmeGuncelle,
@@ -270,9 +299,8 @@ const AnaSayfaContent = React.memo(() => {
     salonlar,
     ayarlar,
     readOnly,
-    yuklemeBaslat,
     yerlestirmeYap,
-    tabDegistir,
+    handlePlacementSuccess,
     hataAyarla,
     setActivePlanMeta,
     showError,
@@ -1183,7 +1211,16 @@ const AnaSayfaContent = React.memo(() => {
         onClose={handleSaveDialogClose}
         onSave={(planAdi) => handleSavePlan(planAdi, { onCloseCallback: handleSaveDialogClose })}
       />
-    </DndProvider>
+
+      {/* Başarı Modalı */}
+      <PlacementSuccessModal
+        open={successModalOpen}
+        onClose={handleSuccessModalClose}
+        statistics={successStats}
+        title={successModalTitle}
+        message={successModalMessage}
+      />
+    </DndProvider >
   );
 });
 

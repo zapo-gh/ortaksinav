@@ -257,11 +257,31 @@ const PlanlamaYap = memo(({
   return (
     <Card sx={{ maxWidth: 1200, mx: 'auto', mt: { xs: 1, sm: 2 }, mb: 2 }}>
       <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 2, sm: 3 } }}>
-          <AssessmentIcon sx={{ mr: 1, color: 'primary.main', fontSize: { xs: 24, sm: 28 } }} />
-          <Typography variant="h6" component="h2" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' }, color: 'text.primary', fontWeight: 'bold' }}>
-            Sınav Yerleştirme Planlaması
-          </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: { xs: 2, sm: 3 }, flexWrap: 'wrap', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <AssessmentIcon sx={{ mr: 1, color: 'primary.main', fontSize: { xs: 24, sm: 28 } }} />
+            <Typography variant="h6" component="h2" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' }, color: 'text.primary', fontWeight: 'bold' }}>
+              Sınav Yerleştirme Planlaması
+            </Typography>
+          </Box>
+
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={yukleme ? null : <PlayIcon />}
+            onClick={process.env.NODE_ENV === 'test' ? onYerlestirmeYap : handleYerlestirmeBaslat}
+            disabled={process.env.NODE_ENV === 'test' ? !!yukleme : (!kontroller?.yerleştirmeYapilabilir || yukleme)}
+            sx={{
+              px: 3,
+              py: 1,
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+              boxShadow: 2
+            }}
+          >
+            {yukleme ? 'İşleniyor...' : 'Yerleştirme Başlat'}
+          </Button>
         </Box>
 
         {/* Genel Durum */}
@@ -472,63 +492,7 @@ const PlanlamaYap = memo(({
           </Paper>
         )}
 
-        {/* Yerleştirme Butonu */}
-        <Box sx={{ textAlign: 'center', mt: 4 }}>
-          <Button
-            variant="contained"
-            size="large"
-            startIcon={yukleme ? <CircularProgress size={20} color="inherit" /> : <PlayIcon />}
-            onClick={process.env.NODE_ENV === 'test' ? onYerlestirmeYap : handleYerlestirmeBaslat}
-            disabled={process.env.NODE_ENV === 'test' ? !!yukleme : (!kontroller?.yerleştirmeYapilabilir || yukleme)}
-            sx={{
-              px: 8,
-              py: 3,
-              fontSize: '1.1rem',
-              fontWeight: '600',
-              borderRadius: 3,
-              textTransform: 'none',
-              backgroundColor: '#1976d2',
-              boxShadow: '0 3px 6px rgba(0, 0, 0, 0.16)',
-              border: '2px solid transparent',
-              minWidth: 280,
-              height: 56,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': {
-                backgroundColor: '#1565c0',
-                boxShadow: '0 6px 12px rgba(0, 0, 0, 0.2)',
-                transform: 'translateY(-2px)',
-                border: '2px solid #0d47a1'
-              },
-              '&:active': {
-                transform: 'translateY(0px)',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
-              },
-              '&:disabled': {
-                backgroundColor: '#e0e0e0',
-                color: '#9e9e9e',
-                boxShadow: 'none',
-                transform: 'none',
-                border: '2px solid transparent'
-              }
-            }}
-          >
-            Yerleştirme Başlat
-          </Button>
-          {yukleme && (
-            <Typography variant="body2" sx={{ mt: 1 }}>
-              Yerleştirme yapılıyor...
-            </Typography>
-          )}
 
-          {yukleme && (
-            <Box sx={{ mt: 3 }}>
-              <LinearProgress sx={{ borderRadius: 2 }} />
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Kelebek algoritması ile öğrenciler yerleştiriliyor...
-              </Typography>
-            </Box>
-          )}
-        </Box>
 
         {/* Yardım Bilgisi */}
         <Alert severity="info" sx={{ mt: 3 }}>

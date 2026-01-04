@@ -71,6 +71,7 @@ export const useExamStore = create(
             placementIndex: {},
             aktifTab: 'ayarlar',
             yukleme: true,
+            yuklemeMesaji: null,
             hata: null,
             role: 'public',
             authUser: null,
@@ -261,8 +262,8 @@ export const useExamStore = create(
                 set({ aktifTab });
             },
 
-            startLoading: () => set({ yukleme: true, hata: null }),
-            stopLoading: () => set({ yukleme: false }),
+            startLoading: (mesaj = 'İşlem yapılıyor...') => set({ yukleme: true, yuklemeMesaji: mesaj, hata: null }),
+            stopLoading: () => set({ yukleme: false, yuklemeMesaji: null }),
             setHata: (hata) => set({ hata, yukleme: false }),
             clearHata: () => set({ hata: null }),
             setRole: (role) => set({ role }),

@@ -5,7 +5,7 @@ import planManager from '../utils/planManager';
 import logger from '../utils/logger';
 import { calculateDeskNumbersForMasalar } from '../algorithms/gelismisYerlestirmeAlgoritmasi';
 
-export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
+export const usePlanPersistence = (activePlanMeta, setActivePlanMeta, onLoadSuccess) => {
     const {
         ogrenciler,
         ayarlar,
@@ -15,12 +15,15 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
         yerlestirmeGuncelle,
         tabDegistir,
         ogrenciPin,
-        ogrenciUnpin
+        ogrenciUnpin,
+        yuklemeBaslat,
+        yuklemeBitir
     } = useExam();
 
     const { showSuccess, showError, showInfo } = useNotifications();
 
     const handleSavePlan = useCallback(async (planAdi, options) => {
+        // ... (handleSavePlan içeriği değişmedi)
         let onCloseCallback = undefined;
         let targetPlanId = null;
 
@@ -48,6 +51,8 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
         }
 
         try {
+            yuklemeBaslat(`Plan "${trimmedPlanName}" kaydediliyor, lütfen bekleyiniz...`);
+
             const ayarlarKopya = JSON.parse(JSON.stringify(ayarlar || {}));
             const { kayitliSalonlar, ...ayarlarKopyaTemiz } = ayarlarKopya;
 
@@ -128,7 +133,9 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
                 throw new Error('Plan kaydedilemedi. Plan ID alınamadı. Firestore aktif mi kontrol edin.');
             }
 
-            showSuccess(`Plan "${trimmedPlanName}" başarıyla veritabanına ${isUpdate ? 'güncellendi' : 'kaydedildi'}!`);
+            setTimeout(() => {
+                showSuccess(`Plan "${trimmedPlanName}" başarıyla veritabanına ${isUpdate ? 'güncellendi' : 'kaydedildi'}!`);
+            }, 500);
 
             setActivePlanMeta({
                 id: planId,
@@ -140,10 +147,15 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
             logger.error('❌ Plan kaydetme hatası:', error);
             showError(`Plan kaydedilirken hata oluştu: ${error.message}`);
             throw error;
+        } finally {
+            yuklemeBitir();
         }
-    }, [yerlestirmeSonucu, salonlar, ayarlar, ogrenciler, showError, showSuccess, showInfo, activePlanMeta, setActivePlanMeta]);
+    }, [yerlestirmeSonucu, salonlar, ayarlar, ogrenciler, showError, showSuccess, showInfo, activePlanMeta, setActivePlanMeta, yuklemeBaslat, yuklemeBitir]);
+
 
     const handlePlanYukle = useCallback(async (plan) => {
+        yuklemeBaslat('Plan yükleniyor, lütfen bekleyiniz...');
+
         try {
             let planMeta = null;
             let planData = null;
@@ -190,12 +202,6 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
             }
 
             let tumSalonlarSirali = planData.tumSalonlar;
-            // Salonları sıralama işlemini kaldırıyoruz - Kayıtlı sırayı koru
-            // tumSalonlarSirali = [...tumSalonlarSirali].sort((a, b) => {
-            //     const aId = parseInt(a.id || a.salonId || 0, 10);
-            //     const bId = parseInt(b.id || b.salonId || 0, 10);
-            //     return aId - bId;
-            // });
 
             const yerlestirmeFormatinda = {
                 id: resolvedPlanId,
@@ -240,10 +246,6 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
                 ayarlarGuncelle(metaFallback);
             }
 
-            // Bu blok kaldırıldı: Aktif salon eşleştirmesi 295. satırda daha güvenli yapılıyor
-            // if (yerlestirmeFormatinda.salon && (!yerlestirmeFormatinda.salon.masalar || ...)) { ... }
-
-            // Öğrenci bilgilerini güncel liste ile senkronize et
             const ogrenciMap = new Map(ogrenciler.map(o => [o.id?.toString(), o]));
 
             if (yerlestirmeFormatinda.tumSalonlar && yerlestirmeFormatinda.tumSalonlar.length > 0) {
@@ -253,16 +255,11 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
                             if (masa.ogrenci && masa.ogrenci.id) {
                                 const guncelOgrenci = ogrenciMap.get(masa.ogrenci.id.toString());
                                 if (guncelOgrenci) {
-                                    // GÜVENLİK KONTROLÜ: ID eşleşse bile Numara eşleşmiyorsa, bu yeni listedeki farklı bir öğrencidir (ID çakışması).
-                                    // Bu durumda güncel veriyi KULLANMA, kayıtlı plandaki orijinal veriyi koru.
                                     const numaraEslesti = String(guncelOgrenci.numara).trim() === String(masa.ogrenci.numara).trim();
-
                                     if (numaraEslesti) {
-                                        // Öğrenci bilgilerini güncel verilerle birleştir
                                         masa.ogrenci = {
                                             ...masa.ogrenci,
                                             ...guncelOgrenci,
-                                            // Plan'daki pozisyon bilgilerini koru
                                             masaNumarasi: masa.ogrenci.masaNumarasi || masa.masaNumarasi
                                         };
                                     } else {
@@ -284,14 +281,11 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
                 }
             }
 
-            // Yerleşilemeyen öğrenciler için de güncelleme yap
-            // Yerleşilemeyen öğrenciler için de güncelleme yap ve ID Çakışmasını kontrol et
             if (yerlestirmeFormatinda.yerlesilemeyenOgrenciler && Array.isArray(yerlestirmeFormatinda.yerlesilemeyenOgrenciler)) {
                 yerlestirmeFormatinda.yerlesilemeyenOgrenciler = yerlestirmeFormatinda.yerlesilemeyenOgrenciler.map(ogrenci => {
                     if (ogrenci && ogrenci.id) {
                         const guncelOgrenci = ogrenciMap.get(ogrenci.id.toString());
                         if (guncelOgrenci) {
-                            // GÜVENLİK: ID çakışması kontrolü
                             const numaraEslesti = String(guncelOgrenci.numara).trim() === String(ogrenci.numara).trim();
                             if (numaraEslesti) {
                                 return {
@@ -311,62 +305,47 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
 
             const hasExplicitSabit = planData.sabitOgrenciler && Array.isArray(planData.sabitOgrenciler);
             if (hasExplicitSabit) {
-                // Haritaları hazırla (Performans için döngü dışında)
                 const currentSalonMapById = new Map(salonlar.map(s => [String(s.id), s]));
                 const currentSalonMapByName = new Map(salonlar.map(s => [s.ad?.trim(), s]));
                 const savedSalonMapById = new Map((yerlestirmeFormatinda.tumSalonlar || []).map(s => [String(s.id), s]));
 
                 ogrenciler.forEach(ogrenci => {
-                    // Önce ID'ye göre, sonra NUMARA'ya göre eşleşme ara
                     const planSabit = planData.sabitOgrenciler.find(ps =>
                         ps.id?.toString() === ogrenci.id?.toString() ||
                         (ps.numara && String(ps.numara).trim() === String(ogrenci.numara).trim())
                     );
 
                     if (planSabit) {
-                        // Bulunan kaydın Numara'sı eşleşiyor mu?
                         const numaraEslesti = String(planSabit.numara).trim() === String(ogrenci.numara).trim();
 
                         if (numaraEslesti) {
-                            // SALON ve MASA ID Çözümleme (Deep Recovery)
                             let targetSalonId = planSabit.pinnedSalonId;
                             let targetMasaId = planSabit.pinnedMasaId;
 
-                            // 1. Salon ID değişmiş mi kontrol et
                             let currentTargetSalon = currentSalonMapById.get(String(targetSalonId));
-
-                            // ID ile bulunamadıysa İSİM ile bulmaya çalış (Salonlar silinip tekrar açılmış olabilir)
                             if (!currentTargetSalon) {
                                 const savedSalon = savedSalonMapById.get(String(targetSalonId));
                                 if (savedSalon) {
                                     currentTargetSalon = currentSalonMapByName.get(savedSalon.ad?.trim());
                                     if (currentTargetSalon) {
-                                        targetSalonId = currentTargetSalon.id; // Yeni ID'yi kullan
-                                        // logger.info(`Salon ID güncellendi (İsim eşleşmesi): ${savedSalon.ad} -> ${targetSalonId}`);
+                                        targetSalonId = currentTargetSalon.id;
                                     }
                                 }
                             }
 
-                            // 2. Masa ID değişmiş mi kontrol et (Eğer Salon bulunduysa)
                             if (currentTargetSalon) {
-                                // Mevcut masanın ID'si güncel salonda var mı?
                                 const masaExists = (currentTargetSalon.masalar || []).some(m => String(m.id) === String(targetMasaId));
-
-                                // ID yoksa, MASA NUMARASI ile bulmaya çalış (Masalar yeniden üretilmiş olabilir)
                                 if (!masaExists) {
-                                    // Kayıtlı planda bu masanın numarasını bul (savedSalonMapById'den)
-                                    const savedSalon = savedSalonMapById.get(String(planSabit.pinnedSalonId)); // Orijinal ID'yi kullan
+                                    const savedSalon = savedSalonMapById.get(String(planSabit.pinnedSalonId));
                                     const savedMasa = (savedSalon?.masalar || []).find(m => String(m.id) === String(planSabit.pinnedMasaId));
 
                                     if (savedMasa) {
                                         const matchingCurrentMasa = (currentTargetSalon.masalar || []).find(m => m.masaNumarasi === savedMasa.masaNumarasi);
                                         if (matchingCurrentMasa) {
-                                            targetMasaId = matchingCurrentMasa.id; // Yeni Masa ID'yi kullan
+                                            targetMasaId = matchingCurrentMasa.id;
                                         }
                                     }
                                 }
-
-                                // Tüm parçalar (Öğrenci, Salon, Masa) doğrulandıysa PİNLE
                                 ogrenciPin(ogrenci.id, targetSalonId, targetMasaId);
                             } else {
                                 logger.warn(`⚠️ Sabit Atama Hatası: Salon bulunamadı. OrijinalID: ${planSabit.pinnedSalonId}`);
@@ -379,6 +358,7 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
                     }
                 });
             } else {
+                // Eski sistem sabitleme (implicit)
                 const planOgrencileri = new Map();
                 const planOgrencileriByNumara = new Map();
 
@@ -426,7 +406,6 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
                         }
 
                         if (planOgrenci && (planOgrenci.pinned || planOgrenci.pinnedSalonId || planOgrenci.pinnedMasaId)) {
-                            // GÜVENLİK: ID çakışması kontrolü
                             const numaraEslesti = String(planOgrenci.numara).trim() === String(ogrenci.numara).trim();
                             if (numaraEslesti) {
                                 ogrenciPin(ogrenci.id, planOgrenci.pinnedSalonId, planOgrenci.pinnedMasaId);
@@ -440,11 +419,23 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
                 }
             }
 
-            tabDegistir('salon-plani');
-            showSuccess('Plan başarıyla yüklendi!');
+            // Eğer onLoadSuccess callback'i varsa çağır
+            if (onLoadSuccess) {
+                // Modal açılacağı için showSuccess kapatılabilir veya kalabilir, modal daha iyi
+                onLoadSuccess(planData.istatistikler || yerlestirmeFormatinda.istatistikler);
+            } else {
+                // showSuccess mesajı (Geri uyumluluk için, eğer callback yoksa)
+                setTimeout(() => {
+                    showSuccess('Plan başarıyla yüklendi!');
+                    tabDegistir('salon-plani');
+                }, 500);
+            }
+
         } catch (error) {
             console.error('❌ Plan yükleme hatası:', error);
             showError(`Plan yüklenirken hata oluştu: ${error.message}`);
+        } finally {
+            yuklemeBitir();
         }
     }, [
         ogrenciler,
@@ -460,7 +451,11 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta) => {
         tabDegistir,
         ogrenciPin,
         ogrenciUnpin,
-        setActivePlanMeta
+        setActivePlanMeta,
+        onLoadSuccess,
+        yuklemeBaslat,
+        yuklemeBitir,
+        salonlar
     ]);
 
     return { handleSavePlan, handlePlanYukle };
