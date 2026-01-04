@@ -1,6 +1,7 @@
 import React from 'react';
 import { Dialog, DialogTitle, DialogContent, TextField, List, ListItemButton, ListItemText, Box, Typography, Alert } from '@mui/material';
 import ExamContext from '../context/ExamContext';
+import { getPlacementMap, resolveStudentPlacement } from '../utils/placementHelper';
 
 const QuickSearchModal = ({ open, onClose }) => {
   // ExamProvider olmadan render edilirse testlerde hata vermemesi için güvenli context erişimi
@@ -19,29 +20,24 @@ const QuickSearchModal = ({ open, onClose }) => {
           inputRef.current.focus();
         }
       }, 100); // Modal animasyonunun tamamlanması için kısa bir gecikme
-      
+
       return () => clearTimeout(timer);
     }
   }, [open]);
 
-  const getPlacementFallback = (studentId) => {
-    try {
-      const tumSalonlar = yerlestirmeSonucu?.tumSalonlar;
-      if (!Array.isArray(tumSalonlar)) return {};
-      for (const salon of tumSalonlar) {
-        const masalar = Array.isArray(salon.masalar) ? salon.masalar : [];
-        const masa = masalar.find(m => m?.ogrenci?.id === studentId);
-        if (masa) {
-          return {
-            salonId: salon.id || salon.salonId,
-            salonAdi: salon.salonAdi || salon.ad,
-            masaNo: masa.masaNumarasi != null ? masa.masaNumarasi : (typeof masa.id === 'number' ? masa.id + 1 : null)
-          };
-        }
-      }
-      return {};
-    } catch (e) { return {}; }
-  };
+  /* 
+   * yerlestirmeSonucu güncellendiğinde placementMap'i bir kez oluştur.
+   * Bu işlem render maliyetini düşürür ve merkezi mantığı kullanır.
+   */
+  const placementMap = React.useMemo(() => {
+    // getPlacementMap fonksiyonunu kullanarak haritayı oluştur
+    // Ancak bunu import etmemiz lazım, dosyanın başına import ekleyeceğim
+    // Şimdilik buradaki mantığı placementHelper'dan gelen fonksiyonlarla değiştirelim.
+    // NOT: Bu dosyanın en üstüne import eklemem gerekiyor, replace_file_content ile bunu tek seferde yapamam.
+    // Dolayısıyla önce importları ve getPlacementMap kullanımını ekleyen daha geniş bir değişiklik yapmalıyım.
+    // Ancak bu tool çağrısı sadece belirli satırları değiştiriyor.
+    return getPlacementMap(yerlestirmeSonucu?.tumSalonlar);
+  }, [yerlestirmeSonucu]);
 
   const results = React.useMemo(() => {
     const q = query.trim().toLocaleLowerCase('tr-TR');
@@ -53,10 +49,27 @@ const QuickSearchModal = ({ open, onClose }) => {
       ))
       .slice(0, 30)
       .map(o => {
-        const plc = placementIndex?.[o.id] && placementIndex[o.id].salonAdi ? placementIndex[o.id] : getPlacementFallback(o.id);
+        // GÜNCELLEME: Artık placementHelper'daki güvenli çözücüyü kullanıyoruz
+        // placementIndex (varsa) veya placementMap üzerinden çözümleme yap
+
+        let plc = {};
+
+        // 1. placementHelper ile kontrol et (En güvenilir yöntem)
+        const info = resolveStudentPlacement(placementMap, o);
+        if (info) {
+          plc = {
+            salonAdi: info.salonAdi,
+            salonId: info.salonId,
+            masaNo: info.koltukNo
+          };
+        } else if (placementIndex?.[o.id] && placementIndex[o.id].salonAdi) {
+          // 2. placementIndex (varsa yedek)
+          plc = placementIndex[o.id];
+        }
+
         return { id: o.id, ad: o.ad, soyad: o.soyad, numara: o.numara, sinif: o.sinif || o.sube, ...plc };
       });
-  }, [query, ogrenciler, placementIndex, yerlestirmeSonucu]);
+  }, [query, ogrenciler, placementIndex, placementMap]);
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
@@ -67,14 +80,14 @@ const QuickSearchModal = ({ open, onClose }) => {
             Henüz yerleştirme yapılmadı. Öğrencilerin salon/masa bilgisi bu nedenle boş olabilir.
           </Alert>
         )}
-        <TextField 
+        <TextField
           inputRef={inputRef}
-          autoFocus 
-          fullWidth 
-          placeholder="Ad, Soyad veya Numara" 
-          value={query} 
-          onChange={e => setQuery(e.target.value)} 
-          size="small" 
+          autoFocus
+          fullWidth
+          placeholder="Ad, Soyad veya Numara"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          size="small"
         />
         {query && (
           <List dense>

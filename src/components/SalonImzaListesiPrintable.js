@@ -11,52 +11,18 @@ import {
   Paper
 } from '@mui/material';
 
+import { calculateDeskNumberForMasa } from '../utils/placementHelper';
+
 /**
  * Salon İmza Listesi Bileşeni
  * Her salon için masa numarasına göre sıralanmış öğrenci listesi
  * Sınıf, ders ve imza bölümleri içerir
  */
 const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {}, tumOgrenciler = [] }, ref) => {
-  // Masa numarası hesaplama fonksiyonu
-  const calculateDeskNumberForMasa = (masa) => {
-    if (!masa || !yerlestirmeSonucu?.tumSalonlar) return masa?.id + 1 || 1;
+  // calculateDeskNumberForMasa artık dışarıdan alınıyor (import edildi)
+  // Wrapper fonksiyon: Sadece salon parametresini kolaylaştırmak için
+  const getMasaNo = (masa) => calculateDeskNumberForMasa(masa, yerlestirmeSonucu?.tumSalonlar);
 
-    // Tüm salonları kontrol et
-    for (const salon of yerlestirmeSonucu.tumSalonlar) {
-      if (salon.masalar && Array.isArray(salon.masalar)) {
-        const allMasalar = salon.masalar;
-        const gruplar = {};
-
-        allMasalar.forEach(m => {
-          const grup = m.grup || 1;
-          if (!gruplar[grup]) gruplar[grup] = [];
-          gruplar[grup].push(m);
-        });
-
-        let masaNumarasi = 1;
-        const sortedGruplar = Object.keys(gruplar).sort((a, b) => parseInt(a) - parseInt(b));
-
-        for (const grupId of sortedGruplar) {
-          const grupMasalar = gruplar[grupId];
-
-          // Grup içinde satır-sütun sıralaması
-          const sortedGrupMasalar = grupMasalar.sort((a, b) => {
-            if (a.satir !== b.satir) return a.satir - b.satir;
-            return a.sutun - b.sutun;
-          });
-
-          for (const m of sortedGrupMasalar) {
-            if (m.id === masa.id) {
-              return masaNumarasi;
-            }
-            masaNumarasi++;
-          }
-        }
-      }
-    }
-
-    return masa.id + 1; // Fallback
-  };
 
   // Tüm salonları al - salon sırasına göre sırala
   const tumSalonlar = (yerlestirmeSonucu?.tumSalonlar || []).sort((a, b) => {
@@ -435,7 +401,7 @@ const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {},
               if (masa) {
                 return {
                   salonAdi: salon.salonAdi || salon.ad,
-                  masaNo: masa.masaNumarasi || calculateDeskNumberForMasa(masa)
+                  masaNo: masa.masaNumarasi || getMasaNo(masa)
                 };
               }
             }
