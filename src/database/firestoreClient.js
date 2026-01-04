@@ -48,7 +48,7 @@ class FirestoreClient {
     this.isDisabled = DISABLE_FIREBASE || isMockDb;
 
     // DEBUG: Durum logları - Console'a da yaz
-    console.log('🔥 FirestoreClient constructor:', {
+    logger.info('🔥 FirestoreClient constructor:', {
       DISABLE_FIREBASE,
       dbIsMock: isMockDb,
       isDisabled: this.isDisabled,
@@ -65,14 +65,14 @@ class FirestoreClient {
     });
 
     if (this.isDisabled) {
-      console.warn('⚠️ Firestore DEVRE DIŞI - veriler Firestore\'a kaydedilmeyecek!');
-      console.warn('⚠️ Sebep:', {
+      logger.warn('⚠️ Firestore DEVRE DIŞI - veriler Firestore\'a kaydedilmeyecek!');
+      logger.warn('⚠️ Sebep:', {
         DISABLE_FIREBASE,
         dbIsMock: isMockDb
       });
       logger.warn('⚠️ Firestore DEVRE DIŞI - veriler Firestore\'a kaydedilmeyecek!');
     } else {
-      console.log('✅ Firestore AKTIF - veriler Firestore\'a kaydedilecek');
+      logger.info('✅ Firestore AKTIF - veriler Firestore\'a kaydedilecek');
       logger.info('✅ Firestore AKTIF - veriler Firestore\'a kaydedilecek');
     }
   }
@@ -93,7 +93,7 @@ class FirestoreClient {
    */
   async savePlan(planData) {
     // DEBUG: Plan kaydetme başlangıcı - Console'a da yaz
-    console.log('💾 Firestore savePlan çağrıldı:', {
+    logger.info('💾 Firestore savePlan çağrıldı:', {
       planName: planData?.name,
       isDisabled: this.isDisabled,
       dbIsMock: this.db?.mock
@@ -106,7 +106,7 @@ class FirestoreClient {
 
     const disabledResult = this._handleDisabledFirebase('savePlan', 'mock-plan-id');
     if (disabledResult && disabledResult.isDisabled) {
-      console.error('❌ Firestore devre dışı, plan kaydedilemez!');
+      logger.error('❌ Firestore devre dışı, plan kaydedilemez!');
       logger.error('❌ Firestore devre dışı, plan kaydedilemez!');
       throw new Error('Firestore devre dışı. Plan kaydedilemez. Lütfen Firestore\'u aktif edin.');
     }
@@ -205,8 +205,8 @@ class FirestoreClient {
         await this.saveUnplacedStudents(planId, planData.data.yerlesilemeyenOgrenciler, ownerId);
       }
 
-      console.log('✅ Firestore: Plan kaydedildi:', planId);
-      console.log('✅ Firestore: Plan kaydetme başarılı - Plan ID:', planId);
+      logger.info('✅ Firestore: Plan kaydedildi:', planId);
+      logger.info('✅ Firestore: Plan kaydetme başarılı - Plan ID:', planId);
       logger.info('✅ Firestore: Plan kaydedildi:', planId);
       logger.info('✅ Firestore: Plan kaydetme başarılı - Plan ID:', planId);
       return planId;
@@ -249,7 +249,7 @@ class FirestoreClient {
             // Fallback: index'e dayalı ID oluştur (sıfırlarla doldurulmuş)
             const globalIndex = i + chunkIndex;
             salonId = String(globalIndex).padStart(3, '0'); // "000", "001", "002", ...
-            console.warn(`⚠️ Firestore: Salon ID bulunamadı, fallback ID kullanılıyor: ${salonId}`, salon);
+            logger.warn(`⚠️ Firestore: Salon ID bulunamadı, fallback ID kullanılıyor: ${salonId}`, salon);
           }
 
           // Firestore path segment'leri için güvenli karakterler kullan (/, \ gibi karakterleri temizle)
@@ -663,7 +663,7 @@ class FirestoreClient {
         await this.saveUnplacedStudents(planId, planData.data.yerlesilemeyenOgrenciler, ownerId);
       }
 
-      console.log('✅ Firestore: Plan güncellendi:', planId);
+      logger.info('✅ Firestore: Plan güncellendi:', planId);
       logger.info('✅ Firestore: Plan güncellendi:', planId);
       return planId;
     } catch (error) {
@@ -897,7 +897,7 @@ class FirestoreClient {
       // Pinned öğrencileri kontrol et ve log'la
       const pinnedStudents = students.filter(s => s.pinned === true);
       if (pinnedStudents.length > 0) {
-        console.log(`📌 Firestore: ${pinnedStudents.length} sabitlenen öğrenci yüklendi:`,
+        logger.info(`📌 Firestore: ${pinnedStudents.length} sabitlenen öğrenci yüklendi:`,
           pinnedStudents.map(s => ({
             id: s.id,
             ad: s.ad || s.name,
@@ -908,7 +908,7 @@ class FirestoreClient {
           })));
       }
 
-      console.log(`📊 Firestore: ${students.length} öğrenci yüklendi (duplicate kontrolü öncesi)`);
+      logger.info(`📊 Firestore: ${students.length} öğrenci yüklendi (duplicate kontrolü öncesi)`);
 
       // Geçersiz öğrencileri filtrele (ad/soyad/numara eksik olanlar)
       const invalidStudents = students.filter(s => {
@@ -919,7 +919,7 @@ class FirestoreClient {
       });
 
       if (invalidStudents.length > 0) {
-        console.warn(`⚠️ Geçersiz öğrenci kayıtları tespit edildi (${invalidStudents.length} adet):`,
+        logger.warn(`⚠️ Geçersiz öğrenci kayıtları tespit edildi (${invalidStudents.length} adet):`,
           invalidStudents.map(s => ({ id: s.id, ad: s.ad, soyad: s.soyad, numara: s.numara || s.number })));
 
         // Geçersiz öğrencileri Firestore'dan sil
@@ -928,7 +928,7 @@ class FirestoreClient {
 
         // Geçersiz kayıtları Firestore'dan sil
         if (invalidStudents.length > 0) {
-          console.log(`🗑️ Geçersiz öğrenci kayıtları Firestore'dan siliniyor...`);
+          logger.info(`🗑️ Geçersiz öğrenci kayıtları Firestore'dan siliniyor...`);
           const deleteBatch = writeBatch(this.db);
           invalidStudents.forEach(student => {
             const studentRef = doc(this.db, 'students', student.id.toString());
@@ -936,16 +936,16 @@ class FirestoreClient {
           });
           try {
             await deleteBatch.commit();
-            console.log(`✅ ${invalidStudents.length} geçersiz öğrenci kaydı Firestore'dan silindi`);
+            logger.info(`✅ ${invalidStudents.length} geçersiz öğrenci kaydı Firestore'dan silindi`);
           } catch (deleteError) {
-            console.error('❌ Geçersiz öğrenci kayıtları silinirken hata:', deleteError);
+            logger.error('❌ Geçersiz öğrenci kayıtları silinirken hata:', deleteError);
           }
         }
 
         // Geçerli öğrencileri kullan
         students.length = 0;
         students.push(...validStudents);
-        console.log(`📊 Geçerli öğrenci sayısı: ${students.length} (${invalidStudents.length} geçersiz kayıt filtrelendi)`);
+        logger.info(`📊 Geçerli öğrenci sayısı: ${students.length} (${invalidStudents.length} geçersiz kayıt filtrelendi)`);
       }
 
       // 555 numaralı öğrenciyi özel olarak kontrol et ve tüm öğrencileri numara ve ad/soyad'a göre kontrol et
@@ -959,9 +959,9 @@ class FirestoreClient {
           (ad.includes('can') && soyad.includes('güzel'));
       });
 
-      console.log(`🔍 555 numaralı veya Can Güzel öğrenci kontrolü: ${student555.length} kayıt bulundu`);
+      logger.info(`🔍 555 numaralı veya Can Güzel öğrenci kontrolü: ${student555.length} kayıt bulundu`);
       if (student555.length > 0) {
-        console.log(`📋 555/Can Güzel öğrenci detayları:`, student555.map(s => ({
+        logger.info(`📋 555/Can Güzel öğrenci detayları:`, student555.map(s => ({
           id: s.id,
           numara: s.numara || s.number,
           ad: s.ad || s.name,
@@ -993,7 +993,7 @@ class FirestoreClient {
       });
 
       if (duplicateByName.length > 0) {
-        console.warn(`⚠️ Aynı numara ve ad/soyad kombinasyonuna sahip ${duplicateByName.length} duplicate bulundu:`,
+        logger.warn(`⚠️ Aynı numara ve ad/soyad kombinasyonuna sahip ${duplicateByName.length} duplicate bulundu:`,
           duplicateByName.map(d => ({
             key: d.key,
             count: d.students.length,
@@ -1006,13 +1006,13 @@ class FirestoreClient {
 
       if (students.length !== uniqueStudents.length) {
         const duplicateCount = students.length - uniqueStudents.length;
-        console.warn(`⚠️ Firestore: ${duplicateCount} duplicate öğrenci filtrelendi, ${uniqueStudents.length} unique öğrenci döndürüldü`);
+        logger.warn(`⚠️ Firestore: ${duplicateCount} duplicate öğrenci filtrelendi, ${uniqueStudents.length} unique öğrenci döndürüldü`);
         logger.warn(`⚠️ Firestore: ${duplicateCount} duplicate öğrenci filtrelendi, ${uniqueStudents.length} unique öğrenci döndürüldü`);
       } else {
-        console.log(`✅ Firestore: Duplicate öğrenci bulunamadı, ${uniqueStudents.length} öğrenci`);
+        logger.info(`✅ Firestore: Duplicate öğrenci bulunamadı, ${uniqueStudents.length} öğrenci`);
       }
 
-      console.log(`✅ Firestore: Öğrenciler yüklendi (SERVER): ${uniqueStudents.length} öğrenci`);
+      logger.info(`✅ Firestore: Öğrenciler yüklendi (SERVER): ${uniqueStudents.length} öğrenci`);
       logger.info('✅ Firestore: Öğrenciler yüklendi (SERVER):', uniqueStudents.length, 'öğrenci');
       if (uniqueStudents.length > 0) {
         logger.info('📋 İlk öğrenci:', uniqueStudents[0]);
@@ -1097,7 +1097,7 @@ class FirestoreClient {
     // Numara bazlı duplicate'leri bul
     studentsByNumber.forEach((studentsWithSameNumber, numara) => {
       if (studentsWithSameNumber.length > 1) {
-        console.warn(`⚠️ Duplicate numara tespit edildi: ${numara} - ${studentsWithSameNumber.length} kayıt:`,
+        logger.warn(`⚠️ Duplicate numara tespit edildi: ${numara} - ${studentsWithSameNumber.length} kayıt:`,
           studentsWithSameNumber.map(s => ({ id: s.id, ad: s.ad, soyad: s.soyad })));
 
         // İlkini tut, diğerlerini duplicate olarak işaretle
@@ -1115,7 +1115,7 @@ class FirestoreClient {
     // ID bazlı duplicate'leri bul
     studentsById.forEach((studentsWithSameId, id) => {
       if (studentsWithSameId.length > 1) {
-        console.warn(`⚠️ Duplicate ID tespit edildi: ${id} - ${studentsWithSameId.length} kayıt`);
+        logger.warn(`⚠️ Duplicate ID tespit edildi: ${id} - ${studentsWithSameId.length} kayıt`);
         for (let i = 1; i < studentsWithSameId.length; i++) {
           duplicates.push({
             type: 'ID',
@@ -1163,12 +1163,12 @@ class FirestoreClient {
     });
 
     if (duplicates.length > 0) {
-      console.log(`🔍 Toplam ${duplicates.length} duplicate tespit edildi ve filtrelendi:`, duplicates);
-      console.log(`📊 Sonuç: ${students.length} öğrenci → ${uniqueStudents.length} unique öğrenci (${duplicates.length} duplicate filtrelendi)`);
+      logger.info(`🔍 Toplam ${duplicates.length} duplicate tespit edildi ve filtrelendi:`, duplicates);
+      logger.info(`📊 Sonuç: ${students.length} öğrenci → ${uniqueStudents.length} unique öğrenci (${duplicates.length} duplicate filtrelendi)`);
     }
 
     if (studentsWithoutNumber.length > 0) {
-      console.warn(`⚠️ ${studentsWithoutNumber.length} öğrenci numarası olmadan kaydedilmiş:`,
+      logger.warn(`⚠️ ${studentsWithoutNumber.length} öğrenci numarası olmadan kaydedilmiş:`,
         studentsWithoutNumber.map(s => ({ id: s.id, ad: s.ad, soyad: s.soyad })));
     }
 
@@ -1567,4 +1567,5 @@ class FirestoreClient {
 // Singleton instance
 const firestoreClient = new FirestoreClient();
 export default firestoreClient;
+
 

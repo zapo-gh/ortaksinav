@@ -129,11 +129,7 @@ class DatabaseAdapter {
    */
   async updatePlan(planId, planData) {
     try {
-      console.log('🔄 DatabaseAdapter updatePlan çağrıldı:', {
-        planId,
-        planName: planData?.name,
-        useFirestore: this.useFirestore
-      });
+
       logger.info('🔄 DatabaseAdapter updatePlan çağrıldı:', {
         planId,
         planName: planData?.name,
@@ -144,17 +140,17 @@ class DatabaseAdapter {
       if (!canWrite) {
         throw new Error('Yazma izni olmayan oturumda plan güncellenemez.');
       }
-      
+
       // Firestore birincil - veriyi sanitize et
       const payload = this.sanitizeForFirestore(planData);
       const db = await this.getActiveDB();
-      
+
       if (!db.updatePlan) {
         throw new Error('Veritabanı güncelleme desteği yok');
       }
-      
+
       const result = await db.updatePlan(planId, payload);
-      console.log('✅ DatabaseAdapter updatePlan başarılı:', result);
+
       logger.info('✅ DatabaseAdapter updatePlan başarılı:', result);
       return result;
     } catch (error) {
@@ -163,7 +159,7 @@ class DatabaseAdapter {
       if (this._isPermissionError(error)) {
         throw new Error('Firestore izin hatası: Plan güncellenemedi.');
       }
-      
+
       // Firestore hatası durumunda IndexedDB'ye geç
       if (this.useFirestore) {
         logger.info('🔄 Firestore hatası, IndexedDB\'ye geçiliyor...');
@@ -173,7 +169,7 @@ class DatabaseAdapter {
           return await indexedDB.updatePlan(planId, planData);
         }
       }
-      
+
       throw error;
     }
   }
@@ -183,12 +179,7 @@ class DatabaseAdapter {
    */
   async savePlan(planData) {
     try {
-      // DEBUG: Plan kaydetme başlangıcı - Console'a da yaz
-      console.log('💾 DatabaseAdapter savePlan çağrıldı:', {
-        planName: planData?.name,
-        useFirestore: this.useFirestore,
-        planDataKeys: Object.keys(planData || {})
-      });
+      // DEBUG: Plan kaydetme başlangıcı
       logger.info('💾 DatabaseAdapter savePlan çağrıldı:', {
         planName: planData?.name,
         useFirestore: this.useFirestore,
@@ -202,57 +193,50 @@ class DatabaseAdapter {
           throw new Error('Yazma izni olmayan oturumda plan kaydedilemez.');
         }
       }
-      
+
       // Firestore birincil - veriyi sanitize et
       const payload = this.sanitizeForFirestore(planData);
       const db = await this.getActiveDB();
-      
-      console.log('🔍 Aktif DB türü:', this.useFirestore ? 'Firestore' : 'IndexedDB');
-      console.log('🔍 DB objesi:', {
-        type: typeof db,
-        hasSavePlan: typeof db?.savePlan === 'function',
-        isFirestore: db?.constructor?.name === 'FirestoreClient' || db?.isDisabled !== undefined,
-        dbConstructor: db?.constructor?.name
-      });
-      
+
+
+
       logger.info('🔍 Aktif DB türü:', this.useFirestore ? 'Firestore' : 'IndexedDB');
       logger.info('🔍 DB objesi:', {
         type: typeof db,
         hasSavePlan: typeof db?.savePlan === 'function',
         isFirestore: db?.constructor?.name === 'FirestoreClient' || db?.isDisabled !== undefined
       });
-      
+
       const result = await db.savePlan(payload);
-      console.log('✅ DatabaseAdapter savePlan başarılı:', result);
+
       logger.info('✅ DatabaseAdapter savePlan başarılı:', result);
-      
+
       // Firestore'a kaydedildiğinden emin ol
       if (this.useFirestore && result && typeof result === 'string') {
-        console.log('✅ Plan Firestore\'a kaydedildi. Plan ID:', result);
+
         logger.info('✅ Plan Firestore\'a kaydedildi. Plan ID:', result);
       } else if (result && typeof result === 'number') {
-        console.warn('⚠️ Plan IndexedDB\'ye kaydedildi (Firestore devre dışı veya hata). Plan ID:', result);
+
         logger.warn('⚠️ Plan IndexedDB\'ye kaydedildi (Firestore devre dışı veya hata). Plan ID:', result);
       }
-      
+
       return result;
     } catch (error) {
       logger.error('❌ Plan kaydetme hatası:', error);
-      console.error('❌ DatabaseAdapter savePlan hatası:', error);
+
 
       if (this._isPermissionError(error)) {
         throw new Error('Firestore izin hatası: Plan kaydedilemedi.');
       }
-      
+
       // Firestore hatası durumunda IndexedDB'ye geç
       if (this.useFirestore) {
-        console.warn('⚠️ Firestore hatası, IndexedDB\'ye geçiliyor...');
+
         logger.warn('⚠️ Firestore hatası, IndexedDB\'ye geçiliyor...');
         try {
           this.useFirestore = false;
           const indexedDB = await this.getIndexedDB();
           const indexedResult = await indexedDB.savePlan(planData);
-          console.warn('⚠️ Plan IndexedDB\'ye kaydedildi (Firestore hatası). Plan ID:', indexedResult);
           logger.warn('⚠️ Plan IndexedDB\'ye kaydedildi (Firestore hatası). Plan ID:', indexedResult);
           return indexedResult;
         } catch (indexedError) {
@@ -260,7 +244,7 @@ class DatabaseAdapter {
           throw new Error(`Plan kaydedilemedi. Firestore hatası: ${error.message}, IndexedDB hatası: ${indexedError.message}`);
         }
       }
-      
+
       throw error;
     }
   }
@@ -274,14 +258,14 @@ class DatabaseAdapter {
       return await db.loadPlan(planId);
     } catch (error) {
       logger.error('❌ Plan yükleme hatası:', error);
-      
+
       if (this.useFirestore) {
         logger.info('🔄 Firestore hatası, IndexedDB\'ye geçiliyor...');
         this.useFirestore = false;
         const indexedDB = await this.getIndexedDB();
         return await indexedDB.loadPlan(planId);
       }
-      
+
       throw error;
     }
   }
@@ -294,19 +278,19 @@ class DatabaseAdapter {
       // Firestore ve IndexedDB için ID formatını kontrol et
       // Firestore ID'leri string, IndexedDB ID'leri number olabilir
       const db = await this.getActiveDB();
-      
+
       // Firestore kullanılıyorsa loadPlan kullan (getPlan yok)
       if (this.useFirestore && typeof planId === 'string' && isNaN(Number(planId))) {
         // Firestore string ID'si - loadPlan kullan
         return await db.loadPlan(planId);
       }
-      
+
       // IndexedDB veya sayısal ID için getPlan kullan
       const indexedDB = await this.getIndexedDB();
       return await indexedDB.getPlan(planId);
     } catch (error) {
       logger.error('❌ Plan getirme hatası:', error);
-      
+
       // Hata durumunda loadPlan'ı dene (Firestore için)
       try {
         const db = await this.getActiveDB();
@@ -316,7 +300,7 @@ class DatabaseAdapter {
       } catch (fallbackError) {
         logger.error('❌ Fallback loadPlan hatası:', fallbackError);
       }
-      
+
       throw error;
     }
   }
@@ -330,14 +314,14 @@ class DatabaseAdapter {
       return await db.getAllPlans();
     } catch (error) {
       logger.error('❌ Plan listesi yükleme hatası:', error);
-      
+
       if (this.useFirestore) {
         logger.info('🔄 Firestore hatası, IndexedDB\'ye geçiliyor...');
         this.useFirestore = false;
         const indexedDB = await this.getIndexedDB();
         return await indexedDB.getAllPlans();
       }
-      
+
       throw error;
     }
   }
@@ -351,14 +335,14 @@ class DatabaseAdapter {
       return await db.getLatestPlan();
     } catch (error) {
       logger.error('❌ En son plan yükleme hatası:', error);
-      
+
       if (this.useFirestore) {
         logger.info('🔄 Firestore hatası, IndexedDB\'ye geçiliyor...');
         this.useFirestore = false;
         const indexedDB = await this.getIndexedDB();
         return await indexedDB.getLatestPlan();
       }
-      
+
       return null;
     }
   }
@@ -372,14 +356,14 @@ class DatabaseAdapter {
       return await db.deletePlan(planId);
     } catch (error) {
       logger.error('❌ Plan silme hatası:', error);
-      
+
       if (this.useFirestore) {
         logger.info('🔄 Firestore hatası, IndexedDB\'ye geçiliyor...');
         this.useFirestore = false;
         const indexedDB = await this.getIndexedDB();
         return await indexedDB.deletePlan(planId);
       }
-      
+
       throw error;
     }
   }
@@ -418,14 +402,14 @@ class DatabaseAdapter {
         logger.info('ℹ️ Öğrenciler sadece IndexedDB\'ye kaydedildi (Firestore izin hatası)');
         return 'local-only';
       }
-      
+
       if (this.useFirestore) {
         logger.info('🔄 Firestore hatası, IndexedDB\'ye geçiliyor...');
         this.useFirestore = false;
         const indexedDB = await this.getIndexedDB();
         return await indexedDB.saveStudents(students);
       }
-      
+
       throw error;
     }
   }
@@ -452,14 +436,14 @@ class DatabaseAdapter {
       return students;
     } catch (error) {
       logger.error('❌ Öğrenci yükleme hatası:', error);
-      
+
       if (this.useFirestore) {
         logger.info('🔄 Firestore hatası, IndexedDB\'ye geçiliyor...');
         this.useFirestore = false;
         const indexedDB = await this.getIndexedDB();
         return await indexedDB.getAllStudents();
       }
-      
+
       return [];
     }
   }
@@ -498,14 +482,14 @@ class DatabaseAdapter {
         logger.info('ℹ️ Ayarlar sadece IndexedDB\'ye kaydedildi (Firestore izin hatası)');
         return 'local-only';
       }
-      
+
       if (this.useFirestore) {
         logger.info('🔄 Firestore hatası, IndexedDB\'ye geçiliyor...');
         this.useFirestore = false;
         const indexedDB = await this.getIndexedDB();
         return await indexedDB.saveSettings(settings);
       }
-      
+
       throw error;
     }
   }
@@ -519,14 +503,14 @@ class DatabaseAdapter {
       return await db.getSettings();
     } catch (error) {
       logger.error('❌ Ayar yükleme hatası:', error);
-      
+
       if (this.useFirestore) {
         logger.info('🔄 Firestore hatası, IndexedDB\'ye geçiliyor...');
         this.useFirestore = false;
         const indexedDB = await this.getIndexedDB();
         return await indexedDB.getSettings();
       }
-      
+
       return {};
     }
   }
@@ -565,14 +549,14 @@ class DatabaseAdapter {
         logger.info('ℹ️ Salonlar sadece IndexedDB\'ye kaydedildi (Firestore izin hatası)');
         return 'local-only';
       }
-      
+
       if (this.useFirestore) {
         logger.info('🔄 Firestore hatası, IndexedDB\'ye geçiliyor...');
         this.useFirestore = false;
         const indexedDB = await this.getIndexedDB();
         return await indexedDB.saveSalons(salons);
       }
-      
+
       throw error;
     }
   }
@@ -599,14 +583,14 @@ class DatabaseAdapter {
       return salons;
     } catch (error) {
       logger.error('❌ Salon yükleme hatası:', error);
-      
+
       if (this.useFirestore) {
         logger.info('🔄 Firestore hatası, IndexedDB\'ye geçiliyor...');
         this.useFirestore = false;
         const indexedDB = await this.getIndexedDB();
         return await indexedDB.getAllSalons();
       }
-      
+
       return [];
     }
   }

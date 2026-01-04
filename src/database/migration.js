@@ -13,12 +13,12 @@ class DatabaseMigration {
    */
   async migrate() {
     if (this.isMigrated) {
-      console.log('✅ Migration zaten tamamlanmış');
+      logger.info('✅ Migration zaten tamamlanmış');
       return;
     }
     
     try {
-      console.log('🔄 localStorage -> IndexedDB migration başlatılıyor...');
+      logger.info('🔄 localStorage -> IndexedDB migration başlatılıyor...');
       
       // 1. Kayıtlı planları migrate et
       await this.migratePlans();
@@ -30,13 +30,13 @@ class DatabaseMigration {
       await this.migrateTempData();
       
       this.isMigrated = true;
-      console.log('✅ Migration tamamlandı!');
+      logger.info('✅ Migration tamamlandı!');
       
       // Migration tamamlandığını işaretle
       await db.saveSetting('migration_completed', true, 'boolean');
       
     } catch (error) {
-      console.error('❌ Migration hatası:', error);
+      logger.error('❌ Migration hatası:', error);
       throw error;
     }
   }
@@ -48,17 +48,17 @@ class DatabaseMigration {
     try {
       const storedPlans = localStorage.getItem('kayitli_planlar');
       if (!storedPlans) {
-        console.log('📝 Kayıtlı plan bulunamadı');
+        logger.info('📝 Kayıtlı plan bulunamadı');
         return;
       }
       
       const plans = JSON.parse(storedPlans);
       if (!Array.isArray(plans)) {
-        console.log('⚠️ Kayıtlı planlar array değil');
+        logger.info('⚠️ Kayıtlı planlar array değil');
         return;
       }
       
-      console.log(`📦 ${plans.length} plan migrate ediliyor...`);
+      logger.info(`📦 ${plans.length} plan migrate ediliyor...`);
       
       for (const plan of plans) {
         try {
@@ -73,18 +73,18 @@ class DatabaseMigration {
           
           // IndexedDB'ye kaydet
           await db.savePlan(planData);
-          console.log(`✅ Plan migrate edildi: ${planData.name}`);
+          logger.info(`✅ Plan migrate edildi: ${planData.name}`);
           
         } catch (planError) {
-          console.error(`❌ Plan migrate hatası (${plan.ad}):`, planError);
+          logger.error(`❌ Plan migrate hatası (${plan.ad}):`, planError);
           // Hatalı planı atla, devam et
         }
       }
       
-      console.log('✅ Plan migration tamamlandı');
+      logger.info('✅ Plan migration tamamlandı');
       
     } catch (error) {
-      console.error('❌ Plan migration hatası:', error);
+      logger.error('❌ Plan migration hatası:', error);
       throw error;
     }
   }
@@ -105,7 +105,7 @@ class DatabaseMigration {
         'sinavAyarlari'
       ];
       
-      console.log('⚙️ Ayarlar migrate ediliyor...');
+      logger.info('⚙️ Ayarlar migrate ediliyor...');
       
       for (const key of settingsKeys) {
         const value = localStorage.getItem(key);
@@ -113,19 +113,19 @@ class DatabaseMigration {
           try {
             const parsedValue = JSON.parse(value);
             await db.saveSetting(key, parsedValue, 'json');
-            console.log(`✅ Ayar migrate edildi: ${key}`);
+            logger.info(`✅ Ayar migrate edildi: ${key}`);
           } catch (parseError) {
             // JSON parse edilemeyen verileri string olarak kaydet
             await db.saveSetting(key, value, 'string');
-            console.log(`✅ Ayar migrate edildi (string): ${key}`);
+            logger.info(`✅ Ayar migrate edildi (string): ${key}`);
           }
         }
       }
       
-      console.log('✅ Ayar migration tamamlandı');
+      logger.info('✅ Ayar migration tamamlandı');
       
     } catch (error) {
-      console.error('❌ Ayar migration hatası:', error);
+      logger.error('❌ Ayar migration hatası:', error);
       throw error;
     }
   }
@@ -142,7 +142,7 @@ class DatabaseMigration {
         'performance_issues'
       ];
       
-      console.log('🗂️ Geçici veriler migrate ediliyor...');
+      logger.info('🗂️ Geçici veriler migrate ediliyor...');
       
       for (const key of tempKeys) {
         const value = localStorage.getItem(key);
@@ -150,19 +150,19 @@ class DatabaseMigration {
           try {
             const parsedValue = JSON.parse(value);
             await db.saveTempData(key, parsedValue, 'json', 24); // 24 saat geçerli
-            console.log(`✅ Geçici veri migrate edildi: ${key}`);
+            logger.info(`✅ Geçici veri migrate edildi: ${key}`);
           } catch (parseError) {
             // JSON parse edilemeyen verileri string olarak kaydet
             await db.saveTempData(key, value, 'string', 24);
-            console.log(`✅ Geçici veri migrate edildi (string): ${key}`);
+            logger.info(`✅ Geçici veri migrate edildi (string): ${key}`);
           }
         }
       }
       
-      console.log('✅ Geçici veri migration tamamlandı');
+      logger.info('✅ Geçici veri migration tamamlandı');
       
     } catch (error) {
-      console.error('❌ Geçici veri migration hatası:', error);
+      logger.error('❌ Geçici veri migration hatası:', error);
       throw error;
     }
   }
@@ -175,7 +175,7 @@ class DatabaseMigration {
       const migrationCompleted = await db.getSetting('migration_completed');
       return migrationCompleted === true;
     } catch (error) {
-      console.error('❌ Migration durumu kontrol hatası:', error);
+      logger.error('❌ Migration durumu kontrol hatası:', error);
       return false;
     }
   }
@@ -203,13 +203,13 @@ class DatabaseMigration {
       
       keysToRemove.forEach(key => {
         localStorage.removeItem(key);
-        console.log(`🗑️ localStorage temizlendi: ${key}`);
+        logger.info(`🗑️ localStorage temizlendi: ${key}`);
       });
       
-      console.log('✅ localStorage temizlendi');
+      logger.info('✅ localStorage temizlendi');
       
     } catch (error) {
-      console.error('❌ localStorage temizleme hatası:', error);
+      logger.error('❌ localStorage temizleme hatası:', error);
       throw error;
     }
   }
@@ -222,7 +222,7 @@ class DatabaseMigration {
       // Migration durumunu kontrol et
       const isMigrated = await this.checkMigrationStatus();
       if (isMigrated) {
-        console.log('✅ Migration zaten tamamlanmış');
+        logger.info('✅ Migration zaten tamamlanmış');
         return;
       }
       
@@ -232,10 +232,10 @@ class DatabaseMigration {
       // localStorage'ı temizle
       await this.clearLocalStorage();
       
-      console.log('🎉 Tam migration işlemi tamamlandı!');
+      logger.info('🎉 Tam migration işlemi tamamlandı!');
       
     } catch (error) {
-      console.error('❌ Tam migration hatası:', error);
+      logger.error('❌ Tam migration hatası:', error);
       throw error;
     }
   }
@@ -245,6 +245,7 @@ class DatabaseMigration {
 const migration = new DatabaseMigration();
 
 export default migration;
+
 
 
 

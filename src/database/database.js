@@ -81,11 +81,11 @@ class KelebekDatabase extends Dexie {
       );
       
       if (isTestPlan) {
-        console.warn('⚠️ IndexedDB: Test Plan kaydetme engellendi (kota koruması):', planName);
+        logger.warn('⚠️ IndexedDB: Test Plan kaydetme engellendi (kota koruması):', planName);
         return null; // Kaydetme
       }
       
-      console.log('💾 Plan verisi kaydediliyor...');
+      logger.info('💾 Plan verisi kaydediliyor...');
       const plan = {
         name: planData.name,
         date: planData.date,
@@ -99,14 +99,14 @@ class KelebekDatabase extends Dexie {
       };
       
       const id = await this.plans.add(plan);
-      console.log('✅ Plan veritabanına kaydedildi:', id);
+      logger.info('✅ Plan veritabanına kaydedildi:', id);
       return id;
     } catch (error) {
-      console.error('❌ Plan kaydetme hatası:', error);
+      logger.error('❌ Plan kaydetme hatası:', error);
       
       // Quota hatası durumunda eski planları temizle ve tekrar dene
       if (error.name === 'QuotaExceededError') {
-        console.log('🧹 Quota hatası - eski planlar temizleniyor...');
+        logger.info('🧹 Quota hatası - eski planlar temizleniyor...');
         await this.cleanupOldPlans();
         
         // Tekrar dene
@@ -124,10 +124,10 @@ class KelebekDatabase extends Dexie {
           };
           
           const id = await this.plans.add(plan);
-          console.log('✅ Plan temizlik sonrası kaydedildi:', id);
+          logger.info('✅ Plan temizlik sonrası kaydedildi:', id);
           return id;
         } catch (retryError) {
-          console.error('❌ Temizlik sonrası da kaydetme başarısız:', retryError);
+          logger.error('❌ Temizlik sonrası da kaydetme başarısız:', retryError);
           throw retryError;
         }
       }
@@ -166,10 +166,10 @@ class KelebekDatabase extends Dexie {
       };
       
       await this.plans.update(normalizedPlanId, updateData);
-      console.log('✅ Plan güncellendi:', normalizedPlanId);
+      logger.info('✅ Plan güncellendi:', normalizedPlanId);
       return normalizedPlanId;
     } catch (error) {
-      console.error('❌ Plan güncelleme hatası:', error);
+      logger.error('❌ Plan güncelleme hatası:', error);
       throw error;
     }
   }
@@ -183,13 +183,13 @@ class KelebekDatabase extends Dexie {
       if (!plan) {
         throw new Error('Plan bulunamadı');
       }
-      console.log('📥 Plan verisi yükleniyor...');
+      logger.info('📥 Plan verisi yükleniyor...');
       return {
         ...plan,
         data: plan.data
       };
     } catch (error) {
-      console.error('❌ Plan yükleme hatası:', error);
+      logger.error('❌ Plan yükleme hatası:', error);
       throw error;
     }
   }
@@ -199,21 +199,21 @@ class KelebekDatabase extends Dexie {
    */
   async getAllPlans() {
     try {
-      console.log('🔍 Database.getAllPlans çağrıldı');
+      logger.info('🔍 Database.getAllPlans çağrıldı');
       const plans = await this.plans.orderBy('updatedAt').reverse().toArray();
-      console.log('✅ Database\'den planlar alındı:', plans.length, 'plan');
-      console.log('📋 Database plan detayları:', plans.map(p => ({ id: p.id, name: p.name, date: p.date })));
+      logger.info('✅ Database\'den planlar alındı:', plans.length, 'plan');
+      logger.info('📋 Database plan detayları:', plans.map(p => ({ id: p.id, name: p.name, date: p.date })));
       
       const mappedPlans = plans.map(plan => ({
         ...plan,
         data: plan.data // SIKIŞTIRMA KALDIRILDI - Doğrudan veriyi döndür
       }));
       
-      console.log('✅ Database planlar map edildi:', mappedPlans.length, 'plan');
+      logger.info('✅ Database planlar map edildi:', mappedPlans.length, 'plan');
       return mappedPlans;
     } catch (error) {
-      console.error('❌ HATA - Database plan listesi yükleme hatası:', error);
-      console.error('❌ Hata detayı:', error.message, error.stack);
+      logger.error('❌ HATA - Database plan listesi yükleme hatası:', error);
+      logger.error('❌ Hata detayı:', error.message, error.stack);
       throw error;
     }
   }
@@ -236,7 +236,7 @@ class KelebekDatabase extends Dexie {
         if (!isNaN(numId)) {
           normalizedPlanId = numId;
         } else {
-          console.warn(`ℹ️ IndexedDB getPlan: planId "${planId}" numerik değil, IndexedDB yalnızca sayısal anahtar destekliyor. Firestore'dan devam edilecek.`);
+          logger.warn(`ℹ️ IndexedDB getPlan: planId "${planId}" numerik değil, IndexedDB yalnızca sayısal anahtar destekliyor. Firestore'dan devam edilecek.`);
           return null;
         }
       } else if (typeof planId !== 'number') {
@@ -245,7 +245,7 @@ class KelebekDatabase extends Dexie {
       
       const plan = await this.plans.get(normalizedPlanId);
       if (!plan) {
-        console.log('⚠️ Plan bulunamadı:', normalizedPlanId);
+        logger.info('⚠️ Plan bulunamadı:', normalizedPlanId);
         return null;
       }
       
@@ -254,7 +254,7 @@ class KelebekDatabase extends Dexie {
         data: plan.data // SIKIŞTIRMA KALDIRILDI - Doğrudan veriyi döndür
       };
     } catch (error) {
-      console.error('❌ Plan yükleme hatası:', error);
+      logger.error('❌ Plan yükleme hatası:', error);
       throw error;
     }
   }
@@ -266,19 +266,19 @@ class KelebekDatabase extends Dexie {
     try {
       const plans = await this.plans.orderBy('updatedAt').reverse().limit(1).toArray();
       if (plans.length === 0) {
-        console.log('⚠️ Hiç plan bulunamadı');
+        logger.info('⚠️ Hiç plan bulunamadı');
         return null;
       }
       
       const latestPlan = plans[0];
-      console.log('✅ En son plan yüklendi:', latestPlan.name, latestPlan.updatedAt);
+      logger.info('✅ En son plan yüklendi:', latestPlan.name, latestPlan.updatedAt);
       
       return {
         ...latestPlan,
         data: latestPlan.data
       };
     } catch (error) {
-      console.error('❌ En son plan yükleme hatası:', error);
+      logger.error('❌ En son plan yükleme hatası:', error);
       return null;
     }
   }
@@ -301,7 +301,7 @@ class KelebekDatabase extends Dexie {
         if (!isNaN(numId)) {
           normalizedPlanId = numId;
         } else {
-          console.warn(`ℹ️ IndexedDB deletePlan: planId "${planId}" numerik değil, IndexedDB yalnızca sayısal anahtar destekliyor. Silinecek kayıt bulunmadı.`);
+          logger.warn(`ℹ️ IndexedDB deletePlan: planId "${planId}" numerik değil, IndexedDB yalnızca sayısal anahtar destekliyor. Silinecek kayıt bulunmadı.`);
           return false;
         }
       } else if (typeof planId !== 'number') {
@@ -315,9 +315,9 @@ class KelebekDatabase extends Dexie {
         await this.plans.delete(normalizedPlanId);
       });
       
-      console.log('✅ Plan silindi:', normalizedPlanId);
+      logger.info('✅ Plan silindi:', normalizedPlanId);
     } catch (error) {
-      console.error('❌ Plan silme hatası:', error);
+      logger.error('❌ Plan silme hatası:', error);
       throw error;
     }
   }
@@ -332,9 +332,9 @@ class KelebekDatabase extends Dexie {
         value,
         type
       });
-      console.log('✅ Ayar kaydedildi:', key);
+      logger.info('✅ Ayar kaydedildi:', key);
     } catch (error) {
-      console.error('❌ Ayar kaydetme hatası:', error);
+      logger.error('❌ Ayar kaydetme hatası:', error);
       throw error;
     }
   }
@@ -347,7 +347,7 @@ class KelebekDatabase extends Dexie {
       const setting = await this.settings.get(key);
       return setting ? setting.value : null;
     } catch (error) {
-      console.error('❌ Ayar yükleme hatası:', error);
+      logger.error('❌ Ayar yükleme hatası:', error);
       return null;
     }
   }
@@ -370,9 +370,9 @@ class KelebekDatabase extends Dexie {
       // Eski verileri temizle
       await this.cleanupExpiredTempData();
       
-      console.log('✅ Geçici veri kaydedildi:', key);
+      logger.info('✅ Geçici veri kaydedildi:', key);
     } catch (error) {
-      console.error('❌ Geçici veri kaydetme hatası:', error);
+      logger.error('❌ Geçici veri kaydetme hatası:', error);
       throw error;
     }
   }
@@ -393,7 +393,7 @@ class KelebekDatabase extends Dexie {
       
       return tempData.value;
     } catch (error) {
-      console.error('❌ Geçici veri yükleme hatası:', error);
+      logger.error('❌ Geçici veri yükleme hatası:', error);
       return null;
     }
   }
@@ -408,7 +408,7 @@ class KelebekDatabase extends Dexie {
       const now = new Date();
       await this.tempData.where('expiresAt').below(now).delete();
     } catch (error) {
-      console.error('❌ Geçici veri temizleme hatası:', error);
+      logger.error('❌ Geçici veri temizleme hatası:', error);
     }
   }
   
@@ -434,7 +434,7 @@ class KelebekDatabase extends Dexie {
         total: planCount + studentCount + salonCount + settingCount + tempDataCount
       };
     } catch (error) {
-      console.error('❌ Veritabanı istatistik hatası:', error);
+      logger.error('❌ Veritabanı istatistik hatası:', error);
       return null;
     }
   }
@@ -452,9 +452,9 @@ class KelebekDatabase extends Dexie {
         await this.tempData.clear();
       });
       
-      console.log('✅ Veritabanı temizlendi');
+      logger.info('✅ Veritabanı temizlendi');
     } catch (error) {
-      console.error('❌ Veritabanı temizleme hatası:', error);
+      logger.error('❌ Veritabanı temizleme hatası:', error);
       throw error;
     }
   }
@@ -468,9 +468,9 @@ class KelebekDatabase extends Dexie {
         await this.plans.where('name').equals('Otomatik Kayıt').delete();
       });
       
-      console.log('✅ Otomatik kayıt planları temizlendi');
+      logger.info('✅ Otomatik kayıt planları temizlendi');
     } catch (error) {
-      console.error('❌ Otomatik kayıt planları temizleme hatası:', error);
+      logger.error('❌ Otomatik kayıt planları temizleme hatası:', error);
       throw error;
     }
   }
@@ -482,7 +482,7 @@ class KelebekDatabase extends Dexie {
     try {
       // Boş array veya null/undefined ise hiçbir şey yapma (verileri silme!)
       if (!students || students.length === 0) {
-        console.log('⚠️ Öğrenci verisi boş, kaydetme atlanıyor (mevcut veriler korunuyor)');
+        logger.info('⚠️ Öğrenci verisi boş, kaydetme atlanıyor (mevcut veriler korunuyor)');
         return; // Mevcut verileri koru, silme!
       }
       await this.transaction('rw', this.students, async () => {
@@ -494,9 +494,9 @@ class KelebekDatabase extends Dexie {
         await this.students.bulkPut(records);
       });
       
-      console.log('✅ Öğrenciler kaydedildi:', students.length);
+      logger.info('✅ Öğrenciler kaydedildi:', students.length);
     } catch (error) {
-      console.error('❌ Öğrenci kaydetme hatası:', error);
+      logger.error('❌ Öğrenci kaydetme hatası:', error);
       throw error;
     }
   }
@@ -507,10 +507,10 @@ class KelebekDatabase extends Dexie {
   async getAllStudents() {
     try {
       const students = await this.students.toArray();
-      console.log('✅ Öğrenciler yüklendi:', students.length);
+      logger.info('✅ Öğrenciler yüklendi:', students.length);
       return students;
     } catch (error) {
-      console.error('❌ Öğrenci yükleme hatası:', error);
+      logger.error('❌ Öğrenci yükleme hatası:', error);
       return [];
     }
   }
@@ -536,9 +536,9 @@ class KelebekDatabase extends Dexie {
         }
       });
       
-      console.log('✅ Ayarlar kaydedildi');
+      logger.info('✅ Ayarlar kaydedildi');
     } catch (error) {
-      console.error('❌ Ayar kaydetme hatası:', error);
+      logger.error('❌ Ayar kaydetme hatası:', error);
       throw error;
     }
   }
@@ -555,10 +555,10 @@ class KelebekDatabase extends Dexie {
         settingsObj[setting.key] = setting.value;
       });
       
-      console.log('✅ Ayarlar yüklendi:', Object.keys(settingsObj).length);
+      logger.info('✅ Ayarlar yüklendi:', Object.keys(settingsObj).length);
       return settingsObj;
     } catch (error) {
-      console.error('❌ Ayar yükleme hatası:', error);
+      logger.error('❌ Ayar yükleme hatası:', error);
       return {};
     }
   }
@@ -570,7 +570,7 @@ class KelebekDatabase extends Dexie {
     try {
       // Boş array veya null/undefined ise hiçbir şey yapma (verileri silme!)
       if (!salons || salons.length === 0) {
-        console.log('⚠️ Salon verisi boş, kaydetme atlanıyor (mevcut veriler korunuyor)');
+        logger.info('⚠️ Salon verisi boş, kaydetme atlanıyor (mevcut veriler korunuyor)');
         return; // Mevcut verileri koru, silme!
       }
       await this.transaction('rw', this.salons, async () => {
@@ -590,9 +590,9 @@ class KelebekDatabase extends Dexie {
         }
       });
       
-      console.log('✅ Salonlar kaydedildi:', salons.length);
+      logger.info('✅ Salonlar kaydedildi:', salons.length);
     } catch (error) {
-      console.error('❌ Salon kaydetme hatası:', error);
+      logger.error('❌ Salon kaydetme hatası:', error);
       throw error;
     }
   }
@@ -603,7 +603,7 @@ class KelebekDatabase extends Dexie {
   async getAllSalons() {
     try {
       const salons = await this.salons.toArray();
-      console.log('✅ Salonlar yüklendi:', salons.length);
+      logger.info('✅ Salonlar yüklendi:', salons.length);
       // Kullanım kolaylığı için 'id' alanını geri eşle
       const mappedSalons = salons.map((s) => ({
         id: s.salonId || s.id,
@@ -619,7 +619,7 @@ class KelebekDatabase extends Dexie {
       
       return mappedSalons;
     } catch (error) {
-      console.error('❌ Salon yükleme hatası:', error);
+      logger.error('❌ Salon yükleme hatası:', error);
       return [];
     }
   }
@@ -630,9 +630,9 @@ class KelebekDatabase extends Dexie {
   async deleteSalon(salonId) {
     try {
       await this.salons.delete(salonId);
-      console.log('✅ Salon silindi:', salonId);
+      logger.info('✅ Salon silindi:', salonId);
     } catch (error) {
-      console.error('❌ Salon silme hatası:', error);
+      logger.error('❌ Salon silme hatası:', error);
       throw error;
     }
   }
@@ -662,7 +662,7 @@ class KelebekDatabase extends Dexie {
       
       return compressed;
     } catch (error) {
-      console.warn('⚠️ Sıkıştırma hatası, orijinal veri kullanılıyor:', error);
+      logger.warn('⚠️ Sıkıştırma hatası, orijinal veri kullanılıyor:', error);
       return data;
     }
   }
@@ -691,7 +691,7 @@ class KelebekDatabase extends Dexie {
       
       return JSON.parse(decompressed);
     } catch (error) {
-      console.warn('⚠️ Açma hatası, orijinal veri kullanılıyor:', error);
+      logger.warn('⚠️ Açma hatası, orijinal veri kullanılıyor:', error);
       return compressedData;
     }
   }
@@ -709,13 +709,13 @@ class KelebekDatabase extends Dexie {
         
         for (const plan of plansToDelete) {
           await this.plans.delete(plan.id);
-          console.log('🗑️ Eski plan silindi:', plan.id, plan.name);
+          logger.info('🗑️ Eski plan silindi:', plan.id, plan.name);
         }
         
-        console.log(`✅ ${plansToDelete.length} eski plan temizlendi`);
+        logger.info(`✅ ${plansToDelete.length} eski plan temizlendi`);
       }
     } catch (error) {
-      console.error('❌ Plan temizleme hatası:', error);
+      logger.error('❌ Plan temizleme hatası:', error);
     }
   }
 }
@@ -724,3 +724,4 @@ class KelebekDatabase extends Dexie {
 const db = new KelebekDatabase();
 
 export default db;
+
