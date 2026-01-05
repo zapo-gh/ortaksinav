@@ -400,7 +400,7 @@ const DraggableStudent = memo(({
             <Typography variant="caption" sx={{ display: 'block', fontSize: { xs: '0.45rem', sm: '0.55rem' }, color: 'text.primary', fontWeight: 'bold' }}>
               {masa.ogrenci.sinif || masa.ogrenci.sube}
             </Typography>
-            <Box sx={{ position: 'absolute', top: 4, right: 4, opacity: isHovered ? 1 : 0.7, zIndex: 20, '&:hover': { opacity: 1 } }} onClick={e => e.stopPropagation()}>
+            <Box sx={{ position: 'absolute', bottom: 4, right: 4, opacity: isHovered ? 1 : 0.7, zIndex: 20, '&:hover': { opacity: 1 } }} onClick={e => e.stopPropagation()}>
               <TransferButton student={masa.ogrenci} currentSalon={currentSalon} allSalons={allSalons} onTransferClick={onTransferClick} disabled={isDragging} />
             </Box>
           </Box>

@@ -7,12 +7,12 @@ import {
   SwapHoriz as TransferIcon
 } from '@mui/icons-material';
 
-const TransferButton = ({ 
-  student, 
-  currentSalon, 
-  allSalons, 
+const TransferButton = ({
+  student,
+  currentSalon,
+  allSalons,
   onTransferClick,
-  disabled = false 
+  disabled = false
 }) => {
   const handleClick = (event) => {
     if (disabled) return;
@@ -30,7 +30,9 @@ const TransferButton = ({
         sx={{
           color: 'primary.main',
           '&:hover': {
-            backgroundColor: 'primary.50'
+            backgroundColor: 'secondary.100', // Daha belirgin bir arka plan
+            transform: 'scale(1.15)', // Biraz büyüme efekti
+            boxShadow: 2 // Hafif gölge
           }
         }}
       >
