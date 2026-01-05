@@ -246,25 +246,26 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta, onLoadSucc
                 ayarlarGuncelle(metaFallback);
             }
 
-            const ogrenciMap = new Map(ogrenciler.map(o => [o.id?.toString(), o]));
+            const ogrenciMapByNumara = new Map(ogrenciler.map(o => [String(o.numara).trim(), o]));
 
             if (yerlestirmeFormatinda.tumSalonlar && yerlestirmeFormatinda.tumSalonlar.length > 0) {
                 yerlestirmeFormatinda.tumSalonlar = yerlestirmeFormatinda.tumSalonlar.map(salon => {
                     if (salon.masalar && Array.isArray(salon.masalar)) {
                         const masalarWithNumbers = calculateDeskNumbersForMasalar(salon.masalar.map(masa => {
-                            if (masa.ogrenci && masa.ogrenci.id) {
-                                const guncelOgrenci = ogrenciMap.get(masa.ogrenci.id.toString());
+                            if (masa.ogrenci) {
+                                // ID yerine Numara ile eşleştirme yap
+                                const ogrenciNumara = String(masa.ogrenci.numara || '').trim();
+                                const guncelOgrenci = ogrenciMapByNumara.get(ogrenciNumara);
+
                                 if (guncelOgrenci) {
-                                    const numaraEslesti = String(guncelOgrenci.numara).trim() === String(masa.ogrenci.numara).trim();
-                                    if (numaraEslesti) {
-                                        masa.ogrenci = {
-                                            ...masa.ogrenci,
-                                            ...guncelOgrenci,
-                                            masaNumarasi: masa.ogrenci.masaNumarasi || masa.masaNumarasi
-                                        };
-                                    } else {
-                                        logger.warn(`⚠️ ID Çakışması Önlendi: Plan'daki ID:${masa.ogrenci.id} (${masa.ogrenci.ad}) ile Güncel ID:${guncelOgrenci.id} (${guncelOgrenci.ad}) eşleşmiyor.`);
-                                    }
+                                    masa.ogrenci = {
+                                        ...masa.ogrenci,
+                                        ...guncelOgrenci,
+                                        masaNumarasi: masa.ogrenci.masaNumarasi || masa.masaNumarasi
+                                    };
+                                } else {
+                                    // Eğer öğrenci güncel listede yoksa...
+                                    logger.warn(`⚠️ Öğrenci Bulunamadı: Plan'daki Numara:${ogrenciNumara} (${masa.ogrenci.ad}) güncel listede yok.`);
                                 }
                             }
                             return masa;
@@ -283,18 +284,15 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta, onLoadSucc
 
             if (yerlestirmeFormatinda.yerlesilemeyenOgrenciler && Array.isArray(yerlestirmeFormatinda.yerlesilemeyenOgrenciler)) {
                 yerlestirmeFormatinda.yerlesilemeyenOgrenciler = yerlestirmeFormatinda.yerlesilemeyenOgrenciler.map(ogrenci => {
-                    if (ogrenci && ogrenci.id) {
-                        const guncelOgrenci = ogrenciMap.get(ogrenci.id.toString());
+                    if (ogrenci) {
+                        const ogrenciNumara = String(ogrenci.numara || '').trim();
+                        const guncelOgrenci = ogrenciMapByNumara.get(ogrenciNumara);
+
                         if (guncelOgrenci) {
-                            const numaraEslesti = String(guncelOgrenci.numara).trim() === String(ogrenci.numara).trim();
-                            if (numaraEslesti) {
-                                return {
-                                    ...ogrenci,
-                                    ...guncelOgrenci
-                                };
-                            } else {
-                                logger.warn(`⚠️ Yerleşilemeyenlerde ID Çakışması: ${ogrenci.id} - Numara eşleşmedi.`);
-                            }
+                            return {
+                                ...ogrenci,
+                                ...guncelOgrenci
+                            };
                         }
                     }
                     return ogrenci;
@@ -310,48 +308,42 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta, onLoadSucc
                 const savedSalonMapById = new Map((yerlestirmeFormatinda.tumSalonlar || []).map(s => [String(s.id), s]));
 
                 ogrenciler.forEach(ogrenci => {
+                    // Sabit öğrenciyi de Numaraya göre bul
                     const planSabit = planData.sabitOgrenciler.find(ps =>
-                        ps.id?.toString() === ogrenci.id?.toString() ||
-                        (ps.numara && String(ps.numara).trim() === String(ogrenci.numara).trim())
+                        ps.numara && String(ps.numara).trim() === String(ogrenci.numara).trim()
                     );
 
                     if (planSabit) {
-                        const numaraEslesti = String(planSabit.numara).trim() === String(ogrenci.numara).trim();
+                        let targetSalonId = planSabit.pinnedSalonId;
+                        let targetMasaId = planSabit.pinnedMasaId;
 
-                        if (numaraEslesti) {
-                            let targetSalonId = planSabit.pinnedSalonId;
-                            let targetMasaId = planSabit.pinnedMasaId;
+                        let currentTargetSalon = currentSalonMapById.get(String(targetSalonId));
+                        if (!currentTargetSalon) {
+                            const savedSalon = savedSalonMapById.get(String(targetSalonId));
+                            if (savedSalon) {
+                                currentTargetSalon = currentSalonMapByName.get(savedSalon.ad?.trim());
+                                if (currentTargetSalon) {
+                                    targetSalonId = currentTargetSalon.id;
+                                }
+                            }
+                        }
 
-                            let currentTargetSalon = currentSalonMapById.get(String(targetSalonId));
-                            if (!currentTargetSalon) {
-                                const savedSalon = savedSalonMapById.get(String(targetSalonId));
-                                if (savedSalon) {
-                                    currentTargetSalon = currentSalonMapByName.get(savedSalon.ad?.trim());
-                                    if (currentTargetSalon) {
-                                        targetSalonId = currentTargetSalon.id;
+                        if (currentTargetSalon) {
+                            const masaExists = (currentTargetSalon.masalar || []).some(m => String(m.id) === String(targetMasaId));
+                            if (!masaExists) {
+                                const savedSalon = savedSalonMapById.get(String(planSabit.pinnedSalonId));
+                                const savedMasa = (savedSalon?.masalar || []).find(m => String(m.id) === String(planSabit.pinnedMasaId));
+
+                                if (savedMasa) {
+                                    const matchingCurrentMasa = (currentTargetSalon.masalar || []).find(m => m.masaNumarasi === savedMasa.masaNumarasi);
+                                    if (matchingCurrentMasa) {
+                                        targetMasaId = matchingCurrentMasa.id;
                                     }
                                 }
                             }
-
-                            if (currentTargetSalon) {
-                                const masaExists = (currentTargetSalon.masalar || []).some(m => String(m.id) === String(targetMasaId));
-                                if (!masaExists) {
-                                    const savedSalon = savedSalonMapById.get(String(planSabit.pinnedSalonId));
-                                    const savedMasa = (savedSalon?.masalar || []).find(m => String(m.id) === String(planSabit.pinnedMasaId));
-
-                                    if (savedMasa) {
-                                        const matchingCurrentMasa = (currentTargetSalon.masalar || []).find(m => m.masaNumarasi === savedMasa.masaNumarasi);
-                                        if (matchingCurrentMasa) {
-                                            targetMasaId = matchingCurrentMasa.id;
-                                        }
-                                    }
-                                }
-                                ogrenciPin(ogrenci.id, targetSalonId, targetMasaId);
-                            } else {
-                                logger.warn(`⚠️ Sabit Atama Hatası: Salon bulunamadı. OrijinalID: ${planSabit.pinnedSalonId}`);
-                            }
+                            ogrenciPin(ogrenci.id, targetSalonId, targetMasaId);
                         } else {
-                            logger.warn(`⚠️ Sabit Atamada ID Çakışması: ${ogrenci.id} - Numara eşleşmedi, pinleme atlandı.`);
+                            logger.warn(`⚠️ Sabit Atama Hatası: Salon bulunamadı. OrijinalID: ${planSabit.pinnedSalonId}`);
                         }
                     } else if (ogrenci.pinned) {
                         ogrenciUnpin(ogrenci.id);
@@ -398,20 +390,12 @@ export const usePlanPersistence = (activePlanMeta, setActivePlanMeta, onLoadSucc
                         }
                     });
                 }
-                if (planOgrencileri.size > 0) {
+                if (planOgrencileriByNumara.size > 0) {
                     ogrenciler.forEach(ogrenci => {
-                        let planOgrenci = planOgrencileri.get(ogrenci.id?.toString());
-                        if (!planOgrenci && ogrenci.numara) {
-                            planOgrenci = planOgrencileriByNumara.get(String(ogrenci.numara).trim());
-                        }
+                        const planOgrenci = planOgrencileriByNumara.get(String(ogrenci.numara).trim());
 
                         if (planOgrenci && (planOgrenci.pinned || planOgrenci.pinnedSalonId || planOgrenci.pinnedMasaId)) {
-                            const numaraEslesti = String(planOgrenci.numara).trim() === String(ogrenci.numara).trim();
-                            if (numaraEslesti) {
-                                ogrenciPin(ogrenci.id, planOgrenci.pinnedSalonId, planOgrenci.pinnedMasaId);
-                            } else {
-                                logger.warn(`⚠️ İmplicit Sabitlemede ID Çakışması: ${ogrenci.id} - Numara eşleşmedi.`);
-                            }
+                            ogrenciPin(ogrenci.id, planOgrenci.pinnedSalonId, planOgrenci.pinnedMasaId);
                         } else if (ogrenci.pinned) {
                             ogrenciUnpin(ogrenci.id);
                         }

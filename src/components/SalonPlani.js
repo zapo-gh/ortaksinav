@@ -78,25 +78,45 @@ const YerlesmeyenOgrenciSeciciDialog = memo(({ open, onClose, unplacedStudents, 
         </Box>
         <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
           {filteredStudents.length > 0 ? (
-            filteredStudents.map((ogrenci) => (
-              <ListItem
-                button
-                key={ogrenci.id}
-                onClick={() => onSelect(ogrenci)}
-                sx={{
-                  border: '1px solid #eee',
-                  mb: 1,
-                  borderRadius: 1,
-                  '&:hover': { bgcolor: 'primary.50' }
-                }}
-              >
-                <ListItemText
-                  primary={`${ogrenci.ad} ${ogrenci.soyad}`}
-                  secondary={`${ogrenci.sinif} - No: ${ogrenci.numara}`}
-                />
-                <Button variant="outlined" size="small">Seç</Button>
-              </ListItem>
-            ))
+            filteredStudents.map((ogrenci) => {
+              const genderColor = (ogrenci.cinsiyet === 'Kız' || ogrenci.cinsiyet === 'K' || ogrenci.cinsiyet === 'k' || ogrenci.cinsiyet === 'kadin' || ogrenci.cinsiyet === 'kadın') ? 'secondary' : 'primary';
+
+              return (
+                <ListItem
+                  button
+                  key={ogrenci.id}
+                  onClick={() => onSelect(ogrenci)}
+                  sx={{
+                    border: '1px solid',
+                    borderColor: `${genderColor}.main`,
+                    mb: 1,
+                    borderRadius: 1,
+                    bgcolor: `${genderColor}.50`,
+                    '&:hover': { bgcolor: `${genderColor}.100` }
+                  }}
+                >
+                  <ListItemText
+                    primary={`${ogrenci.ad} ${ogrenci.soyad}`}
+                    secondary={
+                      <Typography variant="body2" color="text.secondary">
+                        {ogrenci.sinif} - No: {ogrenci.numara}
+                        <Box component="span" sx={{ color: `${genderColor}.main`, fontWeight: 'bold', ml: 1 }}>
+                          ({ogrenci.cinsiyet === 'K' ? 'Kız' : 'Erkek'})
+                        </Box>
+                      </Typography>
+                    }
+                  />
+                  <Button
+                    variant="contained"
+                    size="small"
+                    color={genderColor}
+                    sx={{ color: 'white' }}
+                  >
+                    Seç
+                  </Button>
+                </ListItem>
+              );
+            })
           ) : (
             <Typography variant="body2" color="text.secondary" align="center">
               Öğrenci bulunamadı.
@@ -1684,77 +1704,147 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
           maxWidth="sm"
           fullWidth
         >
-          <DialogTitle>
+          <DialogTitle sx={{
+            bgcolor: seciliOgrenci ? `${getGenderColor(seciliOgrenci)}.main` : 'primary.main',
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <PersonIcon color="primary" />
+              <PersonIcon sx={{ color: 'white' }} />
               <Typography variant="h6">
                 {seciliOgrenci ? 'Öğrenci Detayları' : 'Masa Bilgileri'}
               </Typography>
             </Box>
+            {seciliOgrenci && (
+              <Chip
+                label={seciliOgrenci.cinsiyet === 'K' ? 'Kız' : 'Erkek'}
+                size="small"
+                sx={{
+                  bgcolor: 'rgba(255, 255, 255, 0.2)',
+                  color: 'white',
+                  fontWeight: 'bold'
+                }}
+              />
+            )}
           </DialogTitle>
 
-          <DialogContent>
+          <DialogContent sx={{ mt: 2 }}>
             {seciliOgrenci ? (
               <Box>
-                <Box>
-                  <Typography variant="h6" gutterBottom sx={{ mb: 3, textAlign: 'center' }}>
+                <Box sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  mb: 3,
+                  p: 2,
+                  bgcolor: `${getGenderColor(seciliOgrenci)}.50`,
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: `${getGenderColor(seciliOgrenci)}.200`
+                }}>
+                  <Avatar sx={{
+                    width: 64,
+                    height: 64,
+                    bgcolor: `${getGenderColor(seciliOgrenci)}.main`,
+                    fontSize: 32,
+                    mb: 2
+                  }}>
+                    {seciliOgrenci.ad ? seciliOgrenci.ad.charAt(0) : ''}
+                  </Avatar>
+                  <Typography variant="h5" sx={{ fontWeight: 'bold', color: `${getGenderColor(seciliOgrenci)}.main` }}>
                     {seciliOgrenci.ad} {seciliOgrenci.soyad}
                   </Typography>
-
-                  <Grid container spacing={2}>
-                    <Grid item xs={12}>
-                      <ListItem disablePadding>
-                        <ListItemIcon>
-                          <SchoolIcon color="primary" />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary="Öğrenci Numarası"
-                          secondary={seciliOgrenci.numara}
-                        />
-                      </ListItem>
-                    </Grid>
-
-                    <Grid item xs={12}>
-                      <ListItem disablePadding>
-                        <ListItemIcon>
-                          <GradeIcon color="primary" />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary="Sınıf"
-                          secondary={seciliOgrenci.sinif}
-                        />
-                      </ListItem>
-                    </Grid>
-
-                    <Grid item xs={12}>
-                      <ListItem disablePadding>
-                        <ListItemIcon>
-                          <BookIcon color="primary" />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary="Sınava Gireceği Dersler"
-                          secondary={(() => {
-                            // Öğrencinin ders bilgisini hesapla
-                            const ogrenciDersleri = getOgrenciDersleri(seciliOgrenci, ayarlar);
-
-                            // Eğer öğrenci objesinde dersler varsa onu kullan
-                            if (seciliOgrenci.dersler && seciliOgrenci.dersler.length > 0) {
-                              return seciliOgrenci.dersler.join(', ');
-                            } else if (seciliOgrenci.sinavDersleri && seciliOgrenci.sinavDersleri.length > 0) {
-                              return seciliOgrenci.sinavDersleri.join(', ');
-                            } else if (seciliOgrenci.ders && seciliOgrenci.ders.length > 0) {
-                              return seciliOgrenci.ders.join(', ');
-                            } else if (ogrenciDersleri && ogrenciDersleri.length > 0) {
-                              return ogrenciDersleri.join(', ');
-                            } else {
-                              return 'Ders bilgisi bulunmuyor';
-                            }
-                          })()}
-                        />
-                      </ListItem>
-                    </Grid>
-                  </Grid>
+                  <Typography variant="subtitle1" color="text.secondary">
+                    {seciliOgrenci.sinif || seciliOgrenci.sube} - {seciliOgrenci.numara}
+                  </Typography>
                 </Box>
+
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <ListItem
+                      disablePadding
+                      sx={{
+                        p: 1.5,
+                        bgcolor: 'grey.50',
+                        borderRadius: 1,
+                        border: '1px solid',
+                        borderColor: 'grey.200'
+                      }}
+                    >
+                      <ListItemIcon>
+                        <SchoolIcon color={getGenderColor(seciliOgrenci)} />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary="Öğrenci Numarası"
+                        secondary={seciliOgrenci.numara}
+                        primaryTypographyProps={{ variant: 'subtitle2', color: 'text.secondary' }}
+                        secondaryTypographyProps={{ variant: 'body1', fontWeight: 'medium' }}
+                      />
+                    </ListItem>
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <ListItem
+                      disablePadding
+                      sx={{
+                        p: 1.5,
+                        bgcolor: 'grey.50',
+                        borderRadius: 1,
+                        border: '1px solid',
+                        borderColor: 'grey.200'
+                      }}
+                    >
+                      <ListItemIcon>
+                        <GradeIcon color={getGenderColor(seciliOgrenci)} />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary="Sınıf"
+                        secondary={seciliOgrenci.sinif}
+                        primaryTypographyProps={{ variant: 'subtitle2', color: 'text.secondary' }}
+                        secondaryTypographyProps={{ variant: 'body1', fontWeight: 'medium' }}
+                      />
+                    </ListItem>
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <ListItem
+                      disablePadding
+                      sx={{
+                        p: 1.5,
+                        bgcolor: 'grey.50',
+                        borderRadius: 1,
+                        border: '1px solid',
+                        borderColor: 'grey.200'
+                      }}
+                    >
+                      <ListItemIcon>
+                        <BookIcon color={getGenderColor(seciliOgrenci)} />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary="Sınava Gireceği Dersler"
+                        secondary={(() => {
+                          // Öğrencinin ders bilgisini hesapla
+                          const ogrenciDersleri = getOgrenciDersleri(seciliOgrenci, ayarlar);
+
+                          // Eğer öğrenci objesinde dersler varsa onu kullan
+                          if (seciliOgrenci.dersler && seciliOgrenci.dersler.length > 0) {
+                            return seciliOgrenci.dersler.join(', ');
+                          } else if (seciliOgrenci.sinavDersleri && seciliOgrenci.sinavDersleri.length > 0) {
+                            return seciliOgrenci.sinavDersleri.join(', ');
+                          } else if (seciliOgrenci.ders && seciliOgrenci.ders.length > 0) {
+                            return seciliOgrenci.ders.join(', ');
+                          } else if (ogrenciDersleri && ogrenciDersleri.length > 0) {
+                            return ogrenciDersleri.join(', ');
+                          } else {
+                            return 'Ders bilgisi bulunmuyor';
+                          }
+                        })()}
+                      />
+                    </ListItem>
+                  </Grid>
+                </Grid>
               </Box>
             ) : (
               <Box>
@@ -1861,7 +1951,7 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
           masaNo={seciliMasa?.masaNumarasi || (seciliMasa && calculateDeskNumberForMasa(seciliMasa))}
         />
       </Paper>
-    </Box>
+    </Box >
 
   );
 });
