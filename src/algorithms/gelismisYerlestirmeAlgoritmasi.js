@@ -98,8 +98,6 @@ const analyzeKisitlar = (ogrenciler, sinifSeviyeleri) => {
     // Zorluk skoru: tek cinsiyetli sınıflar daha zor
     const zorluk = Math.abs(cinsiyetSayilari.Erkek - cinsiyetSayilari.Kız) / seviyeOgrencileri.length;
     analiz.seviyeBazliZorluk[seviye] = zorluk;
-
-    logger.debug(`📊 Sınıf ${seviye} analizi: ${seviyeOgrencileri.length} öğrenci, zorluk: ${zorluk.toFixed(2)}`);
   });
 
   return analiz;

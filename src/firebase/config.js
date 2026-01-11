@@ -1,11 +1,16 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager
+} from 'firebase/firestore';
 import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { DISABLE_FIREBASE, firebaseConfig, createMockFirebase } from '../config/firebaseConfig';
 
 let app, db, auth = null;
-let authReadyResolve = () => {};
-let authReadyReject = () => {};
+let authReadyResolve = () => { };
+let authReadyReject = () => { };
 const authReadyPromise = new Promise((resolve, reject) => {
   authReadyResolve = resolve;
   authReadyReject = reject;
@@ -24,8 +29,18 @@ if (DISABLE_FIREBASE) {
     // Initialize Firebase
     app = initializeApp(firebaseConfig);
 
-    // Initialize Firestore
-    db = getFirestore(app);
+    // Initialize Firestore with persistent cache
+    try {
+      db = initializeFirestore(app, {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager()
+        })
+      });
+      console.debug('✅ Firestore initialized with persistent cache');
+    } catch (err) {
+      console.warn('⚠️ Firestore persistence initialization failed, falling back to default:', err);
+      db = getFirestore(app);
+    }
 
     // Initialize Auth (anonymous session)
     auth = getAuth(app);
@@ -35,9 +50,9 @@ if (DISABLE_FIREBASE) {
 
     onAuthStateChanged(auth, (user) => {
       if (user) {
-        console.log('✅ Firebase Auth hazır - kullanıcı UID:', user.uid);
+        console.debug('✅ Firebase Auth hazır - kullanıcı UID:', user.uid);
       } else {
-        console.log('ℹ️ Firebase Auth: oturum açılmamış kullanıcı');
+        console.debug('ℹ️ Firebase Auth: oturum açılmamış kullanıcı');
       }
       authReadyResolve(user || null);
     }, (error) => {
@@ -45,23 +60,8 @@ if (DISABLE_FIREBASE) {
       authReadyReject(error);
     });
 
-    // Enable offline persistence (optional)
-    enableIndexedDbPersistence(db).catch((err) => {
-      if (err.code === 'failed-precondition') {
-        console.warn('⚠️ Firestore offline persistence failed: Multiple tabs open');
-      } else if (err.code === 'unimplemented') {
-        console.warn('⚠️ Firestore offline persistence not supported in this browser');
-      } else {
-        console.warn('⚠️ Firestore offline persistence error:', err);
-      }
-    });
-
     // Firebase bağlantı testi
-    console.log('🔥 Firebase App initialized:', app);
-    console.log('🔥 Firestore DB initialized:', db);
-    console.log('🔥 Firebase Config:', firebaseConfig);
-    console.log('🔥 Firestore DB mock durumu:', db?.mock);
-    console.log('🔥 DISABLE_FIREBASE:', DISABLE_FIREBASE);
+    console.debug('🔥 Firebase App initialized');
   } catch (error) {
     console.error('❌ Firebase initialization failed:', error);
     console.log('🔧 Falling back to mock Firebase for development');

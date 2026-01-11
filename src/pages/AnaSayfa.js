@@ -313,11 +313,6 @@ const AnaSayfaContent = React.memo(() => {
       showError('Bu işlem için yönetici girişi gereklidir.');
       return;
     }
-    console.log('💾 handleSaveClick - currentPlan state:', {
-      isActive: planManager.isCurrentPlanActive(),
-      currentPlanId: planManager.getCurrentPlanId(),
-      currentPlanName: planManager.getCurrentPlanName()
-    });
     if (activePlanMeta?.id && activePlanMeta?.name) {
       handleSavePlan(activePlanMeta.name, { planId: activePlanMeta.id });
       return;

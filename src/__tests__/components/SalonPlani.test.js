@@ -1,8 +1,5 @@
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { ExamProvider } from '../../context/ExamContext';
-import { NotificationProvider } from '../../components/NotificationSystem';
+import { render, screen, fireEvent, waitFor } from '../../utils/test-utils';
+import { createTheme } from '@mui/material/styles';
 import SalonPlani from '../../components/SalonPlani';
 
 // Mock logger
@@ -38,17 +35,7 @@ const mockOgrenciler = [
   { id: 2, ad: 'Ayşe', soyad: 'Kara', sinif: '9-A', cinsiyet: 'K' }
 ];
 
-const renderWithProviders = (component) => {
-  return render(
-    <ThemeProvider theme={theme}>
-      <NotificationProvider>
-        <ExamProvider>
-          {component}
-        </ExamProvider>
-      </NotificationProvider>
-    </ThemeProvider>
-  );
-};
+// renderWithProviders removed
 
 describe('SalonPlani Component', () => {
   beforeEach(() => {
@@ -56,8 +43,8 @@ describe('SalonPlani Component', () => {
   });
 
   it('should render salon plan with correct title', () => {
-    renderWithProviders(
-      <SalonPlani 
+    render(
+      <SalonPlani
         sinif={mockSinif}
         ogrenciler={mockOgrenciler}
         onOgrenciSec={jest.fn()}
@@ -65,13 +52,13 @@ describe('SalonPlani Component', () => {
         onSalonDegistir={jest.fn()}
       />
     );
-    
+
     expect(screen.getByText('A101 Salon Planı')).toBeInTheDocument();
   });
 
   it('should render empty seats correctly', () => {
-    renderWithProviders(
-      <SalonPlani 
+    render(
+      <SalonPlani
         sinif={mockSinif}
         ogrenciler={mockOgrenciler}
         onOgrenciSec={jest.fn()}
@@ -79,15 +66,15 @@ describe('SalonPlani Component', () => {
         onSalonDegistir={jest.fn()}
       />
     );
-    
+
     // Should show empty seats
     expect(screen.getByText('1')).toBeInTheDocument(); // Seat number
     expect(screen.getByText('2')).toBeInTheDocument(); // Seat number
   });
 
   it('should render occupied seats with student info', () => {
-    renderWithProviders(
-      <SalonPlani 
+    render(
+      <SalonPlani
         sinif={mockSinif}
         ogrenciler={mockOgrenciler}
         onOgrenciSec={jest.fn()}
@@ -95,16 +82,16 @@ describe('SalonPlani Component', () => {
         onSalonDegistir={jest.fn()}
       />
     );
-    
+
     // Should show occupied seat with student name
     expect(screen.getByText('Ahmet Yılmaz')).toBeInTheDocument();
   });
 
   it('should handle seat click for student details', async () => {
     const mockOnOgrenciSec = jest.fn();
-    
-    renderWithProviders(
-      <SalonPlani 
+
+    render(
+      <SalonPlani
         sinif={mockSinif}
         ogrenciler={mockOgrenciler}
         onOgrenciSec={mockOnOgrenciSec}
@@ -112,17 +99,17 @@ describe('SalonPlani Component', () => {
         onSalonDegistir={jest.fn()}
       />
     );
-    
+
     const occupiedSeat = screen.getByText('Ahmet Yılmaz');
     fireEvent.click(occupiedSeat);
-    
+
     // Should show student details modal
     expect(screen.getByText('Öğrenci Detayları')).toBeInTheDocument();
   });
 
   it('should show statistics correctly', () => {
-    renderWithProviders(
-      <SalonPlani 
+    render(
+      <SalonPlani
         sinif={mockSinif}
         ogrenciler={mockOgrenciler}
         onOgrenciSec={jest.fn()}
@@ -130,17 +117,17 @@ describe('SalonPlani Component', () => {
         onSalonDegistir={jest.fn()}
       />
     );
-    
-    expect(screen.getByText(/Toplam Koltuk/)).toBeInTheDocument();
-    expect(screen.getByText(/Dolu Koltuk/)).toBeInTheDocument();
-    expect(screen.getByText(/Boş Koltuk/)).toBeInTheDocument();
+
+    expect(screen.getByText(/Toplam:/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Yerleşen:/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Yerleşmeyen:/).length).toBeGreaterThan(0);
   });
 
   it('should handle drag and drop functionality', async () => {
     const mockOnOgrenciSec = jest.fn();
-    
-    renderWithProviders(
-      <SalonPlani 
+
+    render(
+      <SalonPlani
         sinif={mockSinif}
         ogrenciler={mockOgrenciler}
         onOgrenciSec={mockOnOgrenciSec}
@@ -148,7 +135,7 @@ describe('SalonPlani Component', () => {
         onSalonDegistir={jest.fn()}
       />
     );
-    
+
     // Drag and drop is complex to test, but we can check if the structure is present
     expect(screen.getByText('Ahmet Yılmaz')).toBeInTheDocument();
   });
@@ -158,9 +145,9 @@ describe('SalonPlani Component', () => {
       { id: 1, ad: 'A101' },
       { id: 2, ad: 'B202' }
     ];
-    
-    renderWithProviders(
-      <SalonPlani 
+
+    render(
+      <SalonPlani
         sinif={mockSinif}
         ogrenciler={mockOgrenciler}
         onOgrenciSec={jest.fn()}
@@ -168,15 +155,15 @@ describe('SalonPlani Component', () => {
         onSalonDegistir={jest.fn()}
       />
     );
-    
+
     // "Salon Seçin" label removed - no longer displayed
     // Test passes if component renders without errors
     expect(screen.getByText(/Salon Planı/i)).toBeInTheDocument();
   });
 
   it('should handle empty sinif gracefully', () => {
-    renderWithProviders(
-      <SalonPlani 
+    render(
+      <SalonPlani
         sinif={null}
         ogrenciler={[]}
         onOgrenciSec={jest.fn()}
@@ -184,13 +171,13 @@ describe('SalonPlani Component', () => {
         onSalonDegistir={jest.fn()}
       />
     );
-    
+
     expect(screen.getByText(/Salon bilgisi bulunamadı/)).toBeInTheDocument();
   });
 
   it('should display correct seat numbers', () => {
-    renderWithProviders(
-      <SalonPlani 
+    render(
+      <SalonPlani
         sinif={mockSinif}
         ogrenciler={mockOgrenciler}
         onOgrenciSec={jest.fn()}
@@ -198,10 +185,11 @@ describe('SalonPlani Component', () => {
         onSalonDegistir={jest.fn()}
       />
     );
-    
+
     // Check if seat numbers are displayed correctly
     expect(screen.getByText('1')).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
     expect(screen.getByText('3')).toBeInTheDocument();
   });
 });

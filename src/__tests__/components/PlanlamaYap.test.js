@@ -1,8 +1,5 @@
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { ExamProvider } from '../../context/ExamContext';
-import { NotificationProvider } from '../../components/NotificationSystem';
+import { render, screen, fireEvent, waitFor } from '../../utils/test-utils';
+import { createTheme } from '@mui/material/styles';
 import PlanlamaYap from '../../components/PlanlamaYap';
 
 // Mock logger
@@ -48,17 +45,7 @@ const mockAyarlar = {
   ]
 };
 
-const renderWithProviders = (component) => {
-  return render(
-    <ThemeProvider theme={theme}>
-      <NotificationProvider>
-        <ExamProvider>
-          {component}
-        </ExamProvider>
-      </NotificationProvider>
-    </ThemeProvider>
-  );
-};
+// renderWithProviders removed
 
 describe('PlanlamaYap Component', () => {
   beforeEach(() => {
@@ -66,8 +53,8 @@ describe('PlanlamaYap Component', () => {
   });
 
   it('should render planning form', () => {
-    renderWithProviders(
-      <PlanlamaYap 
+    render(
+      <PlanlamaYap
         ogrenciler={mockOgrenciler}
         ayarlar={mockAyarlar}
         salonlar={mockSalonlar}
@@ -75,13 +62,13 @@ describe('PlanlamaYap Component', () => {
         yukleme={false}
       />
     );
-    
+
     expect(screen.getByText('Sınav Yerleştirme Planlaması')).toBeInTheDocument();
   });
 
   it('should show loading state when yukleme is true', () => {
-    renderWithProviders(
-      <PlanlamaYap 
+    render(
+      <PlanlamaYap
         ogrenciler={mockOgrenciler}
         ayarlar={mockAyarlar}
         salonlar={mockSalonlar}
@@ -89,13 +76,13 @@ describe('PlanlamaYap Component', () => {
         yukleme={true}
       />
     );
-    
-    expect(screen.getByText('Yerleştirme yapılıyor...')).toBeInTheDocument();
+
+    expect(screen.getByText('İşleniyor...')).toBeInTheDocument();
   });
 
   it('should show error when no students', () => {
-    renderWithProviders(
-      <PlanlamaYap 
+    render(
+      <PlanlamaYap
         ogrenciler={[]}
         ayarlar={mockAyarlar}
         salonlar={mockSalonlar}
@@ -103,15 +90,15 @@ describe('PlanlamaYap Component', () => {
         yukleme={false}
       />
     );
-    
+
     expect(screen.getByText(/Öğrenci bulunamadı/)).toBeInTheDocument();
   });
 
   it('should show error when no active salons', () => {
     const inactiveSalonlar = [{ ...mockSalonlar[0], aktif: false }];
-    
-    renderWithProviders(
-      <PlanlamaYap 
+
+    render(
+      <PlanlamaYap
         ogrenciler={mockOgrenciler}
         ayarlar={mockAyarlar}
         salonlar={inactiveSalonlar}
@@ -119,15 +106,15 @@ describe('PlanlamaYap Component', () => {
         yukleme={false}
       />
     );
-    
+
     expect(screen.getByText(/Aktif salon bulunamadı/)).toBeInTheDocument();
   });
 
   it('should show error when no courses', () => {
     const emptyAyarlar = { ...mockAyarlar, dersler: [] };
-    
-    renderWithProviders(
-      <PlanlamaYap 
+
+    render(
+      <PlanlamaYap
         ogrenciler={mockOgrenciler}
         ayarlar={emptyAyarlar}
         salonlar={mockSalonlar}
@@ -135,15 +122,15 @@ describe('PlanlamaYap Component', () => {
         yukleme={false}
       />
     );
-    
+
     expect(screen.getByText(/Ders bulunamadı/)).toBeInTheDocument();
   });
 
   it('should call onYerlestirmeYap when start button is clicked', async () => {
     const mockOnYerlestirmeYap = jest.fn();
-    
-    renderWithProviders(
-      <PlanlamaYap 
+
+    render(
+      <PlanlamaYap
         ogrenciler={mockOgrenciler}
         ayarlar={mockAyarlar}
         salonlar={mockSalonlar}
@@ -151,16 +138,16 @@ describe('PlanlamaYap Component', () => {
         yukleme={false}
       />
     );
-    
+
     const startButton = screen.getByText('Yerleştirme Başlat');
     fireEvent.click(startButton);
-    
+
     expect(mockOnYerlestirmeYap).toHaveBeenCalled();
   });
 
   it('should show statistics when all requirements are met', () => {
-    renderWithProviders(
-      <PlanlamaYap 
+    render(
+      <PlanlamaYap
         ogrenciler={mockOgrenciler}
         ayarlar={mockAyarlar}
         salonlar={mockSalonlar}
@@ -168,15 +155,15 @@ describe('PlanlamaYap Component', () => {
         yukleme={false}
       />
     );
-    
+
     expect(screen.getByText(/Toplam Öğrenci/)).toBeInTheDocument();
     expect(screen.getByText(/Toplam Salon/)).toBeInTheDocument();
     expect(screen.getByText(/Toplam Kapasite/)).toBeInTheDocument();
   });
 
   it('should disable start button when loading', () => {
-    renderWithProviders(
-      <PlanlamaYap 
+    render(
+      <PlanlamaYap
         ogrenciler={mockOgrenciler}
         ayarlar={mockAyarlar}
         salonlar={mockSalonlar}
@@ -184,14 +171,14 @@ describe('PlanlamaYap Component', () => {
         yukleme={true}
       />
     );
-    
-    const startButton = screen.getByText('Yerleştirme Başlat');
+
+    const startButton = screen.getByText('İşleniyor...');
     expect(startButton).toBeDisabled();
   });
 
   it('should show validation summary', () => {
-    renderWithProviders(
-      <PlanlamaYap 
+    render(
+      <PlanlamaYap
         ogrenciler={mockOgrenciler}
         ayarlar={mockAyarlar}
         salonlar={mockSalonlar}
@@ -199,8 +186,7 @@ describe('PlanlamaYap Component', () => {
         yukleme={false}
       />
     );
-    
+
     expect(screen.getByText('Kontrol Sonuçları')).toBeInTheDocument();
   });
 });
-

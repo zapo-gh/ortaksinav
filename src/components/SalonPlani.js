@@ -40,6 +40,8 @@ import {
   Grade as GradeIcon,
   Book as BookIcon,
   Delete as DeleteIcon,
+  MeetingRoom as MeetingRoomIcon,
+  AutoStories as AutoStoriesIcon,
 } from '@mui/icons-material';
 import TransferButton from './TransferButton';
 import InterSalonTransfer from './InterSalonTransfer';
@@ -1761,90 +1763,140 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
                   </Typography>
                 </Box>
 
-                <Grid container spacing={2}>
-                  <Grid item xs={12}>
-                    <ListItem
-                      disablePadding
-                      sx={{
-                        p: 1.5,
-                        bgcolor: 'grey.50',
-                        borderRadius: 1,
-                        border: '1px solid',
-                        borderColor: 'grey.200'
-                      }}
-                    >
-                      <ListItemIcon>
-                        <SchoolIcon color={getGenderColor(seciliOgrenci)} />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary="Öğrenci Numarası"
-                        secondary={seciliOgrenci.numara}
-                        primaryTypographyProps={{ variant: 'subtitle2', color: 'text.secondary' }}
-                        secondaryTypographyProps={{ variant: 'body1', fontWeight: 'medium' }}
-                      />
-                    </ListItem>
-                  </Grid>
+                <Box sx={{
+                  display: 'flex',
+                  gap: 1.5,
+                  flexWrap: 'nowrap', // Force single line
+                  alignItems: 'stretch',
+                  overflowX: 'auto',
+                  pb: 1
+                }}>
+                  {/* Öğrenci No */}
+                  <Box sx={{
+                    flex: '1 1 auto',
+                    minWidth: '100px',
+                    p: 1.5,
+                    bgcolor: 'grey.50',
+                    borderRadius: 2,
+                    border: '1px solid',
+                    borderColor: 'grey.200',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5
+                  }}>
+                    <Box sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: '50%',
+                      bgcolor: 'primary.50',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'primary.main',
+                      flexShrink: 0
+                    }}>
+                      <SchoolIcon fontSize="small" />
+                    </Box>
+                    <Box sx={{ overflow: 'hidden' }}>
+                      <Typography variant="caption" display="block" color="text.secondary" sx={{ lineHeight: 1 }}>
+                        Numara
+                      </Typography>
+                      <Typography variant="body1" fontWeight="bold" noWrap>
+                        {seciliOgrenci.numara}
+                      </Typography>
+                    </Box>
+                  </Box>
 
-                  <Grid item xs={12}>
-                    <ListItem
-                      disablePadding
-                      sx={{
-                        p: 1.5,
-                        bgcolor: 'grey.50',
-                        borderRadius: 1,
-                        border: '1px solid',
-                        borderColor: 'grey.200'
-                      }}
-                    >
-                      <ListItemIcon>
-                        <GradeIcon color={getGenderColor(seciliOgrenci)} />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary="Sınıf"
-                        secondary={seciliOgrenci.sinif}
-                        primaryTypographyProps={{ variant: 'subtitle2', color: 'text.secondary' }}
-                        secondaryTypographyProps={{ variant: 'body1', fontWeight: 'medium' }}
-                      />
-                    </ListItem>
-                  </Grid>
+                  {/* Sınıf */}
+                  <Box sx={{
+                    flex: '1 1 auto',
+                    minWidth: '100px',
+                    p: 1.5,
+                    bgcolor: 'grey.50',
+                    borderRadius: 2,
+                    border: '1px solid',
+                    borderColor: 'grey.200',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5
+                  }}>
+                    <Box sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: '50%',
+                      bgcolor: 'secondary.50',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'secondary.main',
+                      flexShrink: 0
+                    }}>
+                      <MeetingRoomIcon fontSize="small" />
+                    </Box>
+                    <Box sx={{ overflow: 'hidden' }}>
+                      <Typography variant="caption" display="block" color="text.secondary" sx={{ lineHeight: 1 }}>
+                        Sınıf
+                      </Typography>
+                      <Typography variant="body1" fontWeight="bold" noWrap>
+                        {seciliOgrenci.sinif || seciliOgrenci.sube}
+                      </Typography>
+                    </Box>
+                  </Box>
 
-                  <Grid item xs={12}>
-                    <ListItem
-                      disablePadding
-                      sx={{
-                        p: 1.5,
-                        bgcolor: 'grey.50',
-                        borderRadius: 1,
-                        border: '1px solid',
-                        borderColor: 'grey.200'
-                      }}
-                    >
-                      <ListItemIcon>
-                        <BookIcon color={getGenderColor(seciliOgrenci)} />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary="Sınava Gireceği Dersler"
-                        secondary={(() => {
-                          // Öğrencinin ders bilgisini hesapla
-                          const ogrenciDersleri = getOgrenciDersleri(seciliOgrenci, ayarlar);
-
-                          // Eğer öğrenci objesinde dersler varsa onu kullan
-                          if (seciliOgrenci.dersler && seciliOgrenci.dersler.length > 0) {
-                            return seciliOgrenci.dersler.join(', ');
-                          } else if (seciliOgrenci.sinavDersleri && seciliOgrenci.sinavDersleri.length > 0) {
-                            return seciliOgrenci.sinavDersleri.join(', ');
-                          } else if (seciliOgrenci.ders && seciliOgrenci.ders.length > 0) {
-                            return seciliOgrenci.ders.join(', ');
-                          } else if (ogrenciDersleri && ogrenciDersleri.length > 0) {
-                            return ogrenciDersleri.join(', ');
-                          } else {
-                            return 'Ders bilgisi bulunmuyor';
-                          }
-                        })()}
-                      />
-                    </ListItem>
-                  </Grid>
-                </Grid>
+                  {/* Dersler */}
+                  <Box sx={{
+                    flex: '2 1 auto', // More space for lessons
+                    minWidth: '140px',
+                    p: 1.5,
+                    bgcolor: 'grey.50',
+                    borderRadius: 2,
+                    border: '1px solid',
+                    borderColor: 'grey.200',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5
+                  }}>
+                    <Box sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: '50%',
+                      bgcolor: 'success.50',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'success.main',
+                      flexShrink: 0
+                    }}>
+                      <AutoStoriesIcon fontSize="small" />
+                    </Box>
+                    <Box sx={{ overflow: 'hidden' }}>
+                      <Typography variant="caption" display="block" color="text.secondary" sx={{ lineHeight: 1 }}>
+                        Sınav
+                      </Typography>
+                      <Tooltip title={(() => {
+                        const ogrenciDersleri = getOgrenciDersleri(seciliOgrenci, ayarlar);
+                        if (seciliOgrenci.dersler && seciliOgrenci.dersler.length > 0) return seciliOgrenci.dersler.join(', ');
+                        if (seciliOgrenci.sinavDersleri && seciliOgrenci.sinavDersleri.length > 0) return seciliOgrenci.sinavDersleri.join(', ');
+                        if (seciliOgrenci.ders && seciliOgrenci.ders.length > 0) return seciliOgrenci.ders.join(', ');
+                        if (ogrenciDersleri && ogrenciDersleri.length > 0) return ogrenciDersleri.join(', ');
+                        return 'Ders bilgisi bulunmuyor';
+                      })()}>
+                        <Typography variant="body1" fontWeight="bold" noWrap>
+                          {(() => {
+                            const ogrenciDersleri = getOgrenciDersleri(seciliOgrenci, ayarlar);
+                            let text = '';
+                            if (seciliOgrenci.dersler && seciliOgrenci.dersler.length > 0) text = seciliOgrenci.dersler.join(', ');
+                            else if (seciliOgrenci.sinavDersleri && seciliOgrenci.sinavDersleri.length > 0) text = seciliOgrenci.sinavDersleri.join(', ');
+                            else if (seciliOgrenci.ders && seciliOgrenci.ders.length > 0) text = seciliOgrenci.ders.join(', ');
+                            else if (ogrenciDersleri && ogrenciDersleri.length > 0) text = ogrenciDersleri.join(', ');
+                            else text = 'Ders bilgisi yok';
+                            return text;
+                          })()}
+                        </Typography>
+                      </Tooltip>
+                    </Box>
+                  </Box>
+                </Box>
               </Box>
             ) : (
               <Box>

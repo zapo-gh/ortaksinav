@@ -67,9 +67,15 @@ const StudentRow = memo(({ ogrenci, index, onSil, onGuncelle, onDuzenle, yerlesi
           variant="body2"
           sx={{
             cursor: !yerlesimPlaniVarMi ? 'pointer' : 'default',
+            display: 'inline-block',
+            padding: '4px 8px',
+            borderRadius: '6px',
+            transition: 'all 0.2s ease',
             '&:hover': {
-              color: !yerlesimPlaniVarMi ? 'primary.main' : 'inherit',
-              textDecoration: !yerlesimPlaniVarMi ? 'underline' : 'none'
+              backgroundColor: !yerlesimPlaniVarMi ? 'action.hover' : 'transparent',
+              color: !yerlesimPlaniVarMi ? 'primary.dark' : 'inherit',
+              transform: !yerlesimPlaniVarMi ? 'translateX(4px)' : 'none',
+              textDecoration: 'none'
             }
           }}
           onClick={!yerlesimPlaniVarMi ? () => onDuzenle(ogrenci) : undefined}
@@ -1998,7 +2004,8 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
         </DialogTitle>
         <DialogContent sx={{ pt: 5, pb: 3, px: 3, overflow: 'visible' }}>
           {duzenlenecekOgrenci && (
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
+              {/* Row 1: Ad and Soyad */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -2011,10 +2018,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
                   helperText={duzenlemeValidationErrors?.ad}
                   inputProps={{ maxLength: 30 }}
                   InputLabelProps={{
-                    sx: {
-                      backgroundColor: 'white',
-                      px: 0.5
-                    }
+                    sx: { backgroundColor: 'white', px: 0.5 }
                   }}
                 />
               </Grid>
@@ -2030,14 +2034,13 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
                   helperText={duzenlemeValidationErrors?.soyad}
                   inputProps={{ maxLength: 30 }}
                   InputLabelProps={{
-                    sx: {
-                      backgroundColor: 'white',
-                      px: 0.5
-                    }
+                    sx: { backgroundColor: 'white', px: 0.5 }
                   }}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+
+              {/* Row 2: No, Sınıf, Cinsiyet */}
+              <Grid item xs={12} sm={4}>
                 <TextField
                   fullWidth
                   label="Öğrenci No *"
@@ -2049,9 +2052,12 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
                   error={!!duzenlemeValidationErrors?.numara}
                   helperText={duzenlemeValidationErrors?.numara || duzenlemeValidationWarnings?.numara}
                   inputProps={{ min: 1, max: 9999999999 }}
+                  InputLabelProps={{
+                    sx: { backgroundColor: 'white', px: 0.5 }
+                  }}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={4}>
                 <TextField
                   fullWidth
                   label="Sınıf *"
@@ -2059,15 +2065,18 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
                   onChange={handleDuzenlemeSinifChange}
                   variant="outlined"
                   size="medium"
-                  placeholder="Örn: 9-A, 10-B"
+                  placeholder="Örn: 9-A"
                   error={!!duzenlemeValidationErrors?.sinif}
                   helperText={duzenlemeValidationErrors?.sinif || duzenlemeValidationWarnings?.sinif}
                   inputProps={{ pattern: '^\\d+-[A-Z]$', maxLength: 5 }}
+                  InputLabelProps={{
+                    sx: { backgroundColor: 'white', px: 0.5 }
+                  }}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={4}>
                 <FormControl fullWidth size="medium">
-                  <InputLabel>Cinsiyet</InputLabel>
+                  <InputLabel sx={{ backgroundColor: 'white', px: 0.5 }}>Cinsiyet</InputLabel>
                   <Select
                     value={duzenlenenOgrenciData.cinsiyet}
                     onChange={handleDuzenlemeCinsiyetChange}

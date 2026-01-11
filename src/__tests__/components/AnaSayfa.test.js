@@ -1,11 +1,14 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { render, screen, fireEvent, waitFor } from '../../utils/test-utils';
+import { createTheme } from '@mui/material/styles';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { ExamProvider } from '../../context/ExamContext';
-import { NotificationProvider } from '../../components/NotificationSystem';
 import AnaSayfa from '../../pages/AnaSayfa';
+import { useExamStore } from '../../store/useExamStore';
+import { act } from '@testing-library/react';
+
+// Mock logger - already mocked globally or we can keep it here if specific to this test
+// But test-utils doesn't mock logger, so we keep it.
 
 // Mock logger
 jest.mock('../../utils/logger', () => ({
@@ -55,34 +58,36 @@ const mockAyarlar = {
   ]
 };
 
-const renderWithProviders = (component) => {
-  return render(
-    <ThemeProvider theme={theme}>
-      <NotificationProvider>
-        <DndProvider backend={HTML5Backend}>
-          <ExamProvider>
-            {component}
-          </ExamProvider>
-        </DndProvider>
-      </NotificationProvider>
-    </ThemeProvider>
-  );
-};
+// renderWithProviders removed because we use render from test-utils
+
 
 describe('AnaSayfa Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    act(() => {
+      useExamStore.setState({
+        ogrenciler: [],
+        salonlar: [],
+        ayarlar: { dersler: [] },
+        yerlestirmeSonucu: null,
+        aktifTab: 'genel-ayarlar',
+        yukleme: false,
+        hata: null,
+        role: 'admin', // Default to admin for most tests
+        authUser: { email: 'admin@test.com' }
+      });
+    });
   });
 
   it('should render main page with correct title', () => {
-    renderWithProviders(<AnaSayfa />);
-    
+    render(<AnaSayfa />);
+
     expect(screen.getByText('Ortak Sınav Yerleştirme Sistemi')).toBeInTheDocument();
   });
 
   it('should render tab navigation correctly', () => {
-    renderWithProviders(<AnaSayfa />);
-    
+    render(<AnaSayfa />);
+
     expect(screen.getByText('Öğrenciler')).toBeInTheDocument();
     expect(screen.getByText('Sınav Salonları')).toBeInTheDocument();
     expect(screen.getByText('Ayarlar')).toBeInTheDocument();
@@ -92,69 +97,72 @@ describe('AnaSayfa Component', () => {
   });
 
   it('should switch between tabs correctly', async () => {
-    renderWithProviders(<AnaSayfa />);
-    
+    render(<AnaSayfa />);
+
     const ogrencilerTab = screen.getByText('Öğrenciler');
     fireEvent.click(ogrencilerTab);
-    
+
     // Should show student list content
     expect(screen.getByText('Öğrenci Listesi ve Seçimi')).toBeInTheDocument();
   });
 
   it('should show loading state when data is loading', () => {
-    renderWithProviders(<AnaSayfa />);
-    
+    act(() => {
+      useExamStore.setState({ yukleme: true, aktifTab: 'salon-plani' });
+    });
+    render(<AnaSayfa />);
+
     // Check if loading state is handled
-    expect(screen.getByText('Veriler yükleniyor...')).toBeInTheDocument();
+    expect(screen.getByText('Yerleştirme Yapılıyor...')).toBeInTheDocument();
   });
 
   it('should handle error state correctly', () => {
-    renderWithProviders(<AnaSayfa />);
-    
+    render(<AnaSayfa />);
+
     // Error handling should be present
     // This would require mocking the context to return an error state
   });
 
   it('should render footer correctly', () => {
-    renderWithProviders(<AnaSayfa />);
-    
+    render(<AnaSayfa />);
+
     expect(screen.getByText(/Akhisar Farabi Mesleki ve Teknik Anadolu Lisesi/)).toBeInTheDocument();
   });
 
   it('should handle print functionality', () => {
-    renderWithProviders(<AnaSayfa />);
-    
+    render(<AnaSayfa />);
+
     // Print functionality should be available
     // This would require checking for print button or FAB
   });
 
   it('should show empty state when no placement results', () => {
-    renderWithProviders(<AnaSayfa />);
-    
-    // Empty state message removed - no longer displayed
-    // Test passes if component renders without errors
-    expect(screen.getByText('Ortak Sınav Yerleştirme Sistemi')).toBeInTheDocument();
+    render(<AnaSayfa />);
+
+    // Check for title (might appear multiple times, e.g. header and text)
+    const titleElements = screen.getAllByText('Ortak Sınav Yerleştirme Sistemi');
+    expect(titleElements.length).toBeGreaterThan(0);
+    expect(titleElements[0]).toBeInTheDocument();
   });
 
   it('should handle student move functionality', () => {
-    renderWithProviders(<AnaSayfa />);
-    
+    render(<AnaSayfa />);
+
     // Drag and drop functionality should be available
     // This is complex to test but we can check if the structure is present
   });
 
   it('should show plan save functionality', () => {
-    renderWithProviders(<AnaSayfa />);
-    
+    render(<AnaSayfa />);
+
     // Plan save functionality should be available
     expect(screen.getByText('Plan Kaydet')).toBeInTheDocument();
   });
 
   it('should handle plan loading functionality', () => {
-    renderWithProviders(<AnaSayfa />);
-    
+    render(<AnaSayfa />);
+
     // Plan loading functionality should be available
     expect(screen.getByText('Kayıtlı Planlar')).toBeInTheDocument();
   });
 });
-

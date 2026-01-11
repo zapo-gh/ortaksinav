@@ -151,12 +151,6 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
 
   const handlePlanYukle = async (plan) => {
     try {
-      console.log('🔍 handlePlanYukle çağrıldı, plan:', plan);
-      console.log('🔍 handlePlanYukle - plan tip:', typeof plan);
-      console.log('🔍 handlePlanYukle - plan.id:', plan?.id);
-      console.log('🔍 handlePlanYukle - plan.id tip:', typeof plan?.id);
-      console.log('🔍 handlePlanYukle - plan.keys:', plan ? Object.keys(plan) : 'plan null');
-
       // Plan ID validation - EN ÖNCE
       if (!plan || typeof plan !== 'object') {
         console.error('❌ Plan objesi geçersiz:', plan);
@@ -165,7 +159,6 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
 
       // Plan ID'yi güvenli bir şekilde al - hem plan.id hem de plan['id'] kontrol et
       const planId = plan.id ?? plan['id'] ?? null;
-      console.log('🔍 Plan ID (normalized):', planId, 'Tip:', typeof planId);
 
       if (planId === null || planId === undefined || planId === '') {
         console.error('❌ Plan ID geçersiz:', planId);
@@ -186,7 +179,6 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
       }
 
       // Plan objesi var ama data yok, loadPlan çağır
-      console.log('📥 Plan verisi yükleniyor, ID:', planId);
       const loadedPlan = await planManager.loadPlan(planId);
       if (loadedPlan && loadedPlan.data) {
         onPlanYukle(loadedPlan);
@@ -550,7 +542,7 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
             ) : (
               <Box sx={{ mt: 2 }}>
                 {Object.entries(groupArchivedPlans(kayitliPlanlar.filter(p => p.isArchived))).sort().reverse().map(([yil, donemler]) => (
-                  <Accordion key={yil} defaultExpanded sx={{ mb: 1, border: '1px solid', borderColor: 'divider' }}>
+                  <Accordion key={yil} sx={{ mb: 1, border: '1px solid', borderColor: 'divider' }}>
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                       <Typography sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
                         <BackupTableIcon sx={{ mr: 1, fontSize: 20, color: 'primary.main' }} /> {yil} Eğitim Yılı

@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { render, screen, act, waitFor } from '@testing-library/react';
 import { ExamProvider, useExam } from '../../context/ExamContext';
+import { useExamStore } from '../../store/useExamStore';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -114,6 +115,11 @@ describe('ExamContext', () => {
     // Clear localStorage before each test
     localStorage.clear();
     jest.clearAllMocks();
+
+    // Reset Zustand store
+    act(() => {
+      useExamStore.getState().resetStore();
+    });
 
     // Setup default mock values
     useExamData.useStudentsQuery.mockReturnValue({ data: [], isLoading: false });

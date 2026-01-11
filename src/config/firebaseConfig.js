@@ -7,7 +7,8 @@
 // Environment variable to disable Firebase (set in .env.local)
 // TEMPORARY: Disabled to avoid quota exceeded errors
 // Firestore aktif - planlar Firestore'a kaydedilecek
-const DISABLE_FIREBASE = false; // process.env.REACT_APP_DISABLE_FIREBASE === 'true';
+// Firestore aktif - planlar Firestore'a kaydedilecek
+const DISABLE_FIREBASE = process.env.REACT_APP_DISABLE_FIREBASE === 'true' || process.env.NODE_ENV === 'test';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -23,7 +24,7 @@ const firebaseConfig = {
 // Mock Firebase functions for development
 const createMockFirebase = () => {
   console.log('🔧 Firebase disabled - using mock functions for development');
-  
+
   return {
     db: {
       // Mock database object

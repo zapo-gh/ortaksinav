@@ -1,8 +1,5 @@
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { ExamProvider } from '../../context/ExamContext';
-import { NotificationProvider } from '../../components/NotificationSystem';
+import { render, screen, fireEvent, waitFor } from '../../utils/test-utils';
+import { createTheme } from '@mui/material/styles';
 import AyarlarFormu from '../../components/AyarlarFormu';
 
 // Mock logger
@@ -36,17 +33,7 @@ const mockOgrenciler = [
   { id: 2, ad: 'Ayşe', soyad: 'Kara', sinif: '10-B' }
 ];
 
-const renderWithProviders = (component) => {
-  return render(
-    <ThemeProvider theme={theme}>
-      <NotificationProvider>
-        <ExamProvider>
-          {component}
-        </ExamProvider>
-      </NotificationProvider>
-    </ThemeProvider>
-  );
-};
+// renderWithProviders removed
 
 describe('AyarlarFormu Component', () => {
   beforeEach(() => {
@@ -54,141 +41,140 @@ describe('AyarlarFormu Component', () => {
   });
 
   it('should render settings form with existing data', () => {
-    renderWithProviders(
-      <AyarlarFormu 
+    render(
+      <AyarlarFormu
         ayarlar={mockAyarlar}
         onAyarlarDegistir={jest.fn()}
         ogrenciler={mockOgrenciler}
       />
     );
-    
+
     expect(screen.getByText('Sınav Ayarları')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Test Sınavı')).toBeInTheDocument();
   });
 
   it('should render empty form when no settings', () => {
-    renderWithProviders(
-      <AyarlarFormu 
+    render(
+      <AyarlarFormu
         ayarlar={{}}
         onAyarlarDegistir={jest.fn()}
         ogrenciler={[]}
       />
     );
-    
+
     expect(screen.getByText('Sınav Ayarları')).toBeInTheDocument();
     expect(screen.getByLabelText(/Sınav Adı/)).toBeInTheDocument();
   });
 
   it('should handle form input changes', async () => {
     const mockOnAyarlarDegistir = jest.fn();
-    
-    renderWithProviders(
-      <AyarlarFormu 
+
+    render(
+      <AyarlarFormu
         ayarlar={mockAyarlar}
         onAyarlarDegistir={mockOnAyarlarDegistir}
         ogrenciler={mockOgrenciler}
       />
     );
-    
+
     const sinavAdiInput = screen.getByLabelText(/Sınav Adı/);
     fireEvent.change(sinavAdiInput, { target: { value: 'Yeni Sınav' } });
-    
+
     expect(sinavAdiInput.value).toBe('Yeni Sınav');
   });
 
   it('should add new course when add button is clicked', async () => {
     const mockOnAyarlarDegistir = jest.fn();
-    
-    renderWithProviders(
-      <AyarlarFormu 
+
+    render(
+      <AyarlarFormu
         ayarlar={mockAyarlar}
         onAyarlarDegistir={mockOnAyarlarDegistir}
         ogrenciler={mockOgrenciler}
       />
     );
-    
+
     const addButton = screen.getByText('Ders Ekle');
     fireEvent.click(addButton);
-    
+
     // Check if new course form appears
     expect(screen.getByLabelText(/Ders Adı/)).toBeInTheDocument();
   });
 
   it('should display existing courses', () => {
-    renderWithProviders(
-      <AyarlarFormu 
+    render(
+      <AyarlarFormu
         ayarlar={mockAyarlar}
         onAyarlarDegistir={jest.fn()}
         ogrenciler={mockOgrenciler}
       />
     );
-    
+
     expect(screen.getByText('Matematik')).toBeInTheDocument();
   });
 
   it('should show class selection for courses', () => {
-    renderWithProviders(
-      <AyarlarFormu 
+    render(
+      <AyarlarFormu
         ayarlar={mockAyarlar}
         onAyarlarDegistir={jest.fn()}
         ogrenciler={mockOgrenciler}
       />
     );
-    
+
     expect(screen.getByText('9-A')).toBeInTheDocument();
     expect(screen.getByText('10-B')).toBeInTheDocument();
   });
 
   it('should handle course deletion', async () => {
     const mockOnAyarlarDegistir = jest.fn();
-    
-    renderWithProviders(
-      <AyarlarFormu 
+
+    render(
+      <AyarlarFormu
         ayarlar={mockAyarlar}
         onAyarlarDegistir={mockOnAyarlarDegistir}
         ogrenciler={mockOgrenciler}
       />
     );
-    
+
     const deleteButton = screen.getByTitle('Dersi Sil');
     fireEvent.click(deleteButton);
-    
+
     // Should show confirmation dialog
     expect(screen.getByText('Ders Silme Onayı')).toBeInTheDocument();
   });
 
   it('should handle form submission', async () => {
     const mockOnAyarlarDegistir = jest.fn();
-    
-    renderWithProviders(
-      <AyarlarFormu 
+
+    render(
+      <AyarlarFormu
         ayarlar={mockAyarlar}
         onAyarlarDegistir={mockOnAyarlarDegistir}
         ogrenciler={mockOgrenciler}
       />
     );
-    
+
     const submitButton = screen.getByText('Ayarları Kaydet');
     fireEvent.click(submitButton);
-    
+
     // Should call the callback function
     expect(mockOnAyarlarDegistir).toHaveBeenCalled();
   });
 
   it('should validate required fields', async () => {
-    renderWithProviders(
-      <AyarlarFormu 
+    render(
+      <AyarlarFormu
         ayarlar={{}}
         onAyarlarDegistir={jest.fn()}
         ogrenciler={[]}
       />
     );
-    
+
     const submitButton = screen.getByText('Ayarları Kaydet');
     fireEvent.click(submitButton);
-    
+
     // Should show validation error
     expect(screen.getByText(/Sınav adı gerekli/)).toBeInTheDocument();
   });
 });
-
