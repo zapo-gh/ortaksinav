@@ -19,7 +19,9 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  InputAdornment,
+  Avatar
 } from '@mui/material';
 import { useNotifications } from './NotificationSystem';
 import { useExam } from '../context/ExamContext';
@@ -27,7 +29,10 @@ import {
   Add as AddIcon,
   Delete as DeleteIcon,
   Book as BookIcon,
-  Warning as WarningIcon
+  Warning as WarningIcon,
+  Edit as EditIcon,
+  CalendarToday as CalendarIcon,
+  AccessTime as TimeIcon
 } from '@mui/icons-material';
 import { sanitizeText, sanitizeStringArray } from '../utils/sanitizer';
 
@@ -476,15 +481,18 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                 const dersKey = `${dersIdForHandlers}-${index}`;
 
                 return (
-                  <Card key={dersKey} sx={{ mb: 2, border: '1px solid', borderColor: 'divider' }}>
+                  <Card key={dersKey} elevation={2} sx={{ mb: 3, borderRadius: 2 }}>
                     <CardContent>
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>
+                        <Avatar sx={{ width: 24, height: 24, mr: 1.5, bgcolor: 'primary.main', fontSize: 14 }}>
+                          {index + 1}
+                        </Avatar>
+                        <Typography variant="subtitle1" sx={{ flexGrow: 1, fontWeight: 'medium' }}>
                           Ders {index + 1}
                         </Typography>
                         {/* Ders adı metin olarak - testlerin getByText beklentisi için */}
                         {ders.ad && (
-                          <Typography variant="body2" sx={{ mr: 1 }} color="text.secondary">
+                          <Typography variant="body2" sx={{ mr: 2, display: { xs: 'none', sm: 'block' } }} color="text.secondary">
                             {ders.ad}
                           </Typography>
                         )}
@@ -494,13 +502,14 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                           size="small"
                           disabled={readOnly}
                           title="Dersi Sil"
+                          sx={{ bgcolor: 'error.50', '&:hover': { bgcolor: 'error.100' } }}
                         >
-                          <DeleteIcon />
+                          <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Box>
 
                       <Grid container spacing={2}>
-                        <Grid size={{ xs: 12, md: 6 }} key={`ders-adi-${dersKey}`}>
+                        <Grid item xs={12} md={6} key={`ders-adi-${dersKey}`}>
                           <TextField
                             fullWidth
                             label={ders.ad ? 'Ders' : 'Ders Adı'}
@@ -511,10 +520,17 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                             error={Boolean(errors[`ders_${dersIdForHandlers}`])}
                             helperText={errors[`ders_${dersIdForHandlers}`] || ''}
                             disabled={readOnly}
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start">
+                                  <EditIcon color="action" fontSize="small" />
+                                </InputAdornment>
+                              ),
+                            }}
                           />
                         </Grid>
 
-                        <Grid size={{ xs: 12, md: 6 }} key={`sinif-secimi-${dersKey}`}>
+                        <Grid item xs={12} md={6} key={`sinif-secimi-${dersKey}`}>
                           <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
                             <FormControl fullWidth>
                               <InputLabel>Sınıf Seç (Çoklu)</InputLabel>
@@ -619,9 +635,9 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
                         </Grid>
 
                         {Array.isArray(ders.siniflar) && ders.siniflar.length > 0 ? (
-                          <Grid size={12} key={`siniflar-listesi-${dersKey}`}>
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1, textAlign: 'left' }}>
-                              Bu dersi alan sınıflar:
+                          <Grid item xs={12} key={`siniflar-listesi-${dersKey}`}>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <AddIcon fontSize="small" /> Bu dersi alan sınıflar:
                             </Typography>
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                               {ders.siniflar.map(sinif => (

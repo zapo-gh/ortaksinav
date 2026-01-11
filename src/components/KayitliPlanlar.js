@@ -18,7 +18,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField
+  TextField,
+  InputAdornment
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
@@ -28,7 +29,8 @@ import {
   Archive as ArchiveIcon,
   Unarchive as UnarchiveIcon,
   ExpandMore as ExpandMoreIcon,
-  BackupTable as BackupTableIcon
+  BackupTable as BackupTableIcon,
+  Warning as WarningIcon
 } from '@mui/icons-material';
 import {
   Tabs,
@@ -654,20 +656,25 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
       />
 
       {/* Silme Onay Dialog */}
-      < Dialog
+      <Dialog
         open={deleteDialogOpen}
         onClose={() => {
           setDeleteDialogOpen(false);
           setPlanToDelete(null);
         }}
+        maxWidth="xs"
+        fullWidth
       >
-        <DialogTitle>Planı Sil</DialogTitle>
-        <DialogContent>
+        <DialogTitle sx={{ bgcolor: 'error.main', color: 'white', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <WarningIcon />
+          <Typography variant="h6">Planı Sil</Typography>
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
           <Typography>
             Bu planı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
           </Typography>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ p: 2 }}>
           <Button onClick={() => {
             setDeleteDialogOpen(false);
             setPlanToDelete(null);
@@ -683,20 +690,20 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
               try {
                 await handlePlanSil(planToDelete, closeDialog);
               } catch (error) {
-                // handlePlanSil içinde zaten hata yakalanıyor ve modal kapatılıyor
                 closeDialog();
               }
             }}
             color="error"
             variant="contained"
+            startIcon={<DeleteIcon />}
           >
             Sil
           </Button>
         </DialogActions>
-      </Dialog >
+      </Dialog>
 
       {/* İsim Değiştirme Dialog */}
-      < Dialog
+      <Dialog
         open={renameDialogOpen}
         onClose={() => {
           if (!isRenaming) {
@@ -709,10 +716,13 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
         fullWidth
         disableEscapeKeyDown={isRenaming}
       >
-        <DialogTitle>
-          {isRenaming ? 'Plan Adı Güncelleniyor' : 'Plan Adını Değiştir'}
+        <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <EditIcon />
+          <Typography variant="h6">
+            {isRenaming ? 'Plan Adı Güncelleniyor' : 'Plan Adını Değiştir'}
+          </Typography>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ mt: 2 }}>
           {isRenaming ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 2, gap: 2 }}>
               <CircularProgress size={40} />
@@ -739,11 +749,18 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
                 variant="outlined"
                 sx={{ mt: 1 }}
                 disabled={isRenaming}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <EditIcon color="action" />
+                    </InputAdornment>
+                  ),
+                }}
               />
             </>
           )}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ p: 2 }}>
           <Button
             onClick={() => {
               setRenameDialogOpen(false);
@@ -765,7 +782,7 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
             </Button>
           )}
         </DialogActions>
-      </Dialog >
+      </Dialog>
     </Container >
   );
 };

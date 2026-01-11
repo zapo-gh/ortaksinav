@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Dialog,
     DialogTitle,
@@ -12,8 +12,13 @@ import {
     MenuItem,
     Grid,
     Typography,
-    Box
+    Box,
+    InputAdornment
 } from '@mui/material';
+import {
+    Archive as ArchiveIcon,
+    CalendarToday as CalendarIcon
+} from '@mui/icons-material';
 
 const ArchiveDialog = ({ open, onClose, onConfirm, planName, defaultYear, defaultTerm }) => {
     const currentYear = new Date().getFullYear();
@@ -26,7 +31,7 @@ const ArchiveDialog = ({ open, onClose, onConfirm, planName, defaultYear, defaul
     });
 
     // Reset state when dialog opens or defaults change
-    React.useEffect(() => {
+    useEffect(() => {
         if (open) {
             setMetadata(prev => ({
                 ...prev,
@@ -50,8 +55,11 @@ const ArchiveDialog = ({ open, onClose, onConfirm, planName, defaultYear, defaul
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-            <DialogTitle sx={{ pb: 1 }}>Planı Arşivle</DialogTitle>
-            <DialogContent>
+            <DialogTitle sx={{ bgcolor: 'secondary.main', color: 'white', display: 'flex', alignItems: 'center', gap: 1 }}>
+                <ArchiveIcon />
+                <Typography variant="h6">Planı Arşivle</Typography>
+            </DialogTitle>
+            <DialogContent sx={{ mt: 2 }}>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                     <strong>"{planName}"</strong> planını arşivlemek için kategori bilgilerini seçin.
                 </Typography>
@@ -66,10 +74,17 @@ const ArchiveDialog = ({ open, onClose, onConfirm, planName, defaultYear, defaul
                             placeholder="Örn: 2024-2025"
                             variant="outlined"
                             size="small"
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <CalendarIcon fontSize="small" color="action" />
+                                    </InputAdornment>
+                                ),
+                            }}
                         />
                     </Grid>
 
-                    <Grid item xs={12}>
+                    <Grid item xs={12} sm={6}>
                         <FormControl fullWidth size="small">
                             <InputLabel>Dönem</InputLabel>
                             <Select
@@ -84,7 +99,7 @@ const ArchiveDialog = ({ open, onClose, onConfirm, planName, defaultYear, defaul
                         </FormControl>
                     </Grid>
 
-                    <Grid item xs={12}>
+                    <Grid item xs={12} sm={6}>
                         <FormControl fullWidth size="small">
                             <InputLabel>Sınav Numarası</InputLabel>
                             <Select
@@ -103,13 +118,14 @@ const ArchiveDialog = ({ open, onClose, onConfirm, planName, defaultYear, defaul
                     </Grid>
                 </Grid>
             </DialogContent>
-            <DialogActions sx={{ p: 2, pt: 1 }}>
+            <DialogActions sx={{ p: 2 }}>
                 <Button onClick={onClose} color="inherit">İptal</Button>
                 <Button
                     onClick={handleConfirm}
                     variant="contained"
-                    color="primary"
+                    color="secondary"
                     disabled={!metadata.yil || !metadata.donem || !metadata.sinavNo}
+                    startIcon={<ArchiveIcon />}
                 >
                     Arşivle
                 </Button>
