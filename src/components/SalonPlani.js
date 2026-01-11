@@ -274,7 +274,7 @@ const getPozisyon = (satir, sutun, satirSayisi, sutunSayisi) => {
   return 'merkez';
 };
 
-// Draggable Student Component - Optimized and moved outside
+// Draggable Student Component - Optimized and Color Coordinated
 const DraggableStudent = memo(({
   masa,
   getGenderColor,
@@ -292,15 +292,12 @@ const DraggableStudent = memo(({
   getConstraintConflictInfo,
   calculateDeskNumberForMasa,
   plan2D,
-  hasConstraintConflict // New prop
+  conflict // Parent sends 'conflict' object directly
 }) => {
-  // Memoize conflict calculation to avoid passing unstable objects from parent
-  const conflict = useMemo(() => {
-    if (typeof hasConstraintConflict === 'function' && masa && plan2D) {
-      return hasConstraintConflict(masa, plan2D);
-    }
-    return null;
-  }, [hasConstraintConflict, masa, plan2D]);
+  const theme = useTheme();
+
+  // Conflict object is passed directly from parent, no need to recalculate
+
 
   const [{ isDragging }, drag] = useDrag({
     type: ITEM_TYPES.STUDENT,
@@ -320,6 +317,23 @@ const DraggableStudent = memo(({
     },
   });
 
+  // Kısıt durumuna göre stil belirle - Sadece renk ve border
+  const conflictStyle = useMemo(() => {
+    if (!conflict) return null;
+    // Kullanıcı isteği: Yan yana sınıf kısıtı KIRMIZI, Cinsiyet kısıtı TURUNCU olsun
+    if (conflict.classSideBySide || conflict.classBackToBack) return {
+      borderColor: 'error.main',
+      bgcolor: 'error.50',
+      glowColor: theme.palette.error.main
+    };
+    if (conflict.gender) return {
+      borderColor: 'warning.main',
+      bgcolor: 'warning.50',
+      glowColor: theme.palette.warning.main
+    };
+    return null;
+  }, [conflict, theme]);
+
   return (
     <Box
       ref={drag}
@@ -328,11 +342,12 @@ const DraggableStudent = memo(({
         width: '100%',
         opacity: isDragging ? 0.5 : 1,
         transform: isDragging ? 'rotate(5deg)' : 'rotate(0deg)',
-        transition: 'opacity 0.1s ease, background-color 0.1s ease'
+        transition: 'opacity 0.1s ease, background-color 0.1s ease',
+        position: 'relative' // Badge için relative
       }}
     >
       <Paper
-        elevation={masa.ogrenci ? 3 : 1}
+        elevation={masa.ogrenci ? (isSecili ? 6 : 3) : 1} // Elevation korundu
         onClick={() => onMasaClick(masa, masa.ogrenci)}
         onMouseEnter={() => masa.ogrenci && onStudentHover(masa.ogrenci)}
         onMouseLeave={onStudentLeave}
@@ -345,21 +360,50 @@ const DraggableStudent = memo(({
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          bgcolor: masa.ogrenci ? (getGenderColor(masa.ogrenci) === 'secondary' ? 'secondary.50' : 'primary.50') : 'grey.100',
-          border: masa.ogrenci ? '2px solid' : '1px solid',
-          borderColor: masa.ogrenci ? (getGenderColor(masa.ogrenci) === 'secondary' ? 'secondary.main' : 'primary.main') : 'grey.300',
+
+          // Arkaplan: Kısıt varsa özel renk, yoksa cinsiyet rengi
+          bgcolor: masa.ogrenci
+            ? (conflictStyle ? conflictStyle.bgcolor : (getGenderColor(masa.ogrenci) === 'secondary' ? 'secondary.50' : 'primary.50'))
+            : 'grey.100',
+
+          // Border: Kısıt varsa özel renk, yoksa cinsiyet rengi
+          border: masa.ogrenci ? (conflictStyle ? '2px solid' : '2px solid') : '1px solid',
+          borderColor: masa.ogrenci
+            ? (conflictStyle ? conflictStyle.borderColor : (getGenderColor(masa.ogrenci) === 'secondary' ? 'secondary.main' : 'primary.main'))
+            : 'grey.300',
+
           position: 'relative',
           cursor: 'pointer',
           transition: 'transform 0.1s ease, box-shadow 0.1s ease',
           transform: isSecili ? 'scale(1.05)' : 'scale(1)',
-          boxShadow: isSecili ? 6 : masa.ogrenci ? 3 : 1,
+
+          // Shadow: Kısıt varsa glow efekti
+          boxShadow: isSecili
+            ? 6
+            : (conflictStyle ? `0 0 8px ${conflictStyle.glowColor}80` : (masa.ogrenci ? 3 : 1)),
+
           zIndex: isSecili ? 10 : 1,
+
+          // Kısıt varsa pulse animasyonu
+          ...(conflictStyle && {
+            animation: 'pulse-border 2s infinite',
+            '@keyframes pulse-border': {
+              '0%': { boxShadow: `0 0 0 0 ${conflictStyle.glowColor}40` },
+              '70%': { boxShadow: `0 0 0 4px rgba(0,0,0,0)` },
+              '100%': { boxShadow: `0 0 0 0 rgba(0,0,0,0)` }
+            }
+          }),
+
           '&:hover': {
             transform: isSecili ? 'scale(1.05)' : 'scale(1.02)',
-            boxShadow: isSecili ? 8 : 4,
-            bgcolor: masa.ogrenci ? (getGenderColor(masa.ogrenci) === 'secondary' ? 'secondary.100' : 'primary.100') : 'grey.200',
+            boxShadow: isSecili ? 8 : (conflictStyle ? `0 0 12px ${conflictStyle.glowColor}` : 4),
+            bgcolor: masa.ogrenci
+              ? (conflictStyle ? conflictStyle.bgcolor : (getGenderColor(masa.ogrenci) === 'secondary' ? 'secondary.100' : 'primary.100'))
+              : 'grey.200',
             zIndex: 10
           },
+
+          // Seçili olma efekti (korunuyor)
           ...(isSecili && {
             bgcolor: 'warning.100',
             borderColor: 'warning.main',
@@ -378,6 +422,71 @@ const DraggableStudent = memo(({
           })
         }}
       >
+        {/* Modern Kısıt Badge'i - Layout'u bozmadan overlay olarak ekle - ÇOKLU GÖSTERİM */}
+        {conflict && (conflict.gender || conflict.classSideBySide || conflict.classBackToBack) && getConstraintConflictInfo && plan2D && (() => {
+          const info = getConstraintConflictInfo(masa, plan2D);
+          if (!info.hasConflict) return null;
+
+          return (
+            <Tooltip title={info.message} placement="top" arrow>
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: -8, // Biraz daha yukarı taşır
+                  right: -8, // Biraz daha dışarı taşır
+                  display: 'flex',
+                  gap: 0.5, // Badgeler arası boşluk
+                  zIndex: 20,
+                  flexDirection: 'row-reverse' // Sağdan sola dizersin
+                }}
+              >
+                {/* Sınıf Çakışması Varsa - Kırmızı ! */}
+                {(conflict.classSideBySide || conflict.classBackToBack) && (
+                  <Box
+                    sx={{
+                      width: 20,
+                      height: 20,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      bgcolor: 'error.main', // Kırmızı
+                      borderRadius: '50%',
+                      boxShadow: 2,
+                      border: '2px solid white'
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ color: 'white', fontWeight: 'bold', fontSize: '12px', lineHeight: 1 }}>
+                      !
+                    </Typography>
+                  </Box>
+                )}
+
+                {/* Cinsiyet Çakışması Varsa - Turuncu C */}
+                {conflict.gender && (
+                  <Box
+                    sx={{
+                      width: 20,
+                      height: 20,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      bgcolor: 'warning.main', // Turuncu
+                      borderRadius: '50%',
+                      boxShadow: 2,
+                      border: '2px solid white'
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ color: 'white', fontWeight: 'bold', fontSize: '11px', lineHeight: 1 }}>
+                      C
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            </Tooltip>
+          );
+        })()}
+
+        {/* Orijinal pozisyonunda masa numarası */}
         <Typography
           variant="caption"
           sx={{
@@ -390,29 +499,6 @@ const DraggableStudent = memo(({
             cursor: 'default'
           }}
         >
-          {conflict && getConstraintConflictInfo && plan2D && (() => {
-            const info = getConstraintConflictInfo(masa, plan2D);
-
-            return (
-              <Box sx={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 0.5, flexDirection: 'column' }}>
-                {conflict.gender && (
-                  <Tooltip title={`Cinsiyet kısıtı: ${info.message}`} placement="top">
-                    <Box sx={{ color: 'warning.main', width: 18, height: 18, backgroundColor: 'warning.light', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold', borderRadius: 1 }}>✕</Box>
-                  </Tooltip>
-                )}
-                {conflict.classSideBySide && (
-                  <Tooltip title={`Yan yana sınıf kısıtı: ${info.message}`} placement="top">
-                    <Box sx={{ color: 'warning.main', width: 18, height: 18, backgroundColor: 'warning.light', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold', borderRadius: 1 }}>=</Box>
-                  </Tooltip>
-                )}
-                {conflict.classBackToBack && (
-                  <Tooltip title={`Arka arkaya sınıf kısıtı: ${info.message}`} placement="top">
-                    <Box sx={{ color: 'success.main', width: 18, height: 18, borderRadius: '50%', backgroundColor: 'success.light', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold' }}>!</Box>
-                  </Tooltip>
-                )}
-              </Box>
-            );
-          })()}
           {masa.masaNumarasi || (calculateDeskNumberForMasa && calculateDeskNumberForMasa(masa))}
         </Typography>
 
@@ -443,7 +529,6 @@ const DraggableStudent = memo(({
       </Paper>
     </Box>
   );
-
 });
 
 // Grup bazlı masa numarası hesaplama fonksiyonu - İSTENEN SIRALAMA ALGORİTMASI
