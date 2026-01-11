@@ -284,7 +284,6 @@ const DraggableStudent = memo(({
   isSecili,
   isHovered,
   onStudentMove,
-  conflict,
   onTransferClick,
   currentSalon,
   allSalons,
@@ -292,8 +291,17 @@ const DraggableStudent = memo(({
   sinifDuzeni,
   getConstraintConflictInfo,
   calculateDeskNumberForMasa,
-  plan2D
+  plan2D,
+  hasConstraintConflict // New prop
 }) => {
+  // Memoize conflict calculation to avoid passing unstable objects from parent
+  const conflict = useMemo(() => {
+    if (typeof hasConstraintConflict === 'function' && masa && plan2D) {
+      return hasConstraintConflict(masa, plan2D);
+    }
+    return null;
+  }, [hasConstraintConflict, masa, plan2D]);
+
   const [{ isDragging }, drag] = useDrag({
     type: ITEM_TYPES.STUDENT,
     item: () => ({
@@ -435,7 +443,53 @@ const DraggableStudent = memo(({
       </Paper>
     </Box>
   );
+
 });
+
+// Grup bazlı masa numarası hesaplama fonksiyonu - İSTENEN SIRALAMA ALGORİTMASI
+// Pure function - outside component
+const calculateGroupBasedDeskNumbers = (masalar) => {
+  if (!masalar || masalar.length === 0) return masalar;
+
+  // Grupları ayır
+  const gruplar = {};
+  masalar.forEach(masa => {
+    const grup = masa.grup || 1;
+    if (!gruplar[grup]) {
+      gruplar[grup] = [];
+    }
+    gruplar[grup].push(masa);
+  });
+
+  // Her grup için masa numaralarını hesapla
+  let masaNumarasi = 1;
+  const guncellenmisMasalar = [];
+
+  // Grup numaralarına göre sırala (1, 2, 3, 4...)
+  const sortedGruplar = Object.keys(gruplar).sort((a, b) => parseInt(a) - parseInt(b));
+
+  sortedGruplar.forEach(grupId => {
+    const grupMasalar = gruplar[grupId];
+
+    // İSTENEN SIRALAMA: Her grup için satır-sütun sıralaması
+    const sortedGrupMasalar = grupMasalar.sort((a, b) => {
+      if (a.satir !== b.satir) {
+        return a.satir - b.satir;
+      }
+      return a.sutun - b.sutun;
+    });
+
+    // Bu grup için masa numaralarını ata
+    sortedGrupMasalar.forEach(masa => {
+      guncellenmisMasalar.push({
+        ...masa,
+        masaNumarasi: masaNumarasi++
+      });
+    });
+  });
+
+  return guncellenmisMasalar;
+};
 
 const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler = [], onOgrenciSec, tumSalonlar, onSalonDegistir, ayarlar = {}, salonlar = [], seciliSalonId, onSeciliSalonDegistir, onStudentTransfer, yerlestirmeSonucu, tumOgrenciSayisi, aktifPlanAdi = '', readOnly = false }) => {
   const theme = useTheme();
@@ -504,213 +558,6 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
     const cinsiyet = ogrenci.cinsiyet.toString().toLowerCase().trim();
     return cinsiyet === 'kız' || cinsiyet === 'kadin' || cinsiyet === 'k' ? 'secondary' : 'primary';
   }, []);
-
-  // Tek masa için masa numarası hesaplama fonksiyonu
-  const calculateDeskNumberForMasa = (masa) => {
-    if (!masa || !sinifDuzeni?.masalar) return masa?.id + 1 || 1;
-
-    // Tüm masaları al ve grup bazlı sıralama yap
-    const allMasalar = sinifDuzeni.masalar;
-    const gruplar = {};
-
-    allMasalar.forEach(m => {
-      const grup = m.grup || 1;
-      if (!gruplar[grup]) gruplar[grup] = [];
-      gruplar[grup].push(m);
-    });
-
-    let masaNumarasi = 1;
-    const sortedGruplar = Object.keys(gruplar).sort((a, b) => parseInt(a) - parseInt(b));
-
-    for (const grupId of sortedGruplar) {
-      const grupMasalar = gruplar[grupId];
-
-      // Grup içinde satır-sütun sıralaması
-      const sortedGrupMasalar = grupMasalar.sort((a, b) => {
-        if (a.satir !== b.satir) return a.satir - b.satir;
-        return a.sutun - b.sutun;
-      });
-
-      for (const m of sortedGrupMasalar) {
-        if (m.id === masa.id) {
-          return masaNumarasi;
-        }
-        masaNumarasi++;
-      }
-    }
-
-    return masa.id + 1; // Fallback
-  };
-
-  // Grup bazlı masa numarası hesaplama fonksiyonu - İSTENEN SIRALAMA ALGORİTMASI
-  const calculateGroupBasedDeskNumbers = (masalar) => {
-    if (!masalar || masalar.length === 0) return masalar;
-
-    // Grupları ayır
-    const gruplar = {};
-    masalar.forEach(masa => {
-      const grup = masa.grup || 1;
-      if (!gruplar[grup]) {
-        gruplar[grup] = [];
-      }
-      gruplar[grup].push(masa);
-    });
-
-    // Her grup için masa numaralarını hesapla
-    let masaNumarasi = 1;
-    const guncellenmisMasalar = [];
-
-    // Grup numaralarına göre sırala (1, 2, 3, 4...)
-    const sortedGruplar = Object.keys(gruplar).sort((a, b) => parseInt(a) - parseInt(b));
-
-    sortedGruplar.forEach(grupId => {
-      const grupMasalar = gruplar[grupId];
-
-      // İSTENEN SIRALAMA: Her grup için satır-sütun sıralaması
-      // 1.grup: Sıra1-Sol(1), Sıra1-Sağ(2), Sıra2-Sol(3), Sıra2-Sağ(4)...
-      // 2.grup: Sıra1-Sol(5), Sıra1-Sağ(6), Sıra2-Sol(7), Sıra2-Sağ(8)...
-      const sortedGrupMasalar = grupMasalar.sort((a, b) => {
-        // Önce satıra göre sırala (1. sıra, 2. sıra, 3. sıra...)
-        if (a.satir !== b.satir) {
-          return a.satir - b.satir;
-        }
-
-        // Aynı satırda ise sütuna göre sırala (sol -> sağ)
-        return a.sutun - b.sutun;
-      });
-
-      // Bu grup için masa numaralarını ata
-      sortedGrupMasalar.forEach(masa => {
-        guncellenmisMasalar.push({
-          ...masa,
-          masaNumarasi: masaNumarasi++
-        });
-      });
-    });
-
-    return guncellenmisMasalar;
-  };
-
-
-
-  // Drag & Drop handlers - Optimized for performance
-  const handleStudentMove = useCallback((fromMasaId, toMasaId, draggedStudent = null) => {
-    // AI öğrenme sistemi - Drag & Drop hareketini kaydet
-    if (draggedStudent && fromMasaId !== toMasaId) {
-      const learningContext = {
-        salonId: sinif?.id || 'unknown',
-        salonAdi: sinif?.salonAdi || 'Unknown Salon',
-        totalStudents: ogrenciler?.length || 0,
-        currentPlan: sinif?.masalar || []
-      };
-
-      dragDropLearning.recordMove(fromMasaId, toMasaId, draggedStudent, learningContext);
-    }
-
-    if (onOgrenciSec && typeof onOgrenciSec === 'function') {
-      onOgrenciSec('move', { from: fromMasaId, to: toMasaId, draggedStudent });
-    }
-  }, [onOgrenciSec, sinif]);
-
-  const handleMasaClick = useCallback((masa, ogrenci) => {
-    // Sadece öğrenci varsa modal aç (public modda da görüntüleme için izin ver)
-    if (ogrenci) {
-      setSeciliMasa(masa);
-      setSeciliOgrenci(ogrenci);
-      setModalAcik(true);
-    } else if (!readOnly) {
-      // Boş masa için yerleştirmeyen öğrenciler modalını aç
-      setSeciliMasa(masa);
-      setUnplacedModalOpen(true);
-    }
-  }, [readOnly]);
-
-  const handleUnplacedStudentSelect = useCallback((ogrenci) => {
-    if (seciliMasa && ogrenci) {
-      handleStudentMove(null, seciliMasa.id, ogrenci);
-      setUnplacedModalOpen(false);
-      setSeciliMasa(null);
-    }
-  }, [seciliMasa, handleStudentMove]);
-
-  const handleUnplacedModalClose = useCallback(() => {
-    setUnplacedModalOpen(false);
-    setSeciliMasa(null);
-  }, []);
-
-
-
-
-  const handleModalKapat = useCallback(() => {
-    setModalAcik(false);
-    setSeciliOgrenci(null);
-    setSeciliMasa(null);
-  }, []);
-
-  // Transfer işlemleri
-  const handleTransferClick = useCallback((student, currentSalon, targetSalon) => {
-    // Public modda yerleşim planları değiştirilemez
-    if (readOnly) {
-      return;
-    }
-    setTransferOgrenci(student);
-    setTransferModalAcik(true);
-  }, [readOnly]);
-
-  const handleTransferClose = useCallback(() => {
-    setTransferModalAcik(false);
-    setTransferOgrenci(null);
-  }, []);
-
-  const handleTransferExecute = useCallback(async (transferData) => {
-    try {
-      if (onStudentTransfer) {
-        await onStudentTransfer(transferData);
-      }
-      setTransferModalAcik(false);
-      setTransferOgrenci(null);
-    } catch (error) {
-      console.error('Transfer hatası:', error);
-    }
-  }, [onStudentTransfer]);
-
-  const handleOgrenciHover = useCallback((ogrenci) => {
-    setHoveredOgrenci(ogrenci);
-  }, []);
-
-  const handleOgrenciLeave = useCallback(() => {
-    setHoveredOgrenci(null);
-  }, []);
-
-  const getRiskColor = (kategori) => {
-    switch (kategori) {
-      case 'yuksek-risk':
-        return 'error';
-      case 'orta-risk':
-        return 'warning';
-      case 'dusuk-risk':
-        return 'success';
-      default:
-        return 'default';
-    }
-  };
-
-  const getRiskIcon = (kategori) => {
-    switch (kategori) {
-      case 'yuksek-risk':
-        return <WarningIcon />;
-      case 'dusuk-risk':
-        return <CheckCircleIcon />;
-      default:
-        return <InfoIcon />;
-    }
-  };
-
-  const getPozisyonLocal = (satir, sutun, satirSayisi, sutunSayisi) => {
-    return getPozisyon(satir, sutun, satirSayisi, sutunSayisi);
-  };
-
-
 
   // Sınıf düzenini oluştur - GRUP BAZLI SALON YAPISINI KULLANAN
   const sinifDuzeni = useMemo(() => {
@@ -855,6 +702,168 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
 
     return { satirSayisi, sutunSayisi, masalar: masalarWithGroupNumbers };
   }, [sinif, ogrenciler]);
+
+
+  // Tek masa için masa numarası hesaplama fonksiyonu
+  const calculateDeskNumberForMasa = useCallback((masa) => {
+    if (!masa || !sinifDuzeni?.masalar) return masa?.id + 1 || 1;
+
+    // Tüm masaları al ve grup bazlı sıralama yap
+    const allMasalar = sinifDuzeni.masalar;
+    const gruplar = {};
+
+    allMasalar.forEach(m => {
+      const grup = m.grup || 1;
+      if (!gruplar[grup]) gruplar[grup] = [];
+      gruplar[grup].push(m);
+    });
+
+    let masaNumarasi = 1;
+    const sortedGruplar = Object.keys(gruplar).sort((a, b) => parseInt(a) - parseInt(b));
+
+    for (const grupId of sortedGruplar) {
+      const grupMasalar = gruplar[grupId];
+
+      const sortedGrupMasalar = grupMasalar.sort((a, b) => {
+        if (a.satir !== b.satir) return a.satir - b.satir;
+        return a.sutun - b.sutun;
+      });
+
+      for (const m of sortedGrupMasalar) {
+        if (m.id === masa.id) {
+          return masaNumarasi;
+        }
+        masaNumarasi++;
+      }
+    }
+
+    return masa.id + 1; // Fallback
+  }, [sinifDuzeni]);
+
+  // Drag & Drop handlers - Optimized for performance
+  const handleStudentMove = useCallback((fromMasaId, toMasaId, draggedStudent = null) => {
+    // AI öğrenme sistemi - Drag & Drop hareketini kaydet
+    if (draggedStudent && fromMasaId !== toMasaId) {
+      const learningContext = {
+        salonId: sinif?.id || 'unknown',
+        salonAdi: sinif?.salonAdi || 'Unknown Salon',
+        totalStudents: ogrenciler?.length || 0,
+        currentPlan: sinif?.masalar || []
+      };
+
+      dragDropLearning.recordMove(fromMasaId, toMasaId, draggedStudent, learningContext);
+    }
+
+    if (onOgrenciSec && typeof onOgrenciSec === 'function') {
+      onOgrenciSec('move', { from: fromMasaId, to: toMasaId, draggedStudent });
+    }
+  }, [onOgrenciSec, sinif, ogrenciler]);
+
+  const handleMasaClick = useCallback((masa, ogrenci) => {
+    // Sadece öğrenci varsa modal aç (public modda da görüntüleme için izin ver)
+    if (ogrenci) {
+      setSeciliMasa(masa);
+      setSeciliOgrenci(ogrenci);
+      setModalAcik(true);
+    } else if (!readOnly) {
+      // Boş masa için yerleştirmeyen öğrenciler modalını aç
+      setSeciliMasa(masa);
+      setUnplacedModalOpen(true);
+    }
+  }, [readOnly]);
+
+  const handleUnplacedStudentSelect = useCallback((ogrenci) => {
+    if (seciliMasa && ogrenci) {
+      handleStudentMove(null, seciliMasa.id, ogrenci);
+      setUnplacedModalOpen(false);
+      setSeciliMasa(null);
+    }
+  }, [seciliMasa, handleStudentMove]);
+
+  const handleUnplacedModalClose = useCallback(() => {
+    setUnplacedModalOpen(false);
+    setSeciliMasa(null);
+  }, []);
+
+
+
+
+  const handleModalKapat = useCallback(() => {
+    setModalAcik(false);
+    setSeciliOgrenci(null);
+    setSeciliMasa(null);
+  }, []);
+
+  // Transfer işlemleri
+  const handleTransferClick = useCallback((student, currentSalon, targetSalon) => {
+    // Public modda yerleşim planları değiştirilemez
+    if (readOnly) {
+      return;
+    }
+    setTransferOgrenci(student);
+    setTransferModalAcik(true);
+  }, [readOnly]);
+
+  const handleTransferClose = useCallback(() => {
+    setTransferModalAcik(false);
+    setTransferOgrenci(null);
+  }, []);
+
+  const handleTransferExecute = useCallback(async (transferData) => {
+    try {
+      if (onStudentTransfer) {
+        await onStudentTransfer(transferData);
+      }
+      setTransferModalAcik(false);
+      setTransferOgrenci(null);
+    } catch (error) {
+      console.error('Transfer hatası:', error);
+    }
+  }, [onStudentTransfer]);
+
+  const handleOgrenciHover = useCallback((ogrenci) => {
+    setHoveredOgrenci(prev => {
+      // Eğer aynı öğrenci ise state güncelleme (referans değişse bile id aynıysa)
+      if (prev?.id === ogrenci?.id) return prev;
+      return ogrenci;
+    });
+  }, []);
+
+  const handleOgrenciLeave = useCallback(() => {
+    setHoveredOgrenci(null);
+  }, []);
+
+  const getRiskColor = (kategori) => {
+    switch (kategori) {
+      case 'yuksek-risk':
+        return 'error';
+      case 'orta-risk':
+        return 'warning';
+      case 'dusuk-risk':
+        return 'success';
+      default:
+        return 'default';
+    }
+  };
+
+  const getRiskIcon = (kategori) => {
+    switch (kategori) {
+      case 'yuksek-risk':
+        return <WarningIcon />;
+      case 'dusuk-risk':
+        return <CheckCircleIcon />;
+      default:
+        return <InfoIcon />;
+    }
+  };
+
+  const getPozisyonLocal = (satir, sutun, satirSayisi, sutunSayisi) => {
+    return getPozisyon(satir, sutun, satirSayisi, sutunSayisi);
+  };
+
+
+
+
 
   // KRİTİK: plan2D'yi bir kez oluştur ve hasConstraintConflict için kullan
   const plan2D = useMemo(() => {
@@ -1604,7 +1613,7 @@ const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler =
                       getConstraintConflictInfo={getConstraintConflictInfo}
                       calculateDeskNumberForMasa={calculateDeskNumberForMasa}
                       plan2D={plan2D}
-                      conflict={hasConstraintConflict(masa, plan2D)}
+                      hasConstraintConflict={hasConstraintConflict}
                     />
                   </DroppableSeat>
                 </Tooltip>
