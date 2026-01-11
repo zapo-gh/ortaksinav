@@ -15,15 +15,26 @@ import {
     Box
 } from '@mui/material';
 
-const ArchiveDialog = ({ open, onClose, onConfirm, planName }) => {
+const ArchiveDialog = ({ open, onClose, onConfirm, planName, defaultYear, defaultTerm }) => {
     const currentYear = new Date().getFullYear();
-    const defaultYear = `${currentYear}-${currentYear + 1}`;
+    const fallbackYear = `${currentYear}-${currentYear + 1}`;
 
     const [metadata, setMetadata] = useState({
-        yil: defaultYear,
-        donem: '1. Dönem',
+        yil: defaultYear || fallbackYear,
+        donem: defaultTerm ? `${defaultTerm}. Dönem` : '1. Dönem',
         sinavNo: '1. Sınav'
     });
+
+    // Reset state when dialog opens or defaults change
+    React.useEffect(() => {
+        if (open) {
+            setMetadata(prev => ({
+                ...prev,
+                yil: defaultYear || fallbackYear,
+                donem: defaultTerm ? `${defaultTerm}. Dönem` : '1. Dönem'
+            }));
+        }
+    }, [open, defaultYear, defaultTerm, fallbackYear]);
 
     const handleChange = (field) => (event) => {
         setMetadata(prev => ({

@@ -44,8 +44,10 @@ import { useNotifications } from './NotificationSystem';
 import logger from '../utils/logger';
 import { cleanupTempPlans } from '../utils/cleanupTempPlans';
 import { subscribeToAuthChanges, getUserRole } from '../firebase/authState';
+import { useExam } from '../context/ExamContext';
 
 const KayitliPlanlar = ({ onPlanYukle }) => {
+  const { ayarlar } = useExam();
   const [kayitliPlanlar, setKayitliPlanlar] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -655,6 +657,8 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
         onClose={() => setArchiveDialogOpen(false)}
         onConfirm={handleArchiveConfirm}
         planName={planToArchive?.name}
+        defaultYear={ayarlar?.egitimYili}
+        defaultTerm={ayarlar?.donem}
       />
 
       {/* Silme Onay Dialog */}
