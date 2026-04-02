@@ -46,6 +46,12 @@ import {
 import TransferButton from './TransferButton';
 import InterSalonTransfer from './InterSalonTransfer';
 import { useExam } from '../context/ExamContext';
+import {
+  ITEM_TYPES,
+  getSalonYerlesenSayisi,
+  getPozisyon,
+  calculateGroupBasedDeskNumbers,
+} from './SalonPlani/utils';
 
 // Yerleşmeyen Öğrenci Seçici Modal Bileşeni
 const YerlesmeyenOgrenciSeciciDialog = memo(({ open, onClose, unplacedStudents, onSelect, masaNo }) => {
@@ -134,50 +140,7 @@ const YerlesmeyenOgrenciSeciciDialog = memo(({ open, onClose, unplacedStudents, 
 });
 
 
-// Drag & Drop item types
-const ITEM_TYPES = {
-  STUDENT: 'student'
-};
-
-const getSalonYerlesenSayisi = (salon) => {
-  if (!salon) return 0;
-  const uniqueIds = new Set();
-
-  const addStudent = (ogrenci) => {
-    if (ogrenci && ogrenci.id != null) {
-      uniqueIds.add(String(ogrenci.id));
-    }
-  };
-
-  const addFromSeatArray = (koleksiyon) => {
-    if (!Array.isArray(koleksiyon)) return;
-    koleksiyon.forEach(koltuk => {
-      if (!koltuk) return;
-      if (koltuk.ogrenci) {
-        addStudent(koltuk.ogrenci);
-      }
-    });
-  };
-
-  // KRİTİK DÜZELTME: Sadece masalar array'inden say
-  // masalar array'i zaten gerçek yerleşimi gösteriyor
-  // ogrenciler array'i duplicate saymaya neden olabilir
-  addFromSeatArray(salon.masalar);
-
-  // Fallback: Eğer masalar yoksa diğer kaynaklardan say
-  if (!salon.masalar || salon.masalar.length === 0) {
-    addFromSeatArray(salon.plan);
-    addFromSeatArray(salon?.koltukMatrisi?.masalar);
-    addFromSeatArray(salon?.salon?.masalar);
-
-    // Son çare: ogrenciler array'inden say (ama sadece masalar yoksa)
-    if (Array.isArray(salon.ogrenciler)) {
-      salon.ogrenciler.forEach(addStudent);
-    }
-  }
-
-  return uniqueIds.size;
-};
+// DroppableSeat bileşeni
 
 
 
@@ -262,17 +225,6 @@ const SalonStatsChips = React.memo(({ mode, toplam, yerlesen, yerlesmeyen }) => 
 
   return null;
 });
-
-const getPozisyon = (satir, sutun, satirSayisi, sutunSayisi) => {
-  if ((satir === 0 || satir === satirSayisi - 1) &&
-    (sutun === 0 || sutun === sutunSayisi - 1)) {
-    return 'kose';
-  } else if (satir === 0 || satir === satirSayisi - 1 ||
-    sutun === 0 || sutun === sutunSayisi - 1) {
-    return 'kenar';
-  }
-  return 'merkez';
-};
 
 // Draggable Student Component - Optimized and Color Coordinated
 const DraggableStudent = memo(({
@@ -530,51 +482,6 @@ const DraggableStudent = memo(({
     </Box>
   );
 });
-
-// Grup bazlı masa numarası hesaplama fonksiyonu - İSTENEN SIRALAMA ALGORİTMASI
-// Pure function - outside component
-const calculateGroupBasedDeskNumbers = (masalar) => {
-  if (!masalar || masalar.length === 0) return masalar;
-
-  // Grupları ayır
-  const gruplar = {};
-  masalar.forEach(masa => {
-    const grup = masa.grup || 1;
-    if (!gruplar[grup]) {
-      gruplar[grup] = [];
-    }
-    gruplar[grup].push(masa);
-  });
-
-  // Her grup için masa numaralarını hesapla
-  let masaNumarasi = 1;
-  const guncellenmisMasalar = [];
-
-  // Grup numaralarına göre sırala (1, 2, 3, 4...)
-  const sortedGruplar = Object.keys(gruplar).sort((a, b) => parseInt(a) - parseInt(b));
-
-  sortedGruplar.forEach(grupId => {
-    const grupMasalar = gruplar[grupId];
-
-    // İSTENEN SIRALAMA: Her grup için satır-sütun sıralaması
-    const sortedGrupMasalar = grupMasalar.sort((a, b) => {
-      if (a.satir !== b.satir) {
-        return a.satir - b.satir;
-      }
-      return a.sutun - b.sutun;
-    });
-
-    // Bu grup için masa numaralarını ata
-    sortedGrupMasalar.forEach(masa => {
-      guncellenmisMasalar.push({
-        ...masa,
-        masaNumarasi: masaNumarasi++
-      });
-    });
-  });
-
-  return guncellenmisMasalar;
-};
 
 const SalonPlani = memo(({ sinif, ogrenciler, seciliOgrenciId, kalanOgrenciler = [], onOgrenciSec, tumSalonlar, onSalonDegistir, ayarlar = {}, salonlar = [], seciliSalonId, onSeciliSalonDegistir, onStudentTransfer, yerlestirmeSonucu, tumOgrenciSayisi, aktifPlanAdi = '', readOnly = false }) => {
   const theme = useTheme();

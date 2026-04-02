@@ -3,10 +3,19 @@ import firestoreClient from '../../database/firestoreClient';
 import db from '../../database/database';
 import logger from '../../utils/logger';
 
+// Ortak query ayarları - gereksiz refetch'leri önler
+const defaultQueryOptions = {
+    staleTime: 5 * 60 * 1000,        // 5 dakika boyunca veri "taze" sayılır
+    gcTime: 10 * 60 * 1000,           // 10 dakika cache'te tutulur
+    refetchOnWindowFocus: false,       // Tarayıcı sekmesi değişiminde refetch yapma
+    refetchOnMount: false,             // Component remount'ta refetch yapma (cache varsa)
+};
+
 // Öğrencileri getir
 export const useStudentsQuery = () => {
     return useQuery({
         queryKey: ['students'],
+        ...defaultQueryOptions,
         queryFn: async () => {
             try {
                 // Önce Firestore'dan dene
@@ -32,6 +41,7 @@ export const useStudentsQuery = () => {
 export const useSalonsQuery = () => {
     return useQuery({
         queryKey: ['salons'],
+        ...defaultQueryOptions,
         queryFn: async () => {
             try {
                 const salons = await firestoreClient.getAllSalons();
@@ -54,6 +64,7 @@ export const useSalonsQuery = () => {
 export const useSettingsQuery = () => {
     return useQuery({
         queryKey: ['settings'],
+        ...defaultQueryOptions,
         queryFn: async () => {
             try {
                 const settings = await firestoreClient.getSettings(); // Bu metod firestoreClient'ta yoksa eklenmeli veya db'den alınmalı

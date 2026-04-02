@@ -3,7 +3,7 @@
  * Real-time progress display with animations and details
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, memo } from 'react';
 import {
   Box,
   LinearProgress,
@@ -295,4 +295,4 @@ export const QuickProgress = ({ progress, message }) => (
   />
 );
 
-export default ProgressIndicator;
+export default memo(ProgressIndicator);

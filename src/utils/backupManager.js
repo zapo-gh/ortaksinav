@@ -9,12 +9,13 @@
  */
 
 import logger from './logger';
+import { MAX_BACKUPS_RETAINED, AUTO_BACKUP_INTERVAL_MS } from '../config/constants';
 
 class BackupManager {
   constructor() {
     this.backupKey = 'kayitli_planlar_backup';
-    this.maxBackups = 5; // Son 5 backup'ı sakla
-    this.autoBackupInterval = 30000; // 30 saniyede bir backup
+    this.maxBackups = MAX_BACKUPS_RETAINED;
+    this.autoBackupInterval = AUTO_BACKUP_INTERVAL_MS;
     this.lastBackupTime = 0;
   }
 

@@ -319,7 +319,15 @@ class FirestoreClient {
       logger.debug('📥 Firestore: Plan yükleniyor:', planId);
 
       const planRef = doc(this.db, 'plans', planId);
-      const planSnap = await getDoc(planRef);
+      const salonsRef = collection(this.db, 'plans', planId, 'salons');
+      const unplacedRef = collection(this.db, 'plans', planId, 'unplaced');
+
+      // Paralel okuma — 3 sıralı istek yerine tek seferde
+      const [planSnap, salonsSnap, unplacedSnap] = await Promise.all([
+        getDoc(planRef),
+        getDocs(salonsRef),
+        getDocs(unplacedRef)
+      ]);
 
       if (!planSnap.exists()) {
         throw new Error('Plan bulunamadı');
@@ -342,19 +350,13 @@ class FirestoreClient {
         }
       }
 
-      const salonsRef = collection(this.db, 'plans', planId, 'salons');
-      const salonsSnap = await getDocs(salonsRef);
       const salons = [];
-
       salonsSnap.forEach(doc => {
         const salonData = doc.data();
         salons.push({ id: doc.id, ...salonData });
       });
 
-      const unplacedRef = collection(this.db, 'plans', planId, 'unplaced');
-      const unplacedSnap = await getDocs(unplacedRef);
       const unplacedStudents = [];
-
       unplacedSnap.forEach(doc => {
         const data = doc.data();
         if (Array.isArray(data.students)) {

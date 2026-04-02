@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -423,4 +423,4 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick, showNav 
   );
 };
 
-export default Header;
+export default memo(Header);

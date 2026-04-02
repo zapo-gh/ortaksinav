@@ -13,6 +13,8 @@ class ErrorTracker {
     this.batchSize = 5; // Toplu gönderim boyutu
     this.flushInterval = 60000; // 1 dakika
     this.isEnabled = process.env.NODE_ENV === 'production';
+    this.flushIntervalId = null;
+    this.criticalErrorCount = 0;
     
     // Otomatik flush
     if (this.isEnabled) {
@@ -32,10 +34,14 @@ class ErrorTracker {
         logger.error('Error tracked:', errorData);
       }
 
-      // Production'da localStorage'a kaydet
-      if (this.isEnabled) {
-        this.queueError(errorData);
-        this.persistToStorage(errorData);
+      // Her ortamda localStorage'a kaydet (hata takibi her yerde önemli)
+      this.queueError(errorData);
+      this.persistToStorage(errorData);
+
+      // Kritik hataları say ve raporla
+      if (context.errorBoundary || context.critical) {
+        this.criticalErrorCount++;
+        this.handleCriticalError(errorData);
       }
     } catch (e) {
       logger.error('Error tracking failed:', e);
@@ -156,11 +162,32 @@ class ErrorTracker {
    * Otomatik flush başlat
    */
   startAutoFlush() {
-    setInterval(() => {
+    this.stopAutoFlush();
+    this.flushIntervalId = setInterval(() => {
       if (this.errorQueue.length > 0) {
         this.flushErrors();
       }
     }, this.flushInterval);
+  }
+
+  /**
+   * Otomatik flush durdur (memory leak önleme)
+   */
+  stopAutoFlush() {
+    if (this.flushIntervalId) {
+      clearInterval(this.flushIntervalId);
+      this.flushIntervalId = null;
+    }
+  }
+
+  /**
+   * Kritik hata işleme
+   */
+  handleCriticalError(errorData) {
+    logger.error(`🚨 Kritik hata #${this.criticalErrorCount}:`, errorData.message);
+
+    // Flush hemen tetikle
+    this.flushErrors();
   }
 
   /**
@@ -227,6 +254,7 @@ class ErrorTracker {
   clearHistory() {
     try {
       this.errorQueue = [];
+      this.criticalErrorCount = 0;
       localStorage.removeItem('error_logs');
       logger.info('Error history cleared');
     } catch (e) {

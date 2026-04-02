@@ -175,7 +175,7 @@ export const useExamStore = create(
                     ...o,
                     pinned: true,
                     pinnedSalonId: pinnedSalonId != null ? String(pinnedSalonId) : null,
-                    pinnedMasaId: pinnedMasaId ?? null
+                    pinnedMasaId: pinnedMasaId != null ? String(pinnedMasaId) : null
                 } : o);
                 set({ ogrenciler: updatedOgrenciler });
             },

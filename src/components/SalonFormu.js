@@ -1,4 +1,5 @@
 import React, { useState, memo } from 'react';
+import deepEqual from '../utils/deepEqual';
 import {
   Card,
   CardContent,
@@ -298,7 +299,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
     }));
 
     // Değişiklik olup olmadığını kontrol et (deep comparison)
-    const hasChanges = JSON.stringify(normalizedPropSalonlar) !== JSON.stringify(normalizedAktifFormlar);
+    const hasChanges = !deepEqual(normalizedPropSalonlar, normalizedAktifFormlar);
 
     if (hasChanges) {
       console.log('✅ SalonFormu: Değişiklik tespit edildi, form verileri güncelleniyor');

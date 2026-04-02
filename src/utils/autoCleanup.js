@@ -4,12 +4,13 @@
  */
 import db from '../database';
 import logger from './logger';
+import { CLEANUP_INTERVAL_MS, MAX_TEMP_PLANS, TEMP_PLAN_MAX_AGE_MS } from '../config/constants';
 
 class AutoCleanup {
   constructor() {
-    this.cleanupInterval = 24 * 60 * 60 * 1000; // 24 saat
-    this.maxTempPlans = 3; // Maksimum 3 geçici plan
-    this.tempPlanMaxAge = 7 * 24 * 60 * 60 * 1000; // 7 gün
+    this.cleanupInterval = CLEANUP_INTERVAL_MS;
+    this.maxTempPlans = MAX_TEMP_PLANS;
+    this.tempPlanMaxAge = TEMP_PLAN_MAX_AGE_MS;
     this.intervalId = null; // Interval ID'yi sakla (cleanup için)
   }
 

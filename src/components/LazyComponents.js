@@ -9,11 +9,8 @@ const LoadingFallback = () => (
 );
 
 // Lazy loaded components - Test/Debug components
-// DatabaseTest sadece development'ta kullanılabilir (production'da test planları oluşturma riski var)
 export const LazyTestDashboard = lazy(() => import('./TestDashboard'));
-export const LazyDatabaseTest = process.env.NODE_ENV === 'development'
-  ? lazy(() => import('./DatabaseTest'))
-  : lazy(() => Promise.resolve({ default: () => <div>Test paneli sadece development modunda kullanılabilir</div> }));
+export const LazyDatabaseTest = lazy(() => import('./DatabaseTest'));
 export const LazyWelcomePage = lazy(() => import('./WelcomePage'));
 
 // Lazy loaded components - Main application components (Code splitting)

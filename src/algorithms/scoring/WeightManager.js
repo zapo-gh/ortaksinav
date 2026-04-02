@@ -1,19 +1,14 @@
 import logger from '../../utils/logger.js';
 import { getSinifSeviyesi } from '../utils/helpers.js';
+import { DEFAULT_WEIGHTS, DEFAULT_LEARNING_RATE, PRIORITY_MULTIPLIERS, MIN_PRIORITY_SCORE, MIN_WEIGHT_BOUND, MAX_WEIGHT_BOUND } from '../../config/constants';
 
 /**
  * Dinamik ağırlık yöneticisi - öğrenci önceliklendirme sistemi
  */
 class DynamicWeightManager {
     constructor() {
-        this.weights = {
-            medicalNeeds: 0.40,      // Tıbbi ihtiyaçlar (en yüksek öncelik)
-            groupPreservation: 0.25,  // Grup koruma (aynı okul/sınıf)
-            genderBalance: 0.20,      // Cinsiyet dengesi
-            classLevelMix: 0.10,      // Sınıf seviyesi çeşitliliği
-            academicSimilarity: 0.05  // Akademik benzerlik
-        };
-        this.learningRate = 0.1;
+        this.weights = { ...DEFAULT_WEIGHTS };
+        this.learningRate = DEFAULT_LEARNING_RATE;
         this.history = [];
         this.learningHistory = []; // YENİ: Öğrenme geçmişi
     }
@@ -26,36 +21,36 @@ class DynamicWeightManager {
 
         // Tıbbi ihtiyaçlar (en yüksek öncelik)
         if (student.tibbiIhtiyac || student.engelDurumu || student.ozelIhtiyac) {
-            priority += 50 * this.weights.medicalNeeds;
-            logger.debug(`🏥 Tıbbi öncelik: ${student.ad} (+${50 * this.weights.medicalNeeds})`);
+            priority += PRIORITY_MULTIPLIERS.medical * this.weights.medicalNeeds;
+            logger.debug(`🏥 Tıbbi öncelik: ${student.ad} (+${PRIORITY_MULTIPLIERS.medical * this.weights.medicalNeeds})`);
         }
 
         // Grup koruma isteği (aynı okuldan öğrenciler)
         if (student.grupKoruma || student.aynıOkul || student.okulId) {
-            priority += 30 * this.weights.groupPreservation;
-            logger.debug(`👥 Grup koruma: ${student.ad} (+${30 * this.weights.groupPreservation})`);
+            priority += PRIORITY_MULTIPLIERS.group * this.weights.groupPreservation;
+            logger.debug(`👥 Grup koruma: ${student.ad} (+${PRIORITY_MULTIPLIERS.group * this.weights.groupPreservation})`);
         }
 
         // Cinsiyet dengesi (daha fazla öncelik)
         if (student.cinsiyet) {
-            priority += 20 * this.weights.genderBalance;
+            priority += PRIORITY_MULTIPLIERS.gender * this.weights.genderBalance;
         }
 
         // Sınıf seviyesi çeşitliliği
         const seviye = getSinifSeviyesi(student.sinif);
         if (seviye) {
-            priority += 15 * this.weights.classLevelMix;
+            priority += PRIORITY_MULTIPLIERS.classLevel * this.weights.classLevelMix;
         }
 
         // Akademik benzerlik (düşük öncelik)
         if (student.akademikSeviye || student.notOrtalamasi) {
-            priority += 10 * this.weights.academicSimilarity;
+            priority += PRIORITY_MULTIPLIERS.academic * this.weights.academicSimilarity;
         }
 
         // Temel öncelik (her öğrenci için)
         priority += 5;
 
-        return Math.max(priority, 1); // Minimum 1 puan
+        return Math.max(priority, MIN_PRIORITY_SCORE); // Minimum 1 puan
     }
 
     /**
@@ -94,7 +89,7 @@ class DynamicWeightManager {
                 const newWeight = this.weights[constraint] + learningRate * error * variation;
 
                 // Ağırlıkları sınırla (0.1 - 1.0 arası - daha geniş aralık)
-                this.weights[constraint] = Math.max(0.1, Math.min(1.0, newWeight));
+                this.weights[constraint] = Math.max(MIN_WEIGHT_BOUND, Math.min(MAX_WEIGHT_BOUND, newWeight));
 
                 logger.debug(`   ${constraint}: ${this.weights[constraint].toFixed(3)} (hata: ${error.toFixed(3)}, varyasyon: ${variation.toFixed(3)})`);
             }

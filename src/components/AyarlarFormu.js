@@ -1,4 +1,5 @@
 import React, { useState, memo } from 'react';
+import deepEqual from '../utils/deepEqual';
 import {
   Card,
   CardContent,
@@ -87,7 +88,7 @@ const computeErrors = (data) => {
 
 const areSettingsEqual = (prev, next) => {
   try {
-    return JSON.stringify(prev) === JSON.stringify(next);
+    return deepEqual(prev, next);
   } catch (error) {
     console.warn('Ayarlar karşılaştırması yapılamadı:', error);
     return false;

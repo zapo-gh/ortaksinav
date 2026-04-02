@@ -53,8 +53,8 @@ describe('Header Component', () => {
   it('should be responsive', () => {
     renderWithTheme(<Header baslik="Test" />);
     
-    // Check if responsive elements are present
-    expect(screen.getByRole('button', { name: /menu/i })).toBeInTheDocument();
+    // Check if responsive elements are present (search button is always visible)
+    expect(screen.getByRole('button', { name: /Öğrenci Ara/i })).toBeInTheDocument();
   });
 
   it('should display correct title when baslik prop is provided', () => {

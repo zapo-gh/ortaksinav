@@ -3,7 +3,6 @@
  * Excel dosyalarını parse etmek için modüler ve test edilebilir yapı
  */
 
-import * as XLSX from 'xlsx';
 import { logger } from './logger';
 import { formatError } from './errorMessages';
 import { detectExcelFormat } from './excelFormats';
@@ -115,9 +114,10 @@ export class ExcelParser {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
 
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
           const data = new Uint8Array(e.target.result);
+          const XLSX = await import('xlsx');
           this.workbook = XLSX.read(data, { type: 'array' });
 
           const sheetName = this.workbook.SheetNames[0];

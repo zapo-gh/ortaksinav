@@ -26,6 +26,17 @@ jest.mock('react-to-print', () => ({
   useReactToPrint: () => jest.fn()
 }));
 
+// Mock useExamData hooks - default to non-loading state
+const mockUseStudentsQuery = jest.fn(() => ({ data: [], isLoading: false, error: null }));
+const mockUseSalonsQuery = jest.fn(() => ({ data: [], isLoading: false, error: null }));
+const mockUseSettingsQuery = jest.fn(() => ({ data: null, isLoading: false, error: null }));
+
+jest.mock('../../hooks/queries/useExamData', () => ({
+  useStudentsQuery: (...args) => mockUseStudentsQuery(...args),
+  useSalonsQuery: (...args) => mockUseSalonsQuery(...args),
+  useSettingsQuery: (...args) => mockUseSettingsQuery(...args),
+}));
+
 const theme = createTheme();
 
 const mockOgrenciler = [
@@ -64,6 +75,10 @@ const mockAyarlar = {
 describe('AnaSayfa Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset query mock defaults after clearAllMocks
+    mockUseStudentsQuery.mockReturnValue({ data: [], isLoading: false, error: null });
+    mockUseSalonsQuery.mockReturnValue({ data: [], isLoading: false, error: null });
+    mockUseSettingsQuery.mockReturnValue({ data: null, isLoading: false, error: null });
     act(() => {
       useExamStore.setState({
         ogrenciler: [],
@@ -106,14 +121,40 @@ describe('AnaSayfa Component', () => {
     expect(screen.getByText('Öğrenci Listesi ve Seçimi')).toBeInTheDocument();
   });
 
-  it('should show loading state when data is loading', () => {
+  it('should show loading state when data is loading', async () => {
+    // Prevent first-time loader and tab reset on mount
+    localStorage.setItem('hasVisited', 'true');
+
+    // Make query hooks report loading so ExamContext doesn't auto-reset yukleme
+    mockUseStudentsQuery.mockReturnValue({ data: [], isLoading: true, error: null });
+    mockUseSalonsQuery.mockReturnValue({ data: [], isLoading: true, error: null });
+    mockUseSettingsQuery.mockReturnValue({ data: null, isLoading: true, error: null });
+
     act(() => {
-      useExamStore.setState({ yukleme: true, aktifTab: 'salon-plani' });
+      useExamStore.setState({
+        aktifTab: 'genel-ayarlar'
+      });
     });
+
     render(<AnaSayfa />);
 
-    // Check if loading state is handled
-    expect(screen.getByText('Yerleştirme Yapılıyor...')).toBeInTheDocument();
+    // After mount effects run, switch tab and set loading
+    act(() => {
+      useExamStore.setState({
+        yukleme: true,
+        aktifTab: 'salon-plani'
+      });
+    });
+
+    // Check if loading state is handled - button shows loading text
+    await waitFor(() => {
+      expect(screen.getByText('Yerleştirme Yapılıyor...')).toBeInTheDocument();
+    });
+
+    // Reset mocks for other tests
+    mockUseStudentsQuery.mockReturnValue({ data: [], isLoading: false, error: null });
+    mockUseSalonsQuery.mockReturnValue({ data: [], isLoading: false, error: null });
+    mockUseSettingsQuery.mockReturnValue({ data: null, isLoading: false, error: null });
   });
 
   it('should handle error state correctly', () => {

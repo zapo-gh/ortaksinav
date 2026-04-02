@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import {
   Box,
   Typography,
@@ -161,4 +161,4 @@ const Footer = () => {
   );
 };
 
-export default Footer;
+export default memo(Footer);

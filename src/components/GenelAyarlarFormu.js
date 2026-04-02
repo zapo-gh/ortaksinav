@@ -1,4 +1,5 @@
 import React, { useState, memo } from 'react';
+import deepEqual from '../utils/deepEqual';
 import {
   Card,
   CardContent,
@@ -61,7 +62,7 @@ const validateGeneralSettings = (settings) => {
 
 const areGeneralSettingsEqual = (prev, next) => {
   try {
-    return JSON.stringify(prev) === JSON.stringify(next);
+    return deepEqual(prev, next);
   } catch (error) {
     console.warn('Genel ayarlar karşılaştırması yapılamadı:', error);
     return false;

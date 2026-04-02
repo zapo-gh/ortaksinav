@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import {
   IconButton,
   Tooltip
@@ -42,4 +42,4 @@ const TransferButton = ({
   );
 };
 
-export default TransferButton;
+export default memo(TransferButton);

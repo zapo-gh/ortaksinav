@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, memo } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -151,4 +151,4 @@ const StatRow = ({ icon, label, value, warning }) => (
     </Box>
 );
 
-export default PlacementSuccessModal;
+export default memo(PlacementSuccessModal);

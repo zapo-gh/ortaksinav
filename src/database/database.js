@@ -1,4 +1,5 @@
 import Dexie from 'dexie';
+import { TEST_PLAN_NAMES } from '../config/constants';
 
 /**
  * Kelebek Sınav Sistemi Veritabanı
@@ -54,22 +55,8 @@ class KelebekDatabase extends Dexie {
       const planName = String(planData?.name || '').trim();
       const lowerPlanName = planName.toLowerCase();
       
-      // Test plan isimleri listesi (genişletilmiş)
-      const testPlanNames = [
-        'test plan',
-        'valid plan',
-        'minimal plan',
-        'plan 1',
-        'plan 2',
-        'plan 3',
-        'plan 4',
-        'plan 5',
-        'test',
-        'geçici plan',
-        'temp plan',
-        'sample plan',
-        'demo plan'
-      ];
+      // Test plan isimleri listesi (config/constants.js'den)
+      const testPlanNames = TEST_PLAN_NAMES;
       
       // Tam eşleşme veya içerme kontrolü
       const isTestPlan = testPlanNames.some(testName => 

@@ -44,7 +44,6 @@ import {
   Search as SearchIcon,
   Save as SaveIcon
 } from '@mui/icons-material';
-import * as XLSX from 'xlsx';
 import { useExam } from '../context/ExamContext';
 import { useNotifications } from './NotificationSystem';
 
@@ -825,9 +824,10 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
     setYukleme(true);
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const data = new Uint8Array(e.target.result);
+        const XLSX = await import('xlsx');
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
