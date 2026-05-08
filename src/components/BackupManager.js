@@ -244,7 +244,7 @@ const BackupManager = ({ onPlansUpdated }) => {
       )}
 
       {/* Geri Yükleme Onay Dialog'u */}
-      <Dialog open={restoreDialogOpen} onClose={() => setRestoreDialogOpen(false)}>
+      <Dialog open={restoreDialogOpen} onClose={() => setRestoreDialogOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
         <DialogTitle>Backup Geri Yükle</DialogTitle>
         <DialogContent>
           {selectedBackup && (

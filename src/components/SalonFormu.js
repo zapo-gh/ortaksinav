@@ -956,7 +956,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
       <Dialog
         open={onayDialogAcik}
         onClose={handleOnayIptal}
-        maxWidth="sm"
+        maxWidth="xs"
         fullWidth
         PaperProps={{
           sx: {
@@ -965,16 +965,11 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
           }
         }}
       >
-        <DialogTitle sx={{
-          textAlign: 'center',
-          fontSize: '1.25rem',
-          fontWeight: 600,
-          color: 'error.main',
-          pb: 1
-        }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <DeleteIcon color="error" fontSize="small" />
           Salon Silme Onayı
         </DialogTitle>
-        <DialogContent sx={{ textAlign: 'center', py: 2 }}>
+        <DialogContent>
           <Typography variant="body1" sx={{ mb: 2 }}>
             <strong>"{silinecekSalonAdi}"</strong> salonunu silmek istediğinizden emin misiniz?
           </Typography>
@@ -985,7 +980,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
         <DialogActions sx={{
           justifyContent: 'center',
           gap: 2,
-          pb: 3,
+          pb: 2,
           px: 3
         }}>
           <Button
@@ -995,8 +990,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
               borderRadius: 2,
               px: 3,
               py: 1,
-              textTransform: 'none',
-              fontWeight: 500
+              fontWeight: 600
             }}
           >
             İptal
@@ -1009,8 +1003,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
               borderRadius: 2,
               px: 3,
               py: 1,
-              textTransform: 'none',
-              fontWeight: 500,
+              fontWeight: 600,
               boxShadow: 3
             }}
           >
@@ -1023,7 +1016,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
       <Dialog
         open={topluSilmeDialogAcik}
         onClose={handleTopluSilmeIptal}
-        maxWidth="sm"
+        maxWidth="xs"
         fullWidth
         PaperProps={{
           sx: {
@@ -1032,16 +1025,11 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
           }
         }}
       >
-        <DialogTitle sx={{
-          textAlign: 'center',
-          fontSize: '1.25rem',
-          fontWeight: 600,
-          color: 'error.main',
-          pb: 1
-        }}>
-          🗑️ Toplu Salon Silme
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <DeleteIcon color="error" fontSize="small" />
+          Toplu Salon Silme
         </DialogTitle>
-        <DialogContent sx={{ textAlign: 'center', py: 2 }}>
+        <DialogContent>
           <Typography variant="body1" sx={{ mb: 2 }}>
             <strong>{seciliSalonlar.length} salon</strong> silmek istediğinizden emin misiniz?
           </Typography>
@@ -1052,7 +1040,7 @@ const SalonFormu = memo(({ salonlar = [], onSalonlarDegistir, yerlestirmeSonucu 
         <DialogActions sx={{
           justifyContent: 'center',
           gap: 2,
-          pb: 3,
+          pb: 2,
           px: 3
         }}>
           <Button

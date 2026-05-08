@@ -30,6 +30,7 @@ import {
   useMediaQuery,
   useTheme
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import {
   Chair as ChairIcon,
   Person as PersonIcon,
@@ -146,6 +147,7 @@ const YerlesmeyenOgrenciSeciciDialog = memo(({ open, onClose, unplacedStudents, 
 
 // Droppable Seat Component - Optimized
 const DroppableSeat = memo(({ masa, onStudentMove, children, readOnly = false }) => {
+  const theme = useTheme();
   const [{ isOver, canDrop }, drop] = useDrop({
     accept: ITEM_TYPES.STUDENT,
     drop: (item, monitor) => {
@@ -177,8 +179,8 @@ const DroppableSeat = memo(({ masa, onStudentMove, children, readOnly = false })
       sx={{
         width: '100%',
         opacity: isOver ? 0.8 : 1,
-        backgroundColor: isOver ? 'rgba(76, 175, 80, 0.1)' : 'transparent',
-        border: isOver ? '2px dashed #4CAF50' : '2px solid transparent',
+        backgroundColor: isOver ? alpha(theme.palette.success.main, 0.1) : 'transparent',
+        border: isOver ? `2px dashed ${theme.palette.success.main}` : '2px solid transparent',
         borderRadius: 1,
         transition: 'opacity 0.1s ease, background-color 0.1s ease'
       }}

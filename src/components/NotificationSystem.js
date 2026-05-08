@@ -164,21 +164,31 @@ export const NotificationProvider = ({ children }) => {
         <Dialog
           open={confirmDialog.open}
           onClose={confirmDialog.onCancel}
-          maxWidth="sm"
+          maxWidth="xs"
           fullWidth
+          PaperProps={{ sx: { borderRadius: 3 } }}
         >
           <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <WarningIcon color="warning" />
+            <WarningIcon color="warning" fontSize="small" />
             {confirmDialog.title}
           </DialogTitle>
           <DialogContent>
-            <Typography>{confirmDialog.message}</Typography>
+            <Typography variant="body1">{confirmDialog.message}</Typography>
           </DialogContent>
-          <DialogActions>
-            <Button onClick={confirmDialog.onCancel} color="inherit">
+          <DialogActions sx={{ justifyContent: 'center', gap: 2, pb: 2, px: 3 }}>
+            <Button
+              onClick={confirmDialog.onCancel}
+              variant="outlined"
+              sx={{ borderRadius: 2, px: 3, py: 1, fontWeight: 600 }}
+            >
               {confirmDialog.cancelText}
             </Button>
-            <Button onClick={confirmDialog.onConfirm} variant="contained" color="primary">
+            <Button
+              onClick={confirmDialog.onConfirm}
+              variant="contained"
+              color="error"
+              sx={{ borderRadius: 2, px: 3, py: 1, fontWeight: 600 }}
+            >
               {confirmDialog.confirmText}
             </Button>
           </DialogActions>
@@ -221,6 +231,7 @@ const PromptDialog = ({ open, title, message, placeholder, defaultValue, onConfi
       onClose={onCancel}
       maxWidth="sm"
       fullWidth
+      PaperProps={{ sx: { borderRadius: 3 } }}
     >
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <InfoIcon color="info" />

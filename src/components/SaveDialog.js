@@ -91,8 +91,9 @@ const SaveDialog = memo(({
       disableEscapeKeyDown={false}
       disableBackdropClick={false}
       transitionDuration={0}
+      PaperProps={{ sx: { borderRadius: 3 } }}
     >
-      <DialogTitle sx={{ pb: 1 }}>Planı Kaydet</DialogTitle>
+      <DialogTitle>Planı Kaydet</DialogTitle>
       <DialogContent sx={{ py: 2 }}>
         <TextField
           autoFocus

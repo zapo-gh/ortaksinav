@@ -42,8 +42,10 @@ import {
   Delete as DeleteIcon,
   Warning as WarningIcon,
   Search as SearchIcon,
-  Save as SaveIcon
+  Save as SaveIcon,
+  Edit as EditIcon
 } from '@mui/icons-material';
+import { alpha } from '@mui/material/styles';
 import { useExam } from '../context/ExamContext';
 import { useNotifications } from './NotificationSystem';
 
@@ -1641,6 +1643,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
         aria-describedby="onikinci-sinif-dialog-description"
         maxWidth="sm"
         fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
       >
         <DialogTitle id="onikinci-sinif-dialog-title">
           12. Sınıf Öğrencileri Tespit Edildi
@@ -1681,7 +1684,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
       <Dialog
         open={silmeDialogAcik}
         onClose={handleOgrenciSilIptal}
-        maxWidth="sm"
+        maxWidth="xs"
         fullWidth
         PaperProps={{
           sx: {
@@ -1690,16 +1693,11 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
           }
         }}
       >
-        <DialogTitle sx={{
-          textAlign: 'center',
-          fontSize: '1.25rem',
-          fontWeight: 600,
-          color: 'error.main',
-          pb: 1
-        }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <DeleteIcon color="error" fontSize="small" />
           Öğrenci Silme Onayı
         </DialogTitle>
-        <DialogContent sx={{ textAlign: 'center', py: 2 }}>
+        <DialogContent>
           <Typography variant="body1" sx={{ mb: 2 }}>
             <strong>"{silinecekOgrenciAdi}"</strong> öğrencisini silmek istediğinizden emin misiniz?
           </Typography>
@@ -1710,7 +1708,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
         <DialogActions sx={{
           justifyContent: 'center',
           gap: 2,
-          pb: 3,
+          pb: 2,
           px: 3
         }}>
           <Button
@@ -1720,8 +1718,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
               borderRadius: 2,
               px: 3,
               py: 1,
-              textTransform: 'none',
-              fontWeight: 500
+              fontWeight: 600
             }}
             disabled={readOnly}
           >
@@ -1735,9 +1732,8 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
               borderRadius: 2,
               px: 3,
               py: 1,
-              textTransform: 'none',
-              fontWeight: 500,
-              boxShadow: '0 2px 8px rgba(211, 47, 47, 0.3)'
+              fontWeight: 600,
+              boxShadow: (theme) => `0 2px 8px ${alpha(theme.palette.error.main, 0.3)}`
             }}
             disabled={readOnly}
           >
@@ -1750,7 +1746,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
       <Dialog
         open={tumunuSilDialogAcik}
         onClose={handleTumunuSilIptal}
-        maxWidth="sm"
+        maxWidth="xs"
         fullWidth
         PaperProps={{
           sx: {
@@ -1759,16 +1755,11 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
           }
         }}
       >
-        <DialogTitle sx={{
-          textAlign: 'center',
-          fontSize: '1.25rem',
-          fontWeight: 600,
-          color: 'error.main',
-          pb: 1
-        }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <WarningIcon color="error" fontSize="small" />
           Tüm Öğrencileri Silme Onayı
         </DialogTitle>
-        <DialogContent sx={{ textAlign: 'center', py: 2 }}>
+        <DialogContent>
           <Typography variant="body1" sx={{ mb: 2 }}>
             <strong>Tüm öğrencileri</strong> silmek istediğinizden emin misiniz?
           </Typography>
@@ -1782,7 +1773,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
         <DialogActions sx={{
           justifyContent: 'center',
           gap: 2,
-          pb: 3,
+          pb: 2,
           px: 3
         }}>
           <Button
@@ -1792,8 +1783,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
               borderRadius: 2,
               px: 3,
               py: 1,
-              textTransform: 'none',
-              fontWeight: 500
+              fontWeight: 600
             }}
             disabled={readOnly}
           >
@@ -1807,9 +1797,8 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
               borderRadius: 2,
               px: 3,
               py: 1,
-              textTransform: 'none',
-              fontWeight: 500,
-              boxShadow: '0 2px 8px rgba(211, 47, 47, 0.3)'
+              fontWeight: 600,
+              boxShadow: (theme) => `0 2px 8px ${alpha(theme.palette.error.main, 0.3)}`
             }}
             disabled={readOnly}
           >
@@ -1831,18 +1820,11 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
           }
         }}
       >
-        <DialogTitle sx={{
-          textAlign: 'center',
-          fontSize: '1.25rem',
-          fontWeight: 600,
-          color: 'primary.main',
-          pb: 1,
-          pt: 3,
-          px: 3
-        }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <AddIcon color="primary" fontSize="small" />
           Manuel Öğrenci Ekleme
         </DialogTitle>
-        <DialogContent sx={{ pt: 5, pb: 3, px: 3, overflow: 'visible' }}>
+        <DialogContent sx={{ overflow: 'visible' }}>
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6}>
               <TextField
@@ -1943,8 +1925,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
               borderRadius: 2,
               px: 3,
               py: 1.25,
-              textTransform: 'none',
-              fontWeight: 500,
+              fontWeight: 600,
               minWidth: 100
             }}
             disabled={readOnly}
@@ -1959,9 +1940,8 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
               borderRadius: 2,
               px: 3,
               py: 1.25,
-              textTransform: 'none',
-              fontWeight: 500,
-              boxShadow: '0 2px 8px rgba(25, 118, 210, 0.3)',
+              fontWeight: 600,
+              boxShadow: (theme) => `0 2px 8px ${alpha(theme.palette.primary.main, 0.3)}`,
               minWidth: 140
             }}
             disabled={readOnly}
@@ -1984,18 +1964,11 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
           }
         }}
       >
-        <DialogTitle sx={{
-          textAlign: 'center',
-          fontSize: '1.25rem',
-          fontWeight: 600,
-          color: 'primary.main',
-          pb: 1,
-          pt: 3,
-          px: 3
-        }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <EditIcon color="primary" fontSize="small" />
           Öğrenci Bilgilerini Düzenle
         </DialogTitle>
-        <DialogContent sx={{ pt: 5, pb: 3, px: 3, overflow: 'visible' }}>
+        <DialogContent sx={{ overflow: 'visible' }}>
           {duzenlenecekOgrenci && (
             <Grid container spacing={2}>
               {/* Row 1: Ad and Soyad */}
@@ -2097,8 +2070,7 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
               borderRadius: 2,
               px: 3,
               py: 1.25,
-              textTransform: 'none',
-              fontWeight: 500,
+              fontWeight: 600,
               minWidth: 100
             }}
             disabled={readOnly}
@@ -2113,9 +2085,8 @@ const OgrenciListesi = memo(({ ogrenciler, yerlestirmeSonucu = null }) => {
               borderRadius: 2,
               px: 3,
               py: 1.25,
-              textTransform: 'none',
-              fontWeight: 500,
-              boxShadow: '0 2px 8px rgba(25, 118, 210, 0.3)',
+              fontWeight: 600,
+              boxShadow: (theme) => `0 2px 8px ${alpha(theme.palette.primary.main, 0.3)}`,
               minWidth: 140
             }}
             disabled={readOnly}

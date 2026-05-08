@@ -2,7 +2,8 @@ import React, { forwardRef } from 'react';
 import {
   Box,
   Typography,
-  Paper
+  Paper,
+  useTheme
 } from '@mui/material';
 
 /**
@@ -10,8 +11,7 @@ import {
  * PDF export için özel olarak tasarlanmıştır
  * Tüm salonlar için ayrı sayfalarda salon yerleşim planları
  */
-export const SalonPlaniPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {} }, ref) => {
-  // Masa numarası hesaplama fonksiyonu
+export const SalonPlaniPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {} }, ref) => {  const theme = useTheme();  // Masa numarası hesaplama fonksiyonu
   const calculateDeskNumberForMasa = (masa) => {
     if (!masa || !yerlestirmeSonucu?.tumSalonlar) return masa?.id + 1 || 1;
 
@@ -82,28 +82,28 @@ export const SalonPlaniPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {}
   const getRiskColor = (kategori) => {
     switch (kategori) {
       case 'yuksek-risk':
-        return '#f44336';
+        return theme.palette.error.main;
       case 'orta-risk':
-        return '#ff9800';
+        return theme.palette.warning.main;
       case 'dusuk-risk':
-        return '#4caf50';
+        return theme.palette.success.main;
       default:
-        return '#9e9e9e';
+        return theme.palette.grey[500];
     }
   };
 
   const getKitapcikColor = (kitapcik) => {
     switch (kitapcik) {
       case 'A':
-        return '#2196f3';
+        return theme.palette.info.main;
       case 'B':
-        return '#ff9800';
+        return theme.palette.warning.main;
       case 'C':
-        return '#4caf50';
+        return theme.palette.success.main;
       case 'D':
-        return '#9c27b0';
+        return theme.palette.secondary.main;
       default:
-        return '#9e9e9e';
+        return theme.palette.grey[500];
     }
   };
 
@@ -444,9 +444,9 @@ export const SalonPlaniPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {}
                       flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      bgcolor: masa.ogrenci ? '#e3f2fd' : '#f5f5f5',
+                      bgcolor: masa.ogrenci ? 'primary.50' : 'grey.100',
                       border: masa.ogrenci ? '2px solid' : '1px solid',
-                      borderColor: masa.ogrenci ? getKitapcikColor(masa.ogrenci.kitapcik) : '#e0e0e0',
+                      borderColor: masa.ogrenci ? getKitapcikColor(masa.ogrenci.kitapcik) : 'grey.300',
                       position: 'relative',
                       overflow: 'hidden',
                       '@media print': {

@@ -8,6 +8,7 @@ import {
     Fade,
     useTheme
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import {
     CheckCircle as CheckCircleIcon,
     People as PeopleIcon,
@@ -49,7 +50,7 @@ const PlacementSuccessModal = ({ open, onClose, statistics, title, message }) =>
             onClose={onClose}
             PaperProps={{
                 sx: {
-                    borderRadius: 4,
+                    borderRadius: 3,
                     minWidth: 320,
                     maxWidth: 400,
                     textAlign: 'center',
@@ -66,12 +67,12 @@ const PlacementSuccessModal = ({ open, onClose, statistics, title, message }) =>
                         sx={{
                             fontSize: 80,
                             color: 'success.main',
-                            filter: 'drop-shadow(0 4px 6px rgba(46, 125, 50, 0.3))'
+                            filter: `drop-shadow(0 4px 6px ${alpha(theme.palette.success.main, 0.3)})`
                         }}
                     />
                 </Box>
 
-                <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, color: 'text.primary' }}>
+                <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, color: 'text.primary' }}>
                     {title || "Yerleştirme Tamamlandı!"}
                 </Typography>
 
@@ -142,7 +143,7 @@ const StatRow = ({ icon, label, value, warning }) => (
         <Typography
             variant="body1"
             sx={{
-                fontWeight: 700,
+                fontWeight: 600,
                 color: warning ? 'error.main' : 'text.primary'
             }}
         >

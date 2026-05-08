@@ -571,7 +571,8 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
                                       borderColor: 'secondary.light',
                                       mb: 0.5,
                                       bgcolor: 'action.hover',
-                                      borderRadius: '0 4px 4px 0'
+                                      borderTopRightRadius: 0.5,
+                                      borderBottomRightRadius: 0.5
                                     }}
                                   >
                                     <ListItemText
@@ -665,8 +666,8 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
         maxWidth="xs"
         fullWidth
       >
-        <DialogTitle sx={{ bgcolor: 'error.main', color: 'white', display: 'flex', alignItems: 'center', gap: 1 }}>
-          <WarningIcon />
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <WarningIcon color="error" />
           <Typography variant="h6">Planı Sil</Typography>
         </DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
@@ -716,8 +717,8 @@ const KayitliPlanlar = ({ onPlanYukle }) => {
         fullWidth
         disableEscapeKeyDown={isRenaming}
       >
-        <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', display: 'flex', alignItems: 'center', gap: 1 }}>
-          <EditIcon />
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <EditIcon color="primary" />
           <Typography variant="h6">
             {isRenaming ? 'Plan Adı Güncelleniyor' : 'Plan Adını Değiştir'}
           </Typography>

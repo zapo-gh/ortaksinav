@@ -9,8 +9,10 @@ import {
   Menu,
   MenuItem,
   Avatar,
-  Chip
+  Chip,
+  useTheme
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import {
   AccountCircle,
   ExitToApp,
@@ -25,6 +27,7 @@ import LoginDialog from './auth/LoginDialog';
 import { useExam } from '../context/ExamContext';
 
 const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick, showNav = true }) => {
+  const theme = useTheme();
   const [anchorEl, setAnchorEl] = React.useState(null);
   const [showTestDashboard, setShowTestDashboard] = React.useState(false);
   const [lastKeyPress, setLastKeyPress] = React.useState(0);
@@ -216,16 +219,16 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick, showNav 
               width: 44,
               height: 44,
               borderRadius: 3,
-              background: 'linear-gradient(135deg, #ffffff 0%, #f0f7ff 100%)',
+              background: `linear-gradient(135deg, #ffffff 0%, ${alpha(theme.palette.primary.main, 0.05)} 100%)`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              boxShadow: '0 2px 12px rgba(25, 118, 210, 0.25), 0 0 0 1px rgba(25, 118, 210, 0.1)',
+              boxShadow: `0 2px 12px ${alpha(theme.palette.primary.main, 0.25)}, 0 0 0 1px ${alpha(theme.palette.primary.main, 0.1)}`,
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               '&:hover': {
                 transform: 'translateY(-50%) scale(1.08)',
-                boxShadow: '0 4px 16px rgba(25, 118, 210, 0.35), 0 0 0 1px rgba(25, 118, 210, 0.15)',
+                boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.35)}, 0 0 0 1px ${alpha(theme.palette.primary.main, 0.15)}`,
                 '& .logo-icon': {
                   transform: 'scale(1.1) rotate(-2deg)',
                 }
@@ -245,7 +248,7 @@ const Header = ({ baslik, kullanici, onHomeClick, onTestDashboardClick, showNav 
                 sx={{
                   fontSize: 26,
                   color: 'primary.main',
-                  filter: 'drop-shadow(0 2px 4px rgba(25, 118, 210, 0.3))',
+                  filter: `drop-shadow(0 2px 4px ${alpha(theme.palette.primary.main, 0.3)})`,
                   transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   position: 'relative',
                   zIndex: 2

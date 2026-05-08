@@ -55,8 +55,8 @@ const ArchiveDialog = ({ open, onClose, onConfirm, planName, defaultYear, defaul
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-            <DialogTitle sx={{ bgcolor: 'secondary.main', color: 'white', display: 'flex', alignItems: 'center', gap: 1 }}>
-                <ArchiveIcon />
+            <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <ArchiveIcon color="secondary" />
                 <Typography variant="h6">Planı Arşivle</Typography>
             </DialogTitle>
             <DialogContent sx={{ mt: 2 }}>

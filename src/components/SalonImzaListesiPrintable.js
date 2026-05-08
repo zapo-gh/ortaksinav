@@ -8,7 +8,8 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper
+  Paper,
+  useTheme
 } from '@mui/material';
 
 import { calculateDeskNumberForMasa } from '../utils/placementHelper';
@@ -19,6 +20,7 @@ import { calculateDeskNumberForMasa } from '../utils/placementHelper';
  * Sınıf, ders ve imza bölümleri içerir
  */
 const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {}, tumOgrenciler = [] }, ref) => {
+  const theme = useTheme();
   // calculateDeskNumberForMasa artık dışarıdan alınıyor (import edildi)
   // Wrapper fonksiyon: Sadece salon parametresini kolaylaştırmak için
   const getMasaNo = (masa) => calculateDeskNumberForMasa(masa, yerlestirmeSonucu?.tumSalonlar);
@@ -171,13 +173,13 @@ const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {},
                   margin: '0 auto'
                 }
               }}>
-                <Table size="small" sx={{
-                  border: '1px solid #ddd',
+                <Table size="small" sx={(theme) => ({
+                  border: `1px solid ${theme.palette.divider}`,
                   '& .MuiTableCell-root': {
                     padding: '1px 4px',
                     fontSize: '0.8rem',
                     lineHeight: 0.6,
-                    border: '1px solid #ddd',
+                    border: `1px solid ${theme.palette.divider}`,
                     textAlign: 'center'
                   },
                   '& .MuiTableRow-root': {
@@ -186,7 +188,7 @@ const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {},
                   '& .MuiTableCell-root:nth-of-type(2)': {
                     textAlign: 'left !important'
                   }
-                }}>
+                })}>
                   <TableHead>
                     <TableRow sx={{ backgroundColor: 'grey.300' }}>
                       <TableCell sx={{ backgroundColor: 'grey.300', color: 'black', fontWeight: 700, width: '8%', textAlign: 'center' }}><strong>Masa No</strong></TableCell>
@@ -476,11 +478,11 @@ const SalonImzaListesiPrintable = forwardRef(({ yerlestirmeSonucu, ayarlar = {},
                 </Typography>
               </Box>
               <TableContainer component={Paper} sx={{ mb: 1, width: '100%', maxWidth: '700px', margin: '0 auto', '@media print': { width: '98%', maxWidth: '98%' } }}>
-                <Table size="small" sx={{
-                  border: '1px solid #ddd',
-                  '& .MuiTableCell-root': { padding: '2px 6px', fontSize: '0.8rem', border: '1px solid #ddd', textAlign: 'center' },
+                <Table size="small" sx={(theme) => ({
+                  border: `1px solid ${theme.palette.divider}`,
+                  '& .MuiTableCell-root': { padding: '2px 6px', fontSize: '0.8rem', border: `1px solid ${theme.palette.divider}`, textAlign: 'center' },
                   '& .MuiTableCell-root:nth-of-type(2)': { textAlign: 'left !important' }
-                }}>
+                })}>
                   <TableHead>
                     <TableRow>
                       <TableCell><strong>#</strong></TableCell>

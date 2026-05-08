@@ -676,8 +676,11 @@ const AyarlarFormu = memo(({ ayarlar, onAyarlarDegistir, ogrenciler, yerlestirme
         </form>
       </CardContent>
       {/* Ders Silme Onayı Dialogu */}
-      <Dialog open={dersSilmeDialogAcik} onClose={dersSilIptal} maxWidth="xs" fullWidth>
-        <DialogTitle>Ders Silme Onayı</DialogTitle>
+      <Dialog open={dersSilmeDialogAcik} onClose={dersSilIptal} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <DeleteIcon color="error" fontSize="small" />
+          Ders Silme Onayı
+        </DialogTitle>
         <DialogContent>
           <Typography variant="body2">Seçili dersi silmek istediğinize emin misiniz?</Typography>
         </DialogContent>
