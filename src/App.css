@@ -1,0 +1,20 @@
+/* App.css - Unused styles removed for optimization */
+.App {
+  text-align: center;
+}
+
+/* Pulse animasyonu - seçili öğrenci vurgulama için */
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

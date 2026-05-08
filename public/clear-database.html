@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IndexedDB Temizleme</title>
+</head>
+<body>
+    <h1>IndexedDB Temizleme</h1>
+    <button onclick="clearDatabase()">IndexedDB'yi Temizle</button>
+    <div id="result"></div>
+
+    <script>
+        async function clearDatabase() {
+            try {
+                // IndexedDB'yi sil
+                const deleteRequest = indexedDB.deleteDatabase('exam-database');
+                
+                deleteRequest.onsuccess = function() {
+                    document.getElementById('result').innerHTML = '✅ IndexedDB başarıyla temizlendi!';
+                    console.log('✅ IndexedDB temizlendi');
+                };
+                
+                deleteRequest.onerror = function() {
+                    document.getElementById('result').innerHTML = '❌ IndexedDB temizlenemedi!';
+                    console.error('❌ IndexedDB temizlenemedi');
+                };
+                
+            } catch (error) {
+                document.getElementById('result').innerHTML = '❌ Hata: ' + error.message;
+                console.error('❌ Hata:', error);
+            }
+        }
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
